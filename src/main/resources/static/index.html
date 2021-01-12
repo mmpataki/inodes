@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="inodes">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>i-nodes</title>
+    <link rel="stylesheet" href="./index.css">
+    <!-- <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script> -->
+    <script>
+        const USER_KEY = "user", TOK_KEY = "tok";
+        let baseUrl = window.location.port == 5000 ? "http://localhost:8080/" : ""
+        function ajax(method, url, data, hdrs) {
+            if (getCookie(USER_KEY)) {
+                if (!hdrs) hdrs = {}
+                hdrs['AuthInfo'] = `${getCookie(USER_KEY)}:${getCookie(TOK_KEY)}`
+            }
+            return new Promise((resolve, reject) => {
+                var xhttp = new XMLHttpRequest();
+                xhttp.onreadystatechange = function () {
+                    if (this.readyState == 4 && this.status == 200) {
+                        console.log(xhttp.getAllResponseHeaders())
+                        resolve({
+                            response: this.responseText,
+                            headers: makeHMap(xhttp.getAllResponseHeaders())
+                        })
+                    }
+                    if (this.status == 401) {
+                        reject(401);
+                    }
+                };
+                xhttp.open(method, `${baseUrl}${url}`, true);
+                hdrs && Object.keys(hdrs).forEach(key => xhttp.setRequestHeader(key, hdrs[key]))
+                xhttp.send(data);
+            });
+        }
+        function makeHMap(headers) {
+            var arr = headers.trim().split(/[\r\n]+/);
+            var headerMap = {};
+            arr.forEach(function (line) {
+                var parts = line.split(': ');
+                var header = parts.shift();
+                var value = parts.join(': ');
+                headerMap[header] = value;
+            });
+            return headerMap;
+        }
+        function get(url) {
+            return ajax("GET", url, undefined);
+        }
+        function post(url, data, hdrs) {
+            return ajax('POST', url, JSON.stringify(data), hdrs);
+        }
+        function delet(url) {
+            return ajax('DELETE', url);
+        }
+        function setCookie(name, value, days) {
+            var expires = "";
+            if (days) {
+                var date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/";
+        }
+        function getCookie(name) {
+            var nameEQ = name + "=";
+            var ca = document.cookie.split(';');
+            for (var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+        function eraseCookie(name) {
+            document.cookie = name + '=; Max-Age=-99999999;';
+        }
+        function g(id) {
+            return document.getElementById(id);
+        }
+        function c(cl) {
+            return document.getElementsByClassName(cl)[0];
+        }
+        class INodes {
+            constructor() {
+                let self = this;
+                this.klassPromises = {}
+                this.scriptPromises = {}
+                this.pageSize = 10;
+                this.pageNum = 0;
+                get('/klasses').then(function (data) {
+                    self.populateClassTypes(JSON.parse(data.response));
+                })
+                this.setupSearch();
+                this.populateTrendingTags();
+                this.showUserInfo();
+            }
+            setupSearch() {
+                let q = new URL(window.location.href).searchParams.get("q")
+                c('searchbox').value = q
+                console.log(q)
+                this.search(q)
+            }
+            populateTrendingTags() {
+                let self = this;
+                get('/trendingTags').then(d => {
+                    let dd = g('toptags')
+                    JSON.parse(d.response).forEach(tag => {
+                        dd.appendChild(self.createTagElement(tag.item, '#'))
+                        dd.appendChild(document.createElement('br'))
+                    })
+                })
+            }
+            populateClassTypes(data) {
+                let select = g('kclasses');
+                select.addEventListener('change', e => this.klassChanged(e.target.value));
+                data.forEach(klassName => {
+                    select.innerHTML += `<option name='${klassName}'>${klassName}</option>`
+                });
+                this.klasses = {}
+                this.klassChanged(data[0])
+            }
+            loadKlass(klassName) {
+                if (this.klassPromises[klassName]) {
+                    return this.klassPromises[klassName];
+                }
+                let self = this;
+                this.klassPromises[klassName] = new Promise((resolve, reject) => {
+                    if (self.klasses[klassName]) {
+                        return resolve(self.klasses[klassName]);
+                    }
+                    get(`/klass/${klassName}`).then(d => {
+                        self.klasses[klassName] = JSON.parse(d.response);
+                        resolve(self.klasses[klassName])
+                    })
+                });
+                return this.klassPromises[klassName]
+            }
+            klassChanged(klassName) {
+                let self = this;
+                this.currentClass = klassName;
+                this.loadKlass(klassName).then(d => {
+                    this.renderInput(d)
+                });
+            }
+            loadScript(path, callBack) {
+                return new Promise((resolve, reject) => {
+                    var jsElm = document.createElement("script");
+                    jsElm.type = "application/javascript";
+                    jsElm.src = path;
+                    jsElm.addEventListener('load', e => resolve())
+                    document.body.appendChild(jsElm);
+                });
+            }
+            loadCss(path, callBack) {
+                return new Promise((resolve, reject) => {
+                    var fileref = document.createElement("link");
+                    fileref.rel = "stylesheet";
+                    fileref.type = "text/css";
+                    fileref.href = path;
+                    fileref.addEventListener("load", e => resolve())
+                    document.getElementsByTagName("head")[0].appendChild(fileref)
+                })
+            }
+            loadKlassScripts(klass) {
+                let name = klass.name
+                if (this.scriptPromises[name]) {
+                    return this.scriptPromises[name]
+                }
+                this.scriptPromises[name] = new Promise((resolve, reject) => {
+                    if (klass.obj) {
+                        return resolve(klass.obj)
+                    }
+                    let proms = [];
+                    klass.jsPaths.forEach(s => proms.push(this.loadScript(s)))
+                    klass.cssPaths.forEach(s => proms.push(this.loadCss(s)))
+                    Promise.all(proms).then(x => {
+                        let k = eval(klass.name)
+                        klass.obj = new k();
+                        resolve(klass.obj)
+                    });
+                })
+                return this.scriptPromises[name]
+            }
+            renderInput(klass, obj) {
+                let self = this;
+                this.loadKlassScripts(klass).then(klassObj => {
+                    let e = g('editor');
+                    e.innerHTML = '';
+                    if (!klass.editor || obj) {
+                        klass.editor = klassObj.getEditor(obj)
+                    }
+                    e.appendChild(klass.editor)
+                });
+            }
+            loggedIn() {
+                return getCookie(USER_KEY)
+            }
+            showUserInfo() {
+                if (!this.loggedIn()) {
+                    c('loginui').style.display = "inline-block"
+                    g('login').style.display = "inline-block"
+                    g('logout').style.display = "none"
+                    g('signup').style.display = "inline-block"
+                    g('user').style.display = "none"
+                } else {
+                    g('logout').style.display = "inline-block"
+                    g('user').style.display = "inline-block"
+                    c('loginui').style.display = "none"
+                    g('login').style.display = "none"
+                    g('signup').style.display = "none"
+                    g('user').innerHTML = getCookie(USER_KEY)
+                }
+            }
+            post() {
+                let self = this;
+                post(
+                    '/data',
+                    {
+                        content: JSON.stringify(this.klasses[this.currentClass].obj.getContent()),
+                        type: this.currentClass,
+                        tags: g('tags-editor').value.split(/\s+/)
+                    },
+                    {
+                        "Content-Type": "application/json"
+                    }
+                ).then(e => alert('Done'))
+                    .catch((code) => {
+                        if (code == 401) {
+                            self.showUserInfo()
+                        }
+                    })
+            }
+            search(str, offset = 0, pageSize = 10) {
+                get(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}`).then(d => {
+                    this.results = JSON.parse(d.response)
+                    this.showResults();
+                })
+            }
+            showResults() {
+                let d = g('posts');
+                d.innerHTML = ''
+                let self = this
+                let proms = []
+                this.results.results.forEach(r => {
+                    proms.push(self.showCard(d, r));
+                })
+                Promise.all(proms).then(() => {
+                    if (this.results.results.length < this.results.totalResults) {
+                        d.appendChild(this.getPaginationItem(this.results));
+                    }
+                });
+            }
+            getSearchQuery() {
+                return c('searchbox').value;
+            }
+            getPaginationItem(results) {
+                let self = this;
+                let resp = function () {
+                    let container = {
+                        ele: 'div',
+                        classList: 'pages',
+                        children: []
+                    }
+                    for (let i = 0; i < results.totalResults; i += self.pageSize) {
+                        container.children.push(
+                            {
+                                ele: 'span',
+                                classList: `page-btn ${(i / self.pageSize) == self.pageNum ? "selected" : ""}`,
+                                text: i / self.pageSize + 1,
+                                evnts: {
+                                    click: function (e) {
+                                        self.pageNum = i / self.pageSize
+                                        self.search(self.getSearchQuery(), i, self.pageSize)
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    return container;
+                }
+                return render('paginator', resp());
+            }
+            deleteInode(id) {
+                if (!this.loggedIn()) {
+                    alert('Login to delete content')
+                    return
+                }
+                delet(`/data/${id}`).then(e => alert('Done')).catch(c => {
+                    if (c == 401) {
+                        alert(`You are unauthorized to delete ${id}`)
+                    }
+                });
+            }
+            editInode(obj) {
+                if (!this.loggedIn()) {
+                    alert('Login to post / update content')
+                    return
+                }
+                this.renderInput(this.klasses[obj.type], obj)
+                this.openEditor()
+            }
+            showCard(d, r) {
+                let self = this;
+                let template = function (s, obj) {
+                    return {
+                        ele: 'div',
+                        classList: 'container',
+                        styles: {
+                            borderLeft: `solid 3px ${self.randColor()}`,
+                            position: 'relative'
+                        },
+                        children: [
+                            {
+                                preBuilt: true,
+                                ele: s.getCard(r)
+                            },
+                            {
+                                ele: 'div',
+                                classList: 'tag-owner',
+                                children: [
+                                    {
+                                        ele: 'div',
+                                        classList: 'tag-actions',
+                                        children: [
+                                            {
+                                                preBuilt: true,
+                                                ele: self.getTagsElement(r.tags, r.owner, r.type)
+                                            },
+                                            {
+                                                ele: 'div',
+                                                classList: 'actions',
+                                                children: [
+                                                    {
+                                                        ele: 'span',
+                                                        text: `&#x25B2 ${obj.upVotes || 0}`,
+                                                        classList: 'action-upvote',
+                                                        evnts: {
+                                                            click: function (e) { self.upvoteInode(obj.id) }
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        text: `&#x25BC ${obj.downVotes || 0}`,
+                                                        classList: 'action-downvote',
+                                                        evnts: {
+                                                            click: function (e) { self.commentInode(obj.id) }
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        text: 'edit',
+                                                        classList: 'action',
+                                                        evnts: {
+                                                            click: function (e) { self.editInode(obj) }
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        text: 'delete',
+                                                        classList: 'action',
+                                                        evnts: {
+                                                            click: function (e) { self.deleteInode(obj.id) }
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        text: 'comment',
+                                                        classList: 'action',
+                                                        evnts: {
+                                                            click: function (e) { self.commentInode(obj.id) }
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        text: '#',
+                                                        classList: 'action',
+                                                        evnts: {
+                                                            click: function (e) { window.location = `?q=@${obj.id}` }
+                                                        }
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                    ,
+                                    {
+                                        ele: 'div',
+                                        classList: 'user-time',
+                                        children: [
+                                            {
+                                                ele: 'span',
+                                                classList: 'postowner',
+                                                text: `${obj.owner}`,
+                                                evnts: {
+                                                    click: function (e) {
+                                                        self.userClicked(e, obj.owner);
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                ele: 'span',
+                                                classList: 'posttime',
+                                                text: `${self.getLocalTime(obj.postTime)}`
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    };
+                }
+                return new Promise(function (resolve, reject) {
+                    self.loadKlass(r.type).then(klass => {
+                        self.loadKlassScripts(klass).then(s => {
+                            d.appendChild(render('inode', template(s, r)));
+                            resolve()
+                        })
+                    })
+                });
+            }
+            getLocalTime(ep) {
+                var d = new Date(ep);
+                //d.setUTCSeconds(ep);
+                return d.toLocaleDateString()
+            }
+            randColor() {
+                var letters = '0123456789ABCDEF';
+                var color = '#';
+                for (var i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * 16)];
+                }
+                return color;
+            }
+            getTagsElement(tags, user, type) {
+                let x = document.createElement('div')
+                x.classList = "tags-container"
+                if (!tags) return x;
+                let self = this;
+                tags.forEach(tag => {
+                    x.appendChild(this.createTagElement(tag, '#'));
+                });
+                user && x.appendChild(this.createTagElement(user, '~'))
+                type && x.appendChild(this.createTagElement(type, '%'))
+                return x;
+            }
+            createTagElement(tag, char) {
+                let self = this;
+                let t = document.createElement('span');
+                t.classList = "tag"
+                t.innerText = `${char}${tag}`
+                t.addEventListener('click', e => {
+                    let q = ""
+                    if (e.ctrlKey) {
+                        q = c('searchbox').value + " "
+                    }
+                    q += `${char}${tag}`
+                    c('searchbox').value = q.trim()
+                    self.search(q)
+                })
+                return t;
+            }
+            openEditor() {
+                g('editor-pane').style.display = 'block';
+            }
+            closeEditor() {
+                g('editor-pane').style.display = 'none';
+            }
+            login(e) {
+                post(
+                    '/auth/login',
+                    {},
+                    {
+                        'Authorization': `Basic ${btoa(c('usernamebox').value + ":" + c('passwordbox').value)}`
+                    }
+                ).then((d) => {
+                    let h = d.headers;
+                    setCookie(USER_KEY, h['authinfo'].split(":")[0]);
+                    setCookie(TOK_KEY, h['authinfo'].split(":")[1]);
+                    this.showUserInfo()
+                    this.authStatus('logged in successfully.', 'green')
+                }).catch(() => {
+                    this.authStatus('authentication failed. check the username and password', 'red')
+                })
+            }
+            authStatus(msg, color) {
+                g('server-messages').innerHTML = `<span style="color:${color}">${msg}</span>`
+            }
+            logout(e) {
+                post(
+                    '/auth/logout',
+                    {},
+                    { 'Content-Type': 'application/json' }
+                )
+                eraseCookie(USER_KEY)
+                eraseCookie(TOK_KEY)
+                this.showUserInfo()
+                this.authStatus('logged out successfully', 'green')
+            }
+            register() {
+                post(
+                    '/auth/register',
+                    {
+                        user: c('usernamebox').value,
+                        password: c('passwordbox').value
+                    },
+                    {
+                        'Content-Type': 'application/json'
+                    }
+                ).then(() => {
+                    this.authStatus('registration successful. refer some existing user to verify you', 'green')
+                }).catch(() => {
+                    this.authStatus('registration failed', 'red')
+                })
+            }
+        }
+
+        function render(name, spec, elemCreated, container) {
+            let e;
+            if (!spec.preBuilt) {
+                e = document.createElement(spec.ele);
+                spec.id && elemCreated(spec.id, e)
+                if (spec.text) e.innerHTML = spec.text;
+                if (spec.classList) {
+                    e.classList = `${name}-` + spec.classList.split(/\s+/).join(` ${name}-`)
+                }
+                spec.attribs && Object.keys(spec.attribs).forEach(key => {
+                    e[key] = spec.attribs[key]
+                })
+                spec.styles && Object.keys(spec.styles).forEach(key => {
+                    e.style[key] = spec.styles[key]
+                })
+                spec.evnts && Object.keys(spec.evnts).forEach(key => {
+                    e.addEventListener(key, spec.evnts[key])
+                })
+                if (spec.children) {
+                    if (spec.children instanceof Function) {
+                        spec.children().map(x => e.appendChild(x))
+                    }
+                    else spec.children.forEach(child => render(name, child, elemCreated, e))
+                }
+            } else {
+                e = spec.ele;
+            }
+            if (container) {
+                container.appendChild(e)
+                return container;
+            }
+            return e;
+        }
+
+        let inodes;
+        window.addEventListener('load', () => {
+            inodes = new INodes();
+        });
+    </script>
+
+</head>
+
+<body>
+    <div class="content">
+        <div class="top">
+            <span class="title">i-nodes</span>
+            <div class="left-top-ui">
+                <div class="loginui">
+                    <input class="usernamebox" placeholder="username" />
+                    <input class="passwordbox" type="password" placeholder="password" />
+                </div>
+                <button id="login" onclick="inodes.login(event)">signin</button>
+                <button id="signup" onclick="inodes.register(event)">signup</button>
+                <button id="logout" onclick="inodes.logout(event)">signout</button>
+                <span id='user'></span>
+            </div>
+        </div>
+        <div id="editor-pane">
+            <fieldset>
+                <span onclick="inodes.closeEditor()" class="closebtn">x</span>
+                <label for="kclasses" class="">Post type: </label><br />
+                <select id="kclasses"></select><br /><br />
+                <label for="editor">Post editor</label><br />
+                <div id="editor"></div><br />
+                <label for="tags-editor">Tags</label><br />
+                <input type="text" id="tags-editor"></input>
+                <br /><br />
+                <button onclick="inodes.post()">Submit</button>
+            </fieldset>
+        </div>
+        <div class="ppane">
+            <span id="server-messages"></span>
+            <div class="search-pane">
+                <input type="text" placeholder="search" class="searchbox" oninput="inodes.search(this.value)" />
+            </div>
+            <div class="posts-trending">
+                <div class="left-w85">
+                    <div class="posts-container">
+                        <div id="posts"></div>
+                    </div>
+                </div>
+                <div class="right-w15">
+                    <div>
+                        <center>
+                            <h4>Actions</h4>
+                            <button class="new" onclick="inodes.openEditor()">new</button>
+                        </center>
+                    </div>
+                    <div>
+                        <center>
+                            <h4>Trending tags</h4>
+                            <div id="toptags">
+                            </div>
+                        </center>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <footer>
+        <hr />
+        <center>
+            &copy; Madhusoodan P
+        </center>
+    </footer>
+
+</body>
+
+</html>

@@ -1,0 +1,27 @@
+.applet-toggle-btn {
+    padding: 2px 10px;
+    background-color: lightgrey;
+    display: inline-block;
+    cursor: pointer;
+    margin-right: 2px;
+}
+
+.applet-pane, .applet-editor-toggler, .applet-editor-preview {
+    display: inline-block;
+    width: 100%;
+}
+.applet-editor {
+    width: 100%;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+         box-sizing: border-box;
+    border: solid 1px gray;
+    resize: none;
+}
+.applet-preview {
+    display: none;
+    width: auto;
+    border: solid 1px gray;
+    min-height: 10px;
+    padding: 10px;
+}

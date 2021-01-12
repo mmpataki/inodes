@@ -1,0 +1,228 @@
+.right-w15 {
+    width: 20%;
+}
+#server-messages {
+    float: right;
+}
+#logout {
+    display: none;
+}
+body {
+    max-width: 800px;
+    margin: auto;
+}
+
+#toptags {
+    padding-left: 10px;
+}
+
+#tags-editor {
+    width: 100%;
+    margin-bottom: 10px;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    border: solid 1px gray;
+    resize: none;
+}
+
+.tag {
+    font-weight: bolder;
+    color: black;
+    font-size: .9em;
+    cursor: pointer;
+    margin: 2px 3px;
+    background-color: #ebebeb;
+    padding: 2px 4px;
+    border: solid 1px #e4e4e4;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.posts-trending {
+    display: flex;
+}
+
+.paginator-pages {
+    text-align: center;
+}
+
+.inode-actions {
+    margin: 10px 0px 5px 0px;
+}
+
+.inode-action-upvote {
+    color: gray;
+    margin-right: 10px;
+}
+
+.inode-action-downvote {
+    color: gray;
+}
+
+.inode-action-downvote:hover,
+.inode-action-upvote:hover {
+    cursor: pointer;
+    color: black;
+}
+
+.inode-action {
+    cursor: pointer;
+    color: gray;
+    margin: 5px;
+}
+
+.inode-action:hover {
+    color: black;
+}
+
+#editor {}
+
+.posts-and-tags {
+    display: flex;
+}
+
+.inode-tag-owner {
+    display: block;
+    padding-top: 10px;
+}
+
+.inode-tag-actions {
+    display: flex;
+    flex-direction: column;
+    float: left;
+}
+
+.left-w85 {
+    width: 80%;
+}
+
+.inode-container {
+    border-bottom: solid 1px lightgray;
+    padding: 5px;
+    margin-bottom: 15px;
+    padding: 10px 10px 0px 10px;
+    border: solid 1px lightgray;
+    margin: 10px;
+    border-radius: 5px;
+    background-color: #fdfdfd;
+    border-left: solid 3px orangered;
+}
+
+.inode-user-time {
+    float: right;
+    text-align: center;
+}
+
+.inode-user {
+    background-color: #f1f1f1;
+    border-radius: 5px;
+    display: block;
+}
+
+.inode-time {
+    display: block;
+    font-size: 0.8em;
+}
+
+#posts {
+    display: flex;
+    flex-direction: column;
+}
+
+.tags-container {
+    margin-top: 10px;
+}
+
+.searchbox {
+    width: 100%;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    font-size: 1.3em;
+    border: solid 2px skyblue;
+}
+
+.search-pane {
+    margin-bottom: 10px;
+}
+
+#editor-pane {
+    margin-top: 20px;
+    margin-bottom: 30px;
+    display: none;
+}
+
+.trending-tag {
+    display: inline-block;
+    font-weight: bolder;
+    color: gray;
+    font-style: italic;
+    font-size: .9em;
+    cursor: pointer;
+    margin: 1px;
+    background-color: #fafafa;
+    padding: 1px 5px;
+}
+
+.left-top-ui {
+    right: 0px;
+    bottom: 0px;
+    position: absolute;
+}
+
+.loginui,
+#login,
+#signup {
+    display: none;
+}
+
+#user {
+    background-color: lightgreen;
+    padding: 5px;
+}
+
+.loginui {
+    display: inline;
+}
+
+.title {
+    font-size: 28px;
+}
+
+.top {
+    position: relative;
+    margin-bottom: 10px;
+    font-weight: bolder;
+    font-family: monospace;
+}
+
+.closebtn {
+    float: right;
+    cursor: pointer;
+}
+
+.paginator-page-btn:hover,
+.paginator-selected {
+    background-color: black;
+    color: white;
+    cursor: pointer;
+}
+
+.paginator-page-btn {
+    display: inline-block;
+    padding: 3px 6px;
+    border: solid 1px black;
+    border-radius: 5px;
+    margin: 5px;
+    font-weight: bolder;
+}
+.inode-postowner, .inode-posttime {
+    background-color: #f0f0f0;
+    display: block;
+    padding: 2px;
+}
+
+.inode-postowner {
+    cursor: pointer;
+}

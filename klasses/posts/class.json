@@ -1,0 +1,13 @@
+{
+  "name": "posts",
+  "jsPaths": [
+    "./posts-plugin/posts.js",
+    "./posts-plugin/showdown.min.js",
+    "./posts-plugin/highlight.min.js"
+  ],
+  "cssPaths": [
+    "./posts-plugin/posts.css",
+    "./posts-plugin/default.min.css"
+  ],
+  "version": 1
+}

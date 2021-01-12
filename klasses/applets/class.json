@@ -1,0 +1,10 @@
+{
+  "name": "applets",
+  "jsPaths": [
+    "applets-plugin/applets.js"
+  ],
+  "cssPaths": [
+    "applets-plugin/applets.css"
+  ],
+  "version": 0
+}
