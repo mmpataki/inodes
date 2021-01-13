@@ -1,5 +1,6 @@
 package inodes.service;
 
+import inodes.Configuration;
 import inodes.models.Document;
 import inodes.service.api.DataService;
 import org.apache.solr.client.solrj.SolrQuery;
@@ -9,6 +10,7 @@ import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.SolrInputDocument;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -19,11 +21,14 @@ import java.util.List;
 @Service
 public class SolrDataService extends DataService {
 
+    @Autowired
+    Configuration conf;
+
     HttpSolrClient solr;
 
     @PostConstruct
     void init() {
-        String urlString = "http://localhost:8983/solr/inodes";
+        String urlString = conf.getProperty("searchservice.solr.url");
         solr = new HttpSolrClient.Builder(urlString).build();
     }
 

@@ -16,24 +16,8 @@ public class UserController {
     @Autowired
     AuthenticationService AS;
 
-    Random R = new Random();
-
-    @RequestMapping(value = "/auth/login", method = RequestMethod.POST)
-    public void login(@RequestBody Credentials cred, HttpServletResponse response) throws Exception {
-        if(AS.authenticate(cred)) {
-            response.setHeader("User", cred.getUser());
-        }
-    }
-
-    @RequestMapping(value = "/auth/logout", method = RequestMethod.POST)
-    public void logout() {
-
-    }
-
     @RequestMapping(value = "/auth/register", method = RequestMethod.POST)
-    public void register(@RequestBody Credentials cred) {
-        cred.setRoles("NORMAL");
-        cred.setVerified(false);
+    public void register(@RequestBody Credentials cred) throws Exception {
         AS.register(cred);
     }
 }

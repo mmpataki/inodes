@@ -5,19 +5,36 @@ import org.springframework.stereotype.Service;
 @Service
 public interface AuthenticationService {
 
-    boolean authenticate(Credentials cred);
+    boolean authenticate(Credentials cred) throws Exception;
 
-    String register(Credentials cred);
+    void register(Credentials cred) throws Exception;
 
-    Credentials getUser(String userName);
+    Credentials getUser(String userName) throws Exception;
 
     boolean isAdmin(String userId);
 
-    public static class Credentials {
+    class Credentials {
         String user;
+        String fullName;
         String password;
         boolean verified;
         String roles;
+
+        public Credentials(String user, String fullName, String password, boolean verified, String roles) {
+            this.user = user;
+            this.fullName = fullName;
+            this.password = password;
+            this.verified = verified;
+            this.roles = roles;
+        }
+
+        public String getFullName() {
+            return fullName;
+        }
+
+        public void setFullName(String fullName) {
+            this.fullName = fullName;
+        }
 
         public boolean isVerified() {
             return verified;
@@ -36,13 +53,6 @@ public interface AuthenticationService {
         }
 
         Credentials(){}
-
-        public Credentials(String user, String password, String roles, boolean verified) {
-            this.user = user;
-            this.password = password;
-            this.roles = roles;
-            this.verified = verified;
-        }
 
         public String getUser() {
             return user;

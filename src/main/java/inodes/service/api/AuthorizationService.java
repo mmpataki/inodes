@@ -7,26 +7,17 @@ import org.springframework.stereotype.Service;
 @Service
 public abstract class AuthorizationService {
 
-    public enum Operation {
-        CREATE,
-        DELETE,
-        EDIT,
-        UPVOTE,
-        DOWNVOTE,
-        COMMENT
-    }
-
     @Autowired
     AuthenticationService AS;
 
     @Autowired
     DataService DS;
 
-    boolean hasCommentPermission(String userId, Document doc) {
+    boolean hasCommentPermission(String userId, Document doc) throws Exception {
         return AS.getUser(userId).getRoles().contains("COMMENT");
     }
 
-    public void checkCreatePermission(String userId, Document doc) throws UnAuthorizedException {
+    public void checkCreatePermission(String userId, Document doc) throws Exception {
         if(!AS.getUser(userId).getRoles().contains("CREATE")) {
             throw new UnAuthorizedException(userId + " has no permission to create a post");
         }
@@ -39,15 +30,15 @@ public abstract class AuthorizationService {
         }
     }
 
-    boolean hasEditPermission(String userId, Document doc) {
+    boolean hasEditPermission(String userId, Document doc) throws Exception {
         return AS.getUser(userId).getRoles().contains("EDIT") && doc.getOwner().equals(userId);
     }
 
-    boolean hasUpVotePermission(String userId, Document doc) {
+    boolean hasUpVotePermission(String userId, Document doc) throws Exception {
         return AS.getUser(userId).getRoles().contains("UPVOTE") && doc.upVotable();
     }
 
-    boolean hasDownVotePermission(String userId, Document doc) {
+    boolean hasDownVotePermission(String userId, Document doc) throws Exception {
         return AS.getUser(userId).getRoles().contains("DOWNVOTE") && doc.downVotable();
     }
 }

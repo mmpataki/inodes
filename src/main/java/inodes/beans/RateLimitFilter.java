@@ -83,6 +83,8 @@ public class RateLimitFilter implements Filter {
             } else if (url.equals("/auth/logout")) {
                 doLogout(req, resp);
                 return;
+            } else if(url.equals("/auth/register")) {
+                // leave this guy
             } else {
                 if (!isLoggedIn(req, resp)) {
                     return;
@@ -123,14 +125,18 @@ public class RateLimitFilter implements Filter {
         String authHdr = req.getHeader("Authorization");
         if (authHdr != null) {
             AuthenticationService.Credentials cred = makeCredential(authHdr);
-            if (AS.authenticate(cred)) {
-                if (makeSess) {
-                    SessionHeader sh = new SessionHeader(cred.getUser());
-                    sessMap.put(cred.getUser(), sh);
-                    resp.setHeader("AuthInfo", sh.toString());
+            try {
+                if (AS.authenticate(cred)) {
+                    if (makeSess) {
+                        SessionHeader sh = new SessionHeader(cred.getUser());
+                        sessMap.put(cred.getUser(), sh);
+                        resp.setHeader("AuthInfo", sh.toString());
+                    }
+                    req.setAttribute("loggedinuser", cred.getUser());
+                    return true;
                 }
-                req.setAttribute("loggedinuser", cred.getUser());
-                return true;
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
         sendNoAuth(req, resp);
@@ -139,7 +145,7 @@ public class RateLimitFilter implements Filter {
 
     private AuthenticationService.Credentials makeCredential(String authHdr) {
         String chunks[] = new String(Base64.getDecoder().decode(authHdr.split(" ")[1].getBytes())).split(":");
-        return new AuthenticationService.Credentials(chunks[0], chunks[1], null, false);
+        return new AuthenticationService.Credentials(chunks[0], null, chunks[1], false, null);
     }
 
     private void sendNoAuth(HttpServletRequest req, HttpServletResponse r) {
