@@ -11,7 +11,17 @@ public class Document {
 
     String owner;
     long postTime;
-    List<String> comments;  /* id of comments */
+    long votes;
+
+    List<Comment> comments;
+
+    public long getVotes() {
+        return votes;
+    }
+
+    public void setVotes(long votes) {
+        this.votes = votes;
+    }
 
     public String getOwner() {
         return owner;
@@ -29,11 +39,11 @@ public class Document {
         this.postTime = postTime;
     }
 
-    public List<String> getComments() {
+    public List<Comment> getComments() {
         return comments;
     }
 
-    public void setComments(List<String> comments) {
+    public void setComments(List<Comment> comments) {
         this.comments = comments;
     }
 
@@ -74,6 +84,10 @@ public class Document {
     }
 
     public boolean downVotable() {
+        return true;
+    }
+
+    public boolean commentable() {
         return true;
     }
 }

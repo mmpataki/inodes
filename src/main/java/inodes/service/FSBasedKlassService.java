@@ -13,7 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @Service
-public class FSBasedKlassService implements KlassService {
+public class FSBasedKlassService extends KlassService {
 
     String basePath = "./klasses";
 
@@ -40,7 +40,7 @@ public class FSBasedKlassService implements KlassService {
     }
 
     @Override
-    public void putKlass(Klass klass) throws Exception {
+    public void _putKlass(Klass klass) throws Exception {
         try (FileWriter fw = new FileWriter(makePath(klass.getName())+ "/class.json")) {
             new Gson().toJson(klass, fw);
         }

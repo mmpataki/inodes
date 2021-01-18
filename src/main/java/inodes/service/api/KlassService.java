@@ -1,16 +1,24 @@
 package inodes.service.api;
 
 import inodes.models.Klass;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
-public interface KlassService {
+public abstract class KlassService {
 
-    public Klass getKlass(String name) throws Exception;
+    @Autowired
+    AuthorizationService AS;
 
-    public void putKlass(Klass klass) throws Exception;
+    public abstract Klass getKlass(String name) throws Exception;
 
-    public List<String> getRegisteredKlasses() throws Exception;
+    public void putKlass(String user, Klass klass) throws Exception {
+        AS.checkKlassCreatePermission(user);
+    }
+
+    public abstract void _putKlass(Klass klass) throws Exception;
+
+    public abstract List<String> getRegisteredKlasses() throws Exception;
 }

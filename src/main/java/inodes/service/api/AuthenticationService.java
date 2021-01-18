@@ -2,25 +2,31 @@ package inodes.service.api;
 
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public interface AuthenticationService {
 
-    boolean authenticate(Credentials cred) throws Exception;
+    boolean authenticate(User cred) throws Exception;
 
-    void register(Credentials cred) throws Exception;
+    void register(User cred) throws Exception;
 
-    Credentials getUser(String userName) throws Exception;
+    User getUser(String userName) throws Exception;
+
+
 
     boolean isAdmin(String userId);
 
-    class Credentials {
+    List<User> getUsers() throws Exception;
+
+    class User {
         String user;
         String fullName;
         String password;
         boolean verified;
         String roles;
 
-        public Credentials(String user, String fullName, String password, boolean verified, String roles) {
+        public User(String user, String fullName, String password, boolean verified, String roles) {
             this.user = user;
             this.fullName = fullName;
             this.password = password;
@@ -52,7 +58,7 @@ public interface AuthenticationService {
             this.roles = roles;
         }
 
-        Credentials(){}
+        User(){}
 
         public String getUser() {
             return user;

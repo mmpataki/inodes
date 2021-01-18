@@ -1,14 +1,28 @@
 package inodes.service.api;
 
 import inodes.models.Document;
+import inodes.models.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 @Service
-public interface TrendingService {
+public abstract class TagsService {
 
-    class TrendingItem<T> implements Comparable<TrendingItem<T>> {
+    @Autowired
+    AuthorizationService AS;
+
+    public abstract List<Tag> getTopTags(int n);
+
+    public void addTag(String userId, Tag tag) throws Exception {
+        AS.checkTagCreatePermission(userId);
+        tag.setHits(0);
+    }
+
+    public class TrendingItem<T> implements Comparable<TrendingItem<T>> {
         public long hits;
         T item;
 
@@ -47,8 +61,8 @@ public interface TrendingService {
         }
     }
 
-    Collection<Document> getTrendingDocs(int max) throws Exception;
+    public abstract Collection<Document> getTrendingDocs(int max) throws Exception;
 
-    Collection<TrendingItem<String>> getTrendingTags(int max) throws Exception;
+    public abstract Map<String, Long> getTrendingTags(int max) throws Exception;
 
 }

@@ -1,5 +1,6 @@
 .right-w15 {
     width: 20%;
+    padding-left: 20px;
 }
 #server-messages {
     float: right;
@@ -13,7 +14,18 @@ body {
 }
 
 #toptags {
-    padding-left: 10px;
+    
+}
+
+.inode-comment-card {
+    text-align: right;
+    padding: 3px;
+    border-top: solid 1px lightgray;
+    display: block;
+}
+
+.inode-comments-pane {
+    display: none;
 }
 
 #tags-editor {
@@ -225,4 +237,12 @@ body {
 
 .inode-postowner {
     cursor: pointer;
+}
+
+.actions {
+
+} 
+
+.sidebar-item {
+    padding-left: 10px;
 }

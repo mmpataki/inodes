@@ -1,0 +1,16 @@
+.edcresconfig-input, .edcresconfig-button {
+    width: 65%;
+    margin: 5px;
+}
+
+.edcresconfig-tree-item {
+    padding-left: 20px;
+}
+
+.edcresconfig-scanner-enabled {
+
+}
+
+.edcresconfig-scanner-disabled {
+    background-color: lightgrey;
+}

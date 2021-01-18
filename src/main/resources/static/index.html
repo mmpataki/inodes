@@ -7,81 +7,8 @@
     <title>i-nodes</title>
     <link rel="stylesheet" href="./index.css">
     <!-- <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script> -->
+    <script src="/common.js"></script>
     <script>
-        const USER_KEY = "user", TOK_KEY = "tok";
-        let baseUrl = window.location.port == 5000 ? "http://localhost:8080/" : ""
-        function ajax(method, url, data, hdrs) {
-            if (getCookie(USER_KEY)) {
-                if (!hdrs) hdrs = {}
-                hdrs['AuthInfo'] = `${getCookie(USER_KEY)}:${getCookie(TOK_KEY)}`
-            }
-            return new Promise((resolve, reject) => {
-                var xhttp = new XMLHttpRequest();
-                xhttp.onreadystatechange = function () {
-                    if (this.readyState == 4 && this.status == 200) {
-                        console.log(xhttp.getAllResponseHeaders())
-                        resolve({
-                            response: this.responseText,
-                            headers: makeHMap(xhttp.getAllResponseHeaders())
-                        })
-                    }
-                    if (this.status == 401) {
-                        reject(401);
-                    }
-                };
-                xhttp.open(method, `${baseUrl}${url}`, true);
-                hdrs && Object.keys(hdrs).forEach(key => xhttp.setRequestHeader(key, hdrs[key]))
-                xhttp.send(data);
-            });
-        }
-        function makeHMap(headers) {
-            var arr = headers.trim().split(/[\r\n]+/);
-            var headerMap = {};
-            arr.forEach(function (line) {
-                var parts = line.split(': ');
-                var header = parts.shift();
-                var value = parts.join(': ');
-                headerMap[header] = value;
-            });
-            return headerMap;
-        }
-        function get(url) {
-            return ajax("GET", url, undefined);
-        }
-        function post(url, data, hdrs) {
-            return ajax('POST', url, JSON.stringify(data), hdrs);
-        }
-        function delet(url) {
-            return ajax('DELETE', url);
-        }
-        function setCookie(name, value, days) {
-            var expires = "";
-            if (days) {
-                var date = new Date();
-                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-                expires = "; expires=" + date.toUTCString();
-            }
-            document.cookie = name + "=" + (value || "") + expires + "; path=/";
-        }
-        function getCookie(name) {
-            var nameEQ = name + "=";
-            var ca = document.cookie.split(';');
-            for (var i = 0; i < ca.length; i++) {
-                var c = ca[i];
-                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
-                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
-            }
-            return null;
-        }
-        function eraseCookie(name) {
-            document.cookie = name + '=; Max-Age=-99999999;';
-        }
-        function g(id) {
-            return document.getElementById(id);
-        }
-        function c(cl) {
-            return document.getElementsByClassName(cl)[0];
-        }
         class INodes {
             constructor() {
                 let self = this;
@@ -93,7 +20,7 @@
                     self.populateClassTypes(JSON.parse(data.response));
                 })
                 this.setupSearch();
-                this.populateTrendingTags();
+                this.populateTopTags();
                 this.showUserInfo();
             }
             setupSearch() {
@@ -102,12 +29,16 @@
                 console.log(q)
                 this.search(q)
             }
-            populateTrendingTags() {
+            populateTopTags() {
                 let self = this;
                 get('/trendingTags').then(d => {
                     let dd = g('toptags')
-                    JSON.parse(d.response).forEach(tag => {
-                        dd.appendChild(self.createTagElement(tag.item, '#'))
+                    let tags = [];
+                    let resp = JSON.parse(d.response)
+                    Object.keys(resp).forEach(k => tags.push({item: k, hits: resp[k]}))
+                    tags.sort((a, b) => b.hits - a.hits);
+                    tags.forEach(tag => {
+                        dd.appendChild(self.createTagElement(tag.item, '#', tag.hits))
                         dd.appendChild(document.createElement('br'))
                     })
                 })
@@ -211,6 +142,7 @@
                     g('login').style.display = "none"
                     g('signup').style.display = "none"
                     g('user').innerHTML = getCookie(USER_KEY)
+                    g('user').href = `/user.html?id=${getCookie(USER_KEY)}`
                 }
             }
             post() {
@@ -233,6 +165,8 @@
                     })
             }
             search(str, offset = 0, pageSize = 10) {
+                str = str ? str : ""
+                str = str.replace(/\!\w+/, "")
                 get(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}`).then(d => {
                     this.results = JSON.parse(d.response)
                     this.showResults();
@@ -299,11 +233,39 @@
                     return
                 }
                 this.renderInput(this.klasses[obj.type], obj)
+                g('tags-editor').value = obj.tags.join(' ')
                 this.openEditor()
+            }
+            downvoteInode(id) {
+                post(
+                    `/posts/downvote/${id}`,
+                    {}
+                ).then(a => alert('Done'));
+            }
+            upvoteInode(id) {
+                post(
+                    `/posts/upvote/${id}`,
+                    {}
+                ).then(a => alert('Done'));
             }
             showCard(d, r) {
                 let self = this;
                 let template = function (s, obj) {
+                    let card;
+                    try {
+                        card = s.getCard(r)
+                    }catch (e) {
+                        card = render('inodes', {
+                            ele: 'pre',
+                            styles: {
+                                width: "95%",
+                                'background-color': 'red',
+                                color: 'white',
+                                padding: "10px"
+                            },
+                            text: `Error while processing \n${JSON.stringify(obj, null, '\t')}\n\nException: \n${e}`
+                        })
+                    }
                     return {
                         ele: 'div',
                         classList: 'container',
@@ -314,7 +276,7 @@
                         children: [
                             {
                                 preBuilt: true,
-                                ele: s.getCard(r)
+                                ele: card
                             },
                             {
                                 ele: 'div',
@@ -334,7 +296,7 @@
                                                 children: [
                                                     {
                                                         ele: 'span',
-                                                        text: `&#x25B2 ${obj.upVotes || 0}`,
+                                                        text: `&#x25B2 ${obj.votes || 0}`,
                                                         classList: 'action-upvote',
                                                         evnts: {
                                                             click: function (e) { self.upvoteInode(obj.id) }
@@ -342,10 +304,10 @@
                                                     },
                                                     {
                                                         ele: 'span',
-                                                        text: `&#x25BC ${obj.downVotes || 0}`,
+                                                        text: `&#x25BC`,
                                                         classList: 'action-downvote',
                                                         evnts: {
-                                                            click: function (e) { self.commentInode(obj.id) }
+                                                            click: function (e) { self.downvoteInode(obj.id) }
                                                         }
                                                     },
                                                     {
@@ -366,10 +328,10 @@
                                                     },
                                                     {
                                                         ele: 'span',
-                                                        text: 'comment',
+                                                        text: 'comment(s)',
                                                         classList: 'action',
                                                         evnts: {
-                                                            click: function (e) { self.commentInode(obj.id) }
+                                                            click: function (e) { self.commentInode(obj) }
                                                         }
                                                     },
                                                     {
@@ -395,7 +357,7 @@
                                                 text: `${obj.owner}`,
                                                 evnts: {
                                                     click: function (e) {
-                                                        self.userClicked(e, obj.owner);
+                                                        self.searchUser(obj.owner);
                                                     }
                                                 }
                                             },
@@ -405,6 +367,52 @@
                                                 text: `${self.getLocalTime(obj.postTime)}`
                                             }
                                         ]
+                                    }
+                                ]
+                            },
+                            {
+                                ele: 'div',
+                                classList: 'comments-pane',
+                                attribs: {
+                                    id: `comment-pane-${obj.id}`
+                                },
+                                children: [
+                                    {
+                                        ele: 'div',
+                                        children: [
+                                            {
+                                                ele: 'textarea',
+                                                attribs: {
+                                                    id: `comment-${obj.id}`,
+                                                    rows: 2
+                                                },
+                                                styles: {
+                                                    width: '90%'
+                                                }
+                                            },
+                                            {
+                                                ele: 'button',
+                                                text: 'Post',
+                                                styles: {
+                                                    width: '8%',
+                                                    height: '40px'
+                                                },
+                                                evnts: {
+                                                    click: function (e) {
+                                                        post(
+                                                            `/posts/comment/${obj.id}`,
+                                                            g(`comment-${obj.id}`).value
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        ele: 'div',
+                                        attribs: {
+                                            id: `oldcomments-${obj.id}`
+                                        }
                                     }
                                 ]
                             }
@@ -419,6 +427,23 @@
                         })
                     })
                 });
+            }
+            searchUser(user) {
+                this.triggerSearch(`#user !${user}`)
+            }
+            commentInode(obj) {
+                g(`comment-pane-${obj.id}`).style.display = "block";
+                let container = g(`oldcomments-${obj.id}`);
+                container.innerHTML = ""
+                get(`/posts/comments/${obj.id}`).then(comments => {
+                    comments = JSON.parse(comments.response)
+                    comments.sort((a, b) => a.time-b.time).forEach(comment => {
+                        let c = document.createElement('div')
+                        c.classList = "inode-comment-card"
+                        c.innerHTML = `${JSON.parse(comment.comment)} - <a href="javascript:inodes.searchUser('${comment.user}')">${comment.user}</a>`
+                        container.appendChild(c)
+                    })
+                })
             }
             getLocalTime(ep) {
                 var d = new Date(ep);
@@ -445,11 +470,14 @@
                 type && x.appendChild(this.createTagElement(type, '%'))
                 return x;
             }
-            createTagElement(tag, char) {
+            
+            createTagElement(tag, char, hits) {
                 let self = this;
                 let t = document.createElement('span');
-                t.classList = "tag"
-                t.innerText = `${char}${tag}`
+                t.innerHTML = `<span class='tag'>${hits ? "" : char}${tag}</span>`
+                if(hits) {
+                    t.innerHTML += `<span style="color: gray; font-size: 0.8em"> x ${hits}</span>`
+                }
                 t.addEventListener('click', e => {
                     let q = ""
                     if (e.ctrlKey) {
@@ -514,13 +542,20 @@
                     this.authStatus('registration failed', 'red')
                 })
             }
+            triggerSearch(q) {
+                c('searchbox').value = q;
+                this.search(q)
+            }
+            openAccount() {
+                this.triggerSearch('#me #inodes-app')
+            }
         }
 
         function render(name, spec, elemCreated, container) {
             let e;
             if (!spec.preBuilt) {
                 e = document.createElement(spec.ele);
-                spec.id && elemCreated(spec.id, e)
+                spec.iden && elemCreated(spec.iden, e)
                 if (spec.text) e.innerHTML = spec.text;
                 if (spec.classList) {
                     e.classList = `${name}-` + spec.classList.split(/\s+/).join(` ${name}-`)
@@ -570,7 +605,7 @@
                 <button id="login" onclick="inodes.login(event)">signin</button>
                 <button id="signup" onclick="inodes.register(event)">signup</button>
                 <button id="logout" onclick="inodes.logout(event)">signout</button>
-                <span id='user'></span>
+                <a id='user'></a>
             </div>
         </div>
         <div id="editor-pane">
@@ -599,17 +634,17 @@
                 </div>
                 <div class="right-w15">
                     <div>
-                        <center>
-                            <h4>Actions</h4>
-                            <button class="new" onclick="inodes.openEditor()">new</button>
-                        </center>
+                        <h4>Actions</h4>
+                        <div class="actions sidebar-item">
+                            <a class="new" href="javascript:inodes.openEditor()">New Post</a>
+                            <br/>
+                            <a class="new" href="javascript:inodes.openAccount()">Account</a>
+                        </div>
                     </div>
                     <div>
-                        <center>
-                            <h4>Trending tags</h4>
-                            <div id="toptags">
-                            </div>
-                        </center>
+                        <h4>Top tags</h4>
+                        <div id="toptags" class="sidebar-item">
+                        </div>
                     </div>
                 </div>
             </div>

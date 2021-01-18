@@ -83,8 +83,8 @@ public class RateLimitFilter implements Filter {
             } else if (url.equals("/auth/logout")) {
                 doLogout(req, resp);
                 return;
-            } else if(url.equals("/auth/register")) {
-                // leave this guy
+            } else if(url.equals("/auth/register") || url.equals("/nocors")) {
+                // leave these guys
             } else {
                 if (!isLoggedIn(req, resp)) {
                     return;
@@ -124,7 +124,7 @@ public class RateLimitFilter implements Filter {
     private boolean doLogin(HttpServletRequest req, HttpServletResponse resp, boolean makeSess) {
         String authHdr = req.getHeader("Authorization");
         if (authHdr != null) {
-            AuthenticationService.Credentials cred = makeCredential(authHdr);
+            AuthenticationService.User cred = makeCredential(authHdr);
             try {
                 if (AS.authenticate(cred)) {
                     if (makeSess) {
@@ -143,9 +143,9 @@ public class RateLimitFilter implements Filter {
         return false;
     }
 
-    private AuthenticationService.Credentials makeCredential(String authHdr) {
+    private AuthenticationService.User makeCredential(String authHdr) {
         String chunks[] = new String(Base64.getDecoder().decode(authHdr.split(" ")[1].getBytes())).split(":");
-        return new AuthenticationService.Credentials(chunks[0], null, chunks[1], false, null);
+        return new AuthenticationService.User(chunks[0], null, chunks[1], false, null);
     }
 
     private void sendNoAuth(HttpServletRequest req, HttpServletResponse r) {

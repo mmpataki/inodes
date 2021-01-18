@@ -3,127 +3,139 @@ class instances {
         this.elems = {}
     }
 
-    getEditor() {
+    getEditor(obj) {
         let self = this;
-        this.APP_URLS = {
-            ele: "div",
-            classList: "app-urls",
-            attribs: {},
-            children: [
-                {
-                    ele: "input",
-                    classList: "app-tag",
-                    attribs: {
-                        placeholder: "tag / name",
-                        width: "100px"
-                    }
-                },
-                {
-                    ele: "input",
-                    classList: "app-url",
-                    attribs: {
-                        placeholder: "url"
-                    }
-                },
-                {
-                    ele: "button",
-                    classList: "remove-url",
-                    text: "-",
-                    evnts: {
-                        click: function (e) {
-                            e.target.parentNode.remove()
+        let APP_URLS = function(url) {
+            return {
+                ele: "div",
+                classList: "app-urls",
+                attribs: {},
+                children: [
+                    {
+                        ele: "input",
+                        classList: "app-tag",
+                        attribs: {
+                            placeholder: "tag / name",
+                            width: "100px",
+                            value: url ? url.tag : ""
                         }
-                    }
-                }
-            ]
-        }
-        let renderable = {
-            ele: "div",
-            id: "app-editor",
-            attribs: { classList: "pane" },
-            children: [
-                {
-                    ele: "div",
-                    children: [
-                        {
-                            ele: "div",
-                            children: [
-                                {
-                                    ele: "input",
-                                    classList: "app-user",
-                                    attribs: {
-                                        placeholder: "app username"
-                                    }
-                                },
-                                {
-                                    ele: "input",
-                                    classList: "app-password",
-                                    attribs: {
-                                        placeholder: "app password"
-                                    }
-                                }
-                            ]
-                        },
-                        {
-                            ele: "div",
-                            children: [
-                                {
-                                    ele: "input",
-                                    classList: "box-user",
-                                    attribs: {
-                                        placeholder: "box username"
-                                    }
-                                },
-                                {
-                                    ele: "input",
-                                    classList: "box-password",
-                                    attribs: {
-                                        placeholder: "box password"
-                                    }
-                                }
-                            ]
-                        },
-                        {
-                            ele: "div",
-                            children: [
-                                {
-                                    ele: "input",
-                                    classList: "ip-addr",
-                                    attribs: {
-                                        placeholder: "ip addr"
-                                    }
-                                },
-                                {
-                                    ele: "input",
-                                    classList: "install-loc",
-                                    attribs: {
-                                        placeholder: "install location"
-                                    }
-                                }
-                            ]
-                        },
-                        {
-                            ele: "span",
-                            classList: "urls-label",
-                            text: "URLs"
-                        },
-                        this.APP_URLS,
-                        {
-                            ele: "button",
-                            text: "Add URL",
-                            classList: "add-url",
-                            evnts: {
-                                click: function (e) {
-                                    e.target.parentNode.insertBefore(render('apps', self.APP_URLS), e.target);
-                                }
+                    },
+                    {
+                        ele: "input",
+                        classList: "app-url",
+                        attribs: {
+                            placeholder: "url",
+                            value: url ? url.url : ""
+                        }
+                    },
+                    {
+                        ele: "button",
+                        classList: "remove-url",
+                        text: "-",
+                        evnts: {
+                            click: function (e) {
+                                e.target.parentNode.remove()
                             }
                         }
-                    ]
-                }
-            ]
+                    }
+                ]
+            }
+        }
+        let renderable = function(obj) {
+            return {
+                ele: "div",
+                id: "app-editor",
+                attribs: { classList: "pane" },
+                children: [
+                    {
+                        ele: "div",
+                        children: [
+                            {
+                                ele: "div",
+                                children: [
+                                    {
+                                        ele: "input",
+                                        classList: "app-user",
+                                        attribs: {
+                                            placeholder: "app username",
+                                            value : obj ? obj.appusername : ""
+                                        }
+                                    },
+                                    {
+                                        ele: "input",
+                                        classList: "app-password",
+                                        attribs: {
+                                            placeholder: "app password",
+                                            value : obj ? obj.apppassword : ""
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                ele: "div",
+                                children: [
+                                    {
+                                        ele: "input",
+                                        classList: "box-user",
+                                        attribs: {
+                                            placeholder: "box username",
+                                            value : obj ? obj.boxusername : ""
+                                        }
+                                    },
+                                    {
+                                        ele: "input",
+                                        classList: "box-password",
+                                        attribs: {
+                                            placeholder: "box password",
+                                            value : obj ? obj.boxpassword : ""
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                ele: "div",
+                                children: [
+                                    {
+                                        ele: "input",
+                                        classList: "ip-addr",
+                                        attribs: {
+                                            placeholder: "ip addr",
+                                            value : obj ? obj.ipaddr : ""
+                                        }
+                                    },
+                                    {
+                                        ele: "input",
+                                        classList: "install-loc",
+                                        attribs: {
+                                            placeholder: "install location",
+                                            value : obj ? obj.installloc : ""
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                ele: "span",
+                                classList: "urls-label",
+                                text: "URLs"
+                            },
+                            ...obj.urls.map(u => APP_URLS(u)),
+                            {
+                                ele: "button",
+                                text: "Add URL",
+                                classList: "add-url",
+                                evnts: {
+                                    click: function (e) {
+                                        e.target.parentNode.insertBefore(render('apps', APP_URLS()), e.target);
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
         }
 
-        return render('apps', renderable, (id, e) => { self.elems[id] = e })
+        return render('apps', renderable(JSON.parse(obj.content)), (id, e) => { self.elems[id] = e })
     }
 
     getContent() {

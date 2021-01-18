@@ -6,6 +6,7 @@ import inodes.service.api.DataService;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.response.FacetField;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
@@ -15,8 +16,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class SolrDataService extends DataService {
@@ -77,15 +77,15 @@ public class SolrDataService extends DataService {
 
         for (SolrDocument doc : docList) {
             Document d = new Document();
-            d.setId((String) doc.getFieldValue("id"));
-            d.setContent((String) ((List) doc.getFieldValue("content")).get(0));
-            d.setType((String) ((List) doc.getFieldValue("type")).get(0));
-            d.setTags((List<String>) doc.getFieldValue("tags"));
-            d.setPostTime((Long) ((List) doc.getFieldValue("ctime")).get(0));
             try {
+                d.setId((String) doc.getFieldValue("id"));
+                d.setContent((String) ((List) doc.getFieldValue("content")).get(0));
+                d.setType((String) ((List) doc.getFieldValue("type")).get(0));
+                d.setTags((List<String>) doc.getFieldValue("tags"));
+                d.setPostTime((Long) ((List) doc.getFieldValue("ctime")).get(0));
                 d.setOwner((String) ((List) doc.getFieldValue("owner")).get(0));
             } catch (Exception e) {
-
+                e.printStackTrace();
             }
             docs.add(d);
         }
@@ -115,5 +115,36 @@ public class SolrDataService extends DataService {
         } catch (SolrServerException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    public Map<String, Long> getTopTags(int max) throws Exception {
+        if(max <= 0) {
+            max = 10;
+        }
+        return getFacets("*", max, "count", Arrays.asList("tags"));
+    }
+
+    private Map<String, Long> getFacets(String sq, int max, String sortField, List<String> facetFields) throws SolrServerException, IOException {
+        SolrQuery q = new SolrQuery();
+        q.setQuery(sq);
+        q.setFacet(true);
+        q.setFacetLimit(max);
+        if(sortField != null)
+            q.setFacetSort(sortField);
+        if(facetFields != null)
+            facetFields.forEach(ff -> q.addFacetField(ff));
+
+        List<FacetField> ffs = solr.query(q).getFacetFields();
+        Map<String, Long> ret = new HashMap<>();
+        ffs.get(0).getValues().forEach(f -> {
+            ret.put(f.getName(), f.getCount());
+        });
+        return ret;
+    }
+
+    @Override
+    public Map<String, Long> getUserPostsFacets(String user) throws Exception {
+        return getFacets("owner:" + user, 1000000, null, Arrays.asList("type"));
     }
 }
