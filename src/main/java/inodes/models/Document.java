@@ -14,6 +14,15 @@ public class Document {
     long votes;
 
     List<Comment> comments;
+    String visibility;
+
+    public String getVisibility() {
+        return visibility;
+    }
+
+    public void setVisibility(String visibility) {
+        this.visibility = visibility;
+    }
 
     public long getVotes() {
         return votes;

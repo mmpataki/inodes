@@ -29,13 +29,19 @@ body {
 }
 
 #tags-editor {
-    width: 100%;
+    width: 80%;
     margin-bottom: 10px;
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
     box-sizing: border-box;
     border: solid 1px gray;
     resize: none;
+}
+
+#private-post-panel {
+    float: right;
+    position: absolute;
+    right: 10px;
 }
 
 .tag {
@@ -245,4 +251,9 @@ body {
 
 .sidebar-item {
     padding-left: 10px;
+}
+
+.action-item {
+    padding-bottom: 3px;
+    display: block;
 }

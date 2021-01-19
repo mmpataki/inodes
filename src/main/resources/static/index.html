@@ -35,7 +35,7 @@
                     let dd = g('toptags')
                     let tags = [];
                     let resp = JSON.parse(d.response)
-                    Object.keys(resp).forEach(k => tags.push({item: k, hits: resp[k]}))
+                    Object.keys(resp).forEach(k => tags.push({ item: k, hits: resp[k] }))
                     tags.sort((a, b) => b.hits - a.hits);
                     tags.forEach(tag => {
                         dd.appendChild(self.createTagElement(tag.item, '#', tag.hits))
@@ -129,21 +129,22 @@
                 return getCookie(USER_KEY)
             }
             showUserInfo() {
-                if (!this.loggedIn()) {
-                    c('loginui').style.display = "inline-block"
-                    g('login').style.display = "inline-block"
-                    g('logout').style.display = "none"
-                    g('signup').style.display = "inline-block"
-                    g('user').style.display = "none"
+                if (this.loggedIn()) {
+                    g('actions').innerHTML = `
+                        <a class="action-item" href="javascript:inodes.openEditor()">New Post</a>
+                        <a class="action-item" href="javascript:inodes.openAccount()">Account</a>
+                        <a class="action-item" href="javascript:inodes.openMyPosts()">My Posts</a>
+                        <a class="action-item" href="javascript:inodes.logout()">Logout</a>
+                    `;
                 } else {
-                    g('logout').style.display = "inline-block"
-                    g('user').style.display = "inline-block"
-                    c('loginui').style.display = "none"
-                    g('login').style.display = "none"
-                    g('signup').style.display = "none"
-                    g('user').innerHTML = getCookie(USER_KEY)
-                    g('user').href = `/user.html?id=${getCookie(USER_KEY)}`
+                    g('actions').innerHTML = `
+                        <a class="action-item" href="javascript:inodes.openSignInPage()">Sign In</a>
+                        <a class="action-item" href="javascript:inodes.openRegisterPage()">Sign Up</a>
+                    `
                 }
+            }
+            openSignInPage() {
+                this.triggerSearch('#inodesapp #login')
             }
             post() {
                 let self = this;
@@ -152,7 +153,8 @@
                     {
                         content: JSON.stringify(this.klasses[this.currentClass].obj.getContent()),
                         type: this.currentClass,
-                        tags: g('tags-editor').value.split(/\s+/)
+                        tags: g('tags-editor').value.split(/\s+/),
+                        visibility: g('private-post').checked ? getCurrentUser() : "public"
                     },
                     {
                         "Content-Type": "application/json"
@@ -254,7 +256,7 @@
                     let card;
                     try {
                         card = s.getCard(r)
-                    }catch (e) {
+                    } catch (e) {
                         card = render('inodes', {
                             ele: 'pre',
                             styles: {
@@ -336,7 +338,7 @@
                                                     },
                                                     {
                                                         ele: 'span',
-                                                        text: '#',
+                                                        text: 'share',
                                                         classList: 'action',
                                                         evnts: {
                                                             click: function (e) { window.location = `?q=@${obj.id}` }
@@ -437,7 +439,7 @@
                 container.innerHTML = ""
                 get(`/posts/comments/${obj.id}`).then(comments => {
                     comments = JSON.parse(comments.response)
-                    comments.sort((a, b) => a.time-b.time).forEach(comment => {
+                    comments.sort((a, b) => a.time - b.time).forEach(comment => {
                         let c = document.createElement('div')
                         c.classList = "inode-comment-card"
                         c.innerHTML = `${JSON.parse(comment.comment)} - <a href="javascript:inodes.searchUser('${comment.user}')">${comment.user}</a>`
@@ -470,12 +472,12 @@
                 type && x.appendChild(this.createTagElement(type, '%'))
                 return x;
             }
-            
+
             createTagElement(tag, char, hits) {
                 let self = this;
                 let t = document.createElement('span');
                 t.innerHTML = `<span class='tag'>${hits ? "" : char}${tag}</span>`
-                if(hits) {
+                if (hits) {
                     t.innerHTML += `<span style="color: gray; font-size: 0.8em"> x ${hits}</span>`
                 }
                 t.addEventListener('click', e => {
@@ -494,26 +496,6 @@
             }
             closeEditor() {
                 g('editor-pane').style.display = 'none';
-            }
-            login(e) {
-                post(
-                    '/auth/login',
-                    {},
-                    {
-                        'Authorization': `Basic ${btoa(c('usernamebox').value + ":" + c('passwordbox').value)}`
-                    }
-                ).then((d) => {
-                    let h = d.headers;
-                    setCookie(USER_KEY, h['authinfo'].split(":")[0]);
-                    setCookie(TOK_KEY, h['authinfo'].split(":")[1]);
-                    this.showUserInfo()
-                    this.authStatus('logged in successfully.', 'green')
-                }).catch(() => {
-                    this.authStatus('authentication failed. check the username and password', 'red')
-                })
-            }
-            authStatus(msg, color) {
-                g('server-messages').innerHTML = `<span style="color:${color}">${msg}</span>`
             }
             logout(e) {
                 post(
@@ -547,7 +529,23 @@
                 this.search(q)
             }
             openAccount() {
-                this.triggerSearch('#me #inodes-app')
+                let u = getCurrentUser();
+                if (u) {
+                    this.triggerSearch(`#user !${u}`)
+                } else {
+                    alert('Login first')
+                }
+            }
+            openMyPosts() {
+                let u = getCurrentUser();
+                if (u) {
+                    this.triggerSearch(`~${u}`)
+                } else {
+                    alert('Login first')
+                }
+            }
+            openRegisterPage() {
+                this.triggerSearch('#register #inodesapp')
             }
         }
 
@@ -597,16 +595,6 @@
     <div class="content">
         <div class="top">
             <span class="title">i-nodes</span>
-            <div class="left-top-ui">
-                <div class="loginui">
-                    <input class="usernamebox" placeholder="username" />
-                    <input class="passwordbox" type="password" placeholder="password" />
-                </div>
-                <button id="login" onclick="inodes.login(event)">signin</button>
-                <button id="signup" onclick="inodes.register(event)">signup</button>
-                <button id="logout" onclick="inodes.logout(event)">signout</button>
-                <a id='user'></a>
-            </div>
         </div>
         <div id="editor-pane">
             <fieldset>
@@ -617,6 +605,7 @@
                 <div id="editor"></div><br />
                 <label for="tags-editor">Tags</label><br />
                 <input type="text" id="tags-editor"></input>
+                <span class="private-post-panel"><input type="checkbox" id="private-post">private</input></span>
                 <br /><br />
                 <button onclick="inodes.post()">Submit</button>
             </fieldset>
@@ -635,11 +624,7 @@
                 <div class="right-w15">
                     <div>
                         <h4>Actions</h4>
-                        <div class="actions sidebar-item">
-                            <a class="new" href="javascript:inodes.openEditor()">New Post</a>
-                            <br/>
-                            <a class="new" href="javascript:inodes.openAccount()">Account</a>
-                        </div>
+                        <div id="actions" class="actions sidebar-item"></div>
                     </div>
                     <div>
                         <h4>Top tags</h4>

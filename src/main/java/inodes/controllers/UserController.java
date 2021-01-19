@@ -1,12 +1,15 @@
 package inodes.controllers;
 
-import static inodes.service.api.AuthenticationService.*;
+import static inodes.service.api.UserService.*;
 
 import inodes.models.UserInfo;
-import inodes.service.api.AuthenticationService;
+import inodes.service.api.UserService;
 import inodes.service.api.DataService;
 import inodes.service.api.UnAuthorizedException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +20,7 @@ import java.util.stream.Collectors;
 public class UserController extends AuthenticatedController {
 
     @Autowired
-    AuthenticationService AS;
+    UserService AS;
 
     @Autowired
     DataService DS;
@@ -27,9 +30,17 @@ public class UserController extends AuthenticatedController {
         AS.register(cred);
     }
 
+    @RequestMapping(value = "/auth/validate/{uid}", method = RequestMethod.GET)
+    public ResponseEntity<String> validate(@PathVariable("uid") String uid, @RequestParam("tok") String tok) throws Exception {
+        AS.validate(uid, tok);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Location", "/?q=hello");
+        return new ResponseEntity<String>(headers, HttpStatus.FOUND);
+    }
+
     @RequestMapping(value = "/auth/users", method = RequestMethod.GET)
     public List<UserInfo> getUsers(@ModelAttribute("loggedinuser") String user) throws Exception {
-        if(!user.equals("admin")) {
+        if (!user.equals("admin")) {
             throw new UnAuthorizedException("Unauthorized");
         }
         return AS.getUsers().stream().map(u -> getMoreInfo(u)).collect(Collectors.toList());

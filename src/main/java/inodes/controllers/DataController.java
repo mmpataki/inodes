@@ -19,9 +19,10 @@ public class DataController extends AuthenticatedController {
             @RequestParam(required = false, defaultValue = "*") String q,
             @RequestParam(required = false, defaultValue = "0") Long offset,
             @RequestParam(required = false, defaultValue = "0") Integer pageSize,
-            @RequestParam(required = false) List<String> sortOn
+            @RequestParam(required = false) List<String> sortOn,
+            @ModelAttribute("loggedinuser") String user
     ) throws Exception {
-        return DS.search(q, offset, pageSize, sortOn);
+        return DS.search(user, q, offset, pageSize, sortOn);
     }
 
     @RequestMapping(value = "/data", method = RequestMethod.POST)

@@ -32,12 +32,14 @@ public class SolrDataService extends DataService {
         solr = new HttpSolrClient.Builder(urlString).build();
     }
 
-    private String getSearchQuery(String str, String id) {
+    private String getSearchQuery(String userId, String str, String id) {
+        String visibility = String.format("visibility:(public OR \"\"%s) AND ", userId == null ? "" : " OR \"" + userId +"\"");
         if (id != null) {
-            return String.format("id:(%s)", id);
+            return String.format("%s id:(%s)", visibility, id);
         }
         String[] chunks = str.split("\\s+");
         StringBuilder q = new StringBuilder();
+        q.append(visibility);
         for (String chunk : chunks) {
             if (chunk.charAt(0) == '#') {
                 q.append("tags:(")
@@ -64,9 +66,14 @@ public class SolrDataService extends DataService {
         return q.substring(0, q.length() - 5);
     }
 
-    public SearchResponse _search(String q, String id, long offset, int pageSize, List<String> sortOn) throws Exception {
+    @Override
+    protected void _updateDoc(String user, Document doc) {
+
+    }
+
+    public SearchResponse _search(String userId, String q, String id, long offset, int pageSize, List<String> sortOn) throws Exception {
         SolrQuery query = new SolrQuery();
-        q = getSearchQuery(q, id);
+        q = getSearchQuery(userId, q, id);
         System.out.println(q);
         query.set("q", q);
         query.setStart((int) offset);
@@ -84,6 +91,7 @@ public class SolrDataService extends DataService {
                 d.setTags((List<String>) doc.getFieldValue("tags"));
                 d.setPostTime((Long) ((List) doc.getFieldValue("ctime")).get(0));
                 d.setOwner((String) ((List) doc.getFieldValue("owner")).get(0));
+                d.setVisibility((String) ((List) doc.getFieldValue("visibility")).get(0));
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -109,6 +117,7 @@ public class SolrDataService extends DataService {
         idoc.addField("tags", doc.getTags());
         idoc.addField("ctime", doc.getPostTime());
         idoc.addField("owner", doc.getOwner());
+        idoc.addField("visibility", doc.getVisibility());
         try {
             solr.add(idoc);
             solr.commit();

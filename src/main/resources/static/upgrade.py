@@ -2,7 +2,7 @@ import json, time, requests
 from urllib.request import Request, urlopen
 
 resp = json.loads(open('./backup.json').read())
-sing = ['content', 'type']
+sing = ['content', 'type', 'owner']
 
 for doc in resp['response']['docs']:
 	data = {}
@@ -14,6 +14,9 @@ for doc in resp['response']['docs']:
 				data[k] = 'instances'
 			elif data[k] == 'scripts':
 				data[k] = 'posts'
-	print(data['type'])
-	print(requests.post('http://localhost:8080/data', json=data, auth=('mmp', 'infa@123')))
+	if data['owner'] == 'global':
+		data['owner'] = 'mmp'
+	data['visibility'] = 'public'
+	print(data['type'], data['owner'] + ":" + data['owner'][0] + '@123')
+	print(requests.post('http://localhost:8080/data', json=data, auth=(data['owner'], data['owner'][0] + '@123')))
 

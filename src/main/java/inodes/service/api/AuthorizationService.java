@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 public abstract class AuthorizationService {
 
     @Autowired
-    AuthenticationService AS;
+    UserService AS;
 
     boolean hasCommentPermission(String userId, Document doc) throws Exception {
         return AS.getUser(userId).getRoles().contains("COMMENT");
@@ -49,6 +49,12 @@ public abstract class AuthorizationService {
 
     public void checkKlassCreatePermission(String userId) throws Exception {
         if(!AS.getUser(userId).getRoles().contains("KLASSCREATE") && !AS.isAdmin(userId)) {
+            throw new UnAuthorizedException(userId + " has no permission to create a klass");
+        }
+    }
+
+    public void checkUpdatePermission(String userId, Document oldDoc, Document newDoc) throws Exception {
+        if((!userId.equals(oldDoc.getOwner())) && !AS.getUser(userId).getRoles().contains("EDIT") && !AS.isAdmin(userId)) {
             throw new UnAuthorizedException(userId + " has no permission to create a klass");
         }
     }

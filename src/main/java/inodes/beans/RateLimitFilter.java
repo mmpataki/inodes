@@ -1,6 +1,6 @@
 package inodes.beans;
 
-import inodes.service.api.AuthenticationService;
+import inodes.service.api.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +18,7 @@ public class RateLimitFilter implements Filter {
     }
 
     @Autowired
-    AuthenticationService AS;
+    UserService AS;
 
     static Random R = new Random();
     Map<String, SessionHeader> sessMap = new HashMap<>();
@@ -76,7 +76,7 @@ public class RateLimitFilter implements Filter {
         resp.setHeader("Access-Control-Allow-Headers", "authorization,authinfo,content-type");
         resp.setHeader("Access-Control-Allow-Methods", "POST,PUT,DELETE");
 
-        if (method.equals("POST") || method.equals("PUT") || method.equals("DELETE")) {
+        if (!method.equals("OPTIONS")) {
             if (url.equals("/auth/login")) {
                 doLogin(req, resp, true);
                 return;
@@ -86,7 +86,8 @@ public class RateLimitFilter implements Filter {
             } else if(url.equals("/auth/register") || url.equals("/nocors")) {
                 // leave these guys
             } else {
-                if (!isLoggedIn(req, resp)) {
+                if (!isLoggedIn(req, resp) && !method.equals("GET")) {
+                    sendNoAuth(req, resp);
                     return;
                 }
             }
@@ -107,7 +108,6 @@ public class RateLimitFilter implements Filter {
                 return ret;
             }
         }
-        sendNoAuth(req, resp);
         return false;
     }
 
@@ -124,7 +124,7 @@ public class RateLimitFilter implements Filter {
     private boolean doLogin(HttpServletRequest req, HttpServletResponse resp, boolean makeSess) {
         String authHdr = req.getHeader("Authorization");
         if (authHdr != null) {
-            AuthenticationService.User cred = makeCredential(authHdr);
+            UserService.User cred = makeCredential(authHdr);
             try {
                 if (AS.authenticate(cred)) {
                     if (makeSess) {
@@ -139,13 +139,12 @@ public class RateLimitFilter implements Filter {
                 e.printStackTrace();
             }
         }
-        sendNoAuth(req, resp);
         return false;
     }
 
-    private AuthenticationService.User makeCredential(String authHdr) {
+    private UserService.User makeCredential(String authHdr) {
         String chunks[] = new String(Base64.getDecoder().decode(authHdr.split(" ")[1].getBytes())).split(":");
-        return new AuthenticationService.User(chunks[0], null, chunks[1], false, null);
+        return new UserService.User(chunks[0], chunks[1]);
     }
 
     private void sendNoAuth(HttpServletRequest req, HttpServletResponse r) {

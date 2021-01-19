@@ -6,13 +6,13 @@ from urllib.request import Request, urlopen
 app = Flask(__name__, static_folder='/mnt/c/Users/mpataki/IdeaProjects/inodes/src/main/resources/static', static_url_path = '')
 CORS(app)
 
-@app.route('/nocorspost', methods=['POST'])
+@app.route('/nocors', methods=['POST'])
 def do_nocors_post():
 	r = request.get_json(force=True)
 	if 'headers' not in r:
 		r['headers'] = {}
 	print(r['url'], r['data'], (r['username'], r['password']), r['headers'])
-	p=requests.post(r['url'], json=r['data'], auth=(r['username'], r['password']), headers=r['headers'])
+	p=requests[r['method']](r['url'], json=r['data'], auth=(r['username'], r['password']), headers=r['headers'])
 	print(p)
 	return 'hello'
 
