@@ -32,7 +32,7 @@ public class DBBasedUserService extends UserService {
                     ex.printStackTrace();
                 }
             }
-            _register(new User("mmp", "Madhusoodan Pataki", "m@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT", "https://outlook.office.com/webhook/eeab207e-d4eb-467f-9a0b-690574f8c377@2638f43e-f77d-4fc7-ab92-7b753b7876fd/IncomingWebhook/9dc438c6ef9a4d3abc0057faa9054f09/2fe4674c-5a46-449a-9244-4ba0a68c8345", "mpataki@informatica.com"));
+            _register(new User("mmp", "Madhusoodan Pataki", "m@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT", "", "mpataki@informatica.com"));
             _register(new User("admin", "Admin", "a@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT", "", "mpataki@informatica.com"));
         } catch (Exception throwables) {
             throwables.printStackTrace();
@@ -50,8 +50,17 @@ public class DBBasedUserService extends UserService {
 
     @Override
     public void validate(String uid, String tok) throws Exception {
-        if(!getUser(uid).__getRegTok().equals(tok)) {
+        User u = getUser(uid);
+        if(!u.__getRegTok().equals(tok)) {
             throw new Exception("token don't match, re-register");
+        }
+        PreparedStatement ps = CONN.prepareStatement("UPDATE users SET verified=1 WHERE username=?");
+        ps.setString(1, uid);
+        try {
+            ps.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new Exception("Registration failed" + e.getMessage());
         }
     }
 
