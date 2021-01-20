@@ -1,5 +1,35 @@
-.applet-resource-creator-input {
+.rescreator-resource-search {
     display: block;
-    margin: 10px;
-    width: 80%;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.rescreator-res-search-input {
+    width: 65%;
+}
+
+.rescreator-instance-type-selector {
+    margin-bottom: 10px;
+}
+
+.rescreator-ressearchresult-container {
+    display: block;
+    padding: 10px;
+}
+
+.rescreator-ressearchresult-container:hover {
+    background-color: lightgrey;
+}
+
+.rescreator-search-results-ui {
+    padding: 10px;
+}
+
+.rescreator-input {
+    width: 65%;
+    margin-top: 8px;
+}
+
+.rescreator-create-btn {
+    margin-top: 10px;
 }

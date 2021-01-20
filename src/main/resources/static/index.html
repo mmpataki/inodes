@@ -27,7 +27,7 @@
                 let q = new URL(window.location.href).searchParams.get("q")
                 c('searchbox').value = q
                 console.log(q)
-                this.search(q)
+                this.doSearch(q)
             }
             populateTopTags() {
                 let self = this;
@@ -166,13 +166,16 @@
                         }
                     })
             }
-            search(str, offset = 0, pageSize = 10) {
-                str = str ? str : ""
-                str = str.replace(/\!\w+/, "")
-                get(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}`).then(d => {
+            doSearch(str, offset=0, pageSize=10) {
+                this.search(str, offset, pageSize).then(d => {
                     this.results = JSON.parse(d.response)
                     this.showResults();
                 })
+            }
+            search(str, offset = 0, pageSize = 10) {
+                str = str ? str : ""
+                str = str.replace(/\!\w+/, "")
+                return get(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}`)
             }
             showResults() {
                 let d = g('posts');
@@ -208,7 +211,7 @@
                                 evnts: {
                                     click: function (e) {
                                         self.pageNum = i / self.pageSize
-                                        self.search(self.getSearchQuery(), i, self.pageSize)
+                                        self.doSearch(self.getSearchQuery(), i, self.pageSize)
                                     }
                                 }
                             }
@@ -487,7 +490,7 @@
                     }
                     q += `${char}${tag}`
                     c('searchbox').value = q.trim()
-                    self.search(q)
+                    self.doSearch(q)
                 })
                 return t;
             }
@@ -526,7 +529,7 @@
             }
             triggerSearch(q) {
                 c('searchbox').value = q;
-                this.search(q)
+                this.doSearch(q)
             }
             openAccount() {
                 let u = getCurrentUser();
@@ -578,6 +581,14 @@
             }
             if (container) {
                 container.appendChild(e)
+                if(spec.label) {
+                    let rgid = "id_" + Math.random();
+                    e.id = rgid
+                    let lbl = document.createElement('label')
+                    lbl.innerHTML = spec.label
+                    lbl.for = rgid
+                    container.appendChild(lbl)
+                }
                 return container;
             }
             return e;
@@ -613,7 +624,7 @@
         <div class="ppane">
             <span id="server-messages"></span>
             <div class="search-pane">
-                <input type="text" placeholder="search" class="searchbox" oninput="inodes.search(this.value)" />
+                <input type="text" placeholder="search" class="searchbox" oninput="inodes.doSearch(this.value)" />
             </div>
             <div class="posts-trending">
                 <div class="left-w85">

@@ -94,7 +94,7 @@ class edcresconfig {
             obj = JSON.parse(obj.content);
         }
         let renderable = function (obj) {
-            let c = obj.config
+            let c = obj ? obj.config : undefined;
             return {
                 ele: "div",
                 children: [
@@ -132,6 +132,15 @@ class edcresconfig {
                         attribs: {
                             placeholder: "resource name",
                             value: c ? c.resourcename : ""
+                        },
+                    },
+                    {
+                        ele: 'textarea',
+                        iden: 'comment',
+                        classList: 'comment',
+                        attribs: {
+                            placeholder: "comment",
+                            value: c ? (c.comment ? c.comment : "") : ""
                         },
                     },
                     {
@@ -208,8 +217,9 @@ class edcresconfig {
                 url : v('url'),
                 username: v('user'),
                 password: v('password'),
-                resourcename: v('resourcename')
-            }
+                resourcename: v('resourcename'),
+                comment : v('comment')
+            },
         };
     }
 

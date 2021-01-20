@@ -1,4 +1,4 @@
-.edcresconfig-input, .edcresconfig-button {
+.edcresconfig-input, .edcresconfig-button, .edcresconfig-comment {
     width: 65%;
     margin: 5px;
 }

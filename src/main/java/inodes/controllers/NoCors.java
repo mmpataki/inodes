@@ -25,6 +25,10 @@ public class NoCors {
         if(req.getHeaders() != null) {
             req.getHeaders().entrySet().forEach(e -> connection.setRequestProperty(e.getKey(), e.getValue()));
         }
+        if(req.getData() != null) {
+            connection.setDoOutput(true);
+            connection.getOutputStream().write(req.getData().getBytes());
+        }
 
         InputStream in = connection.getInputStream();
         ServletOutputStream out = resp.getOutputStream();
@@ -36,8 +40,16 @@ public class NoCors {
     }
 
     public static class NoCorsRequest {
-        String method, url;
+        String method, url, data;
         Map<String, String> headers;
+
+        public String getData() {
+            return data;
+        }
+
+        public void setData(String data) {
+            this.data = data;
+        }
 
         public String getMethod() {
             return method;
