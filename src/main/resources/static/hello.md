@@ -54,4 +54,4 @@ The authorization is simple.
 
 
 ### New templates (new content types)
-Post a `post` with the details of the new content and add the tags `featurerequest` and `mmp`. I will pick it and get back to you. Or directly write to me on mpataki@informatica.com
+Post a `post` with the details of the new content and add the tags `featurerequest` and `mmp`. I will pick it and get back to you. Or directly write to me
