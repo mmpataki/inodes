@@ -166,7 +166,7 @@
                         }
                     })
             }
-            doSearch(str, offset=0, pageSize=10) {
+            doSearch(str, offset = 0, pageSize = 10) {
                 this.search(str, offset, pageSize).then(d => {
                     this.results = JSON.parse(d.response)
                     this.showResults();
@@ -550,6 +550,63 @@
             openRegisterPage() {
                 this.triggerSearch('#register #inodesapp')
             }
+
+            runCommand(scriptText, pnode) {
+
+                if (!pnode) {
+                    pnode = document.createElement('div');
+                }
+                pnode.innerHTML = ''
+
+                let status = document.createElement('status')
+                status.style = "display: block"
+                pnode.appendChild(status);
+
+                let out = document.createElement('pre');
+                out.style = "background-color: black; color: white; width: 100%; height: 200px; overflow: auto"
+                pnode.appendChild(out);
+
+
+                let ajax = function (method, url, data, hdrs) {
+                    return new Promise((resolve, reject) => {
+                        var xhttp = new XMLHttpRequest();
+                        xhttp.onreadystatechange = function () {
+                            if (this.readyState == 4 && this.status == 200) {
+                                resolve({ response: this.responseText })
+                            }
+                            if (this.status == 401) {
+                                reject(401);
+                            }
+                        };
+                        xhttp.open(method, url, true);
+                        hdrs && Object.keys(hdrs).forEach(key => xhttp.setRequestHeader(key, hdrs[key]))
+                        xhttp.send(data);
+                    });
+                }
+                let post = function (url, data, hdrs) {
+                    return ajax('POST', url, JSON.stringify(data), hdrs);
+                }
+
+                post(
+                    'http://inedctst01:5000/cli',
+                    { script: scriptText },
+                    { 'Content-Type': 'application/json' }
+                ).then(d => {
+                    d = d.response
+                    status.innerHTML = `<b style="color:blue">Starting</b>`
+                    var source = new EventSource(`http://inedctst01:5000/poll?rid=${d}`);
+                    source.onmessage = function (event) {
+                        status.innerHTML = `<b style="color:orange">Running</b>`
+                        if (event.data == 'MPATAKI-STOP_EVENT-SOURCE') {
+                            status.innerHTML = `<b style="color:green">Done</b>`
+                            event.target.close()
+                            return
+                        }
+                        out.innerHTML += event.data + "<br/>"
+                    }
+                })
+            }
+
         }
 
         function render(name, spec, elemCreated, container) {
@@ -581,7 +638,7 @@
             }
             if (container) {
                 container.appendChild(e)
-                if(spec.label) {
+                if (spec.label) {
                     let rgid = "id_" + Math.random();
                     e.id = rgid
                     let lbl = document.createElement('label')

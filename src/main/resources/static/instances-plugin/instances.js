@@ -42,6 +42,9 @@ class instances {
             }
         }
         let renderable = function(obj) {
+            if(obj) {
+                obj = JSON.parse(obj.content)
+            }
             return {
                 ele: "div",
                 id: "app-editor",
@@ -118,7 +121,7 @@ class instances {
                                 classList: "urls-label",
                                 text: "URLs"
                             },
-                            ...obj.urls.map(u => APP_URLS(u)),
+                            ...(obj ? obj.urls.map(u => APP_URLS(u)) : []),
                             {
                                 ele: "button",
                                 text: "Add URL",
@@ -135,7 +138,7 @@ class instances {
             }
         }
 
-        return render('apps', renderable(JSON.parse(obj.content)), (id, e) => { self.elems[id] = e })
+        return render('apps', renderable(obj), (id, e) => { self.elems[id] = e })
     }
 
     getContent() {
