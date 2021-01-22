@@ -101,7 +101,7 @@ public abstract class DataService extends Observable {
 
     protected abstract void _putData(Document doc) throws IOException;
 
-    public abstract Map<String, Long> getTopTags(int max) throws Exception;
+    public abstract Map<String, Long> getTopTags(String type, int max) throws Exception;
 
     public abstract Map<String, Long> getUserPostsFacets(String user) throws Exception;
 

@@ -127,11 +127,11 @@ public class SolrDataService extends DataService {
     }
 
     @Override
-    public Map<String, Long> getTopTags(int max) throws Exception {
+    public Map<String, Long> getTopTags(String type, int max) throws Exception {
         if(max <= 0) {
             max = 10;
         }
-        return getFacets("*", max, "count", Arrays.asList("tags"));
+        return getFacets("*", max, "count", Arrays.asList(type));
     }
 
     private Map<String, Long> getFacets(String sq, int max, String sortField, List<String> facetFields) throws SolrServerException, IOException {

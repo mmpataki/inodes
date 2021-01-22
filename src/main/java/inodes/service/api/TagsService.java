@@ -63,6 +63,6 @@ public abstract class TagsService {
 
     public abstract Collection<Document> getTrendingDocs(int max) throws Exception;
 
-    public abstract Map<String, Long> getTrendingTags(int max) throws Exception;
+    public abstract Map<String, Long> getTrendingTags(String type, int max) throws Exception;
 
 }

@@ -20,7 +20,9 @@
                     self.populateClassTypes(JSON.parse(data.response));
                 })
                 this.setupSearch();
-                this.populateTopTags();
+                this.populateFacets('tags', 10, 'toptags', '#');
+                this.populateFacets('type', 10, 'posttypes', '%');
+                this.populateFacets('owner', 10, 'topcontributors', '~');
                 this.showUserInfo();
             }
             setupSearch() {
@@ -29,16 +31,16 @@
                 console.log(q)
                 this.doSearch(q)
             }
-            populateTopTags() {
+            populateFacets(typ, max=10, elemId, searchChar) {
                 let self = this;
-                get('/trendingTags').then(d => {
-                    let dd = g('toptags')
+                get(`/trendingTags?type=${typ}&max=${max}`).then(d => {
+                    let dd = g(elemId)
                     let tags = [];
                     let resp = JSON.parse(d.response)
                     Object.keys(resp).forEach(k => tags.push({ item: k, hits: resp[k] }))
                     tags.sort((a, b) => b.hits - a.hits);
                     tags.forEach(tag => {
-                        dd.appendChild(self.createTagElement(tag.item, '#', tag.hits))
+                        dd.appendChild(self.createTagElement(tag.item, searchChar, tag.hits))
                         dd.appendChild(document.createElement('br'))
                     })
                 })
@@ -132,7 +134,7 @@
                 if (this.loggedIn()) {
                     g('actions').innerHTML = `
                         <a class="action-item" href="javascript:inodes.openEditor()">New Post</a>
-                        <a class="action-item" href="javascript:inodes.openAccount()">Account</a>
+                        <a class="action-item" href="javascript:inodes.openAccount()">Account (${getCurrentUser()})</a>
                         <a class="action-item" href="javascript:inodes.openMyPosts()">My Posts</a>
                         <a class="action-item" href="javascript:inodes.logout()">Logout</a>
                     `;
@@ -260,13 +262,17 @@
                     try {
                         card = s.getCard(r)
                     } catch (e) {
+                        if(r.content) {
+                            r.content = JSON.parse(r.content)
+                        }
                         card = render('inodes', {
                             ele: 'pre',
                             styles: {
                                 width: "95%",
                                 'background-color': 'red',
                                 color: 'white',
-                                padding: "10px"
+                                padding: "10px",
+                                'overflow-y': 'auto'
                             },
                             text: `Error while processing \n${JSON.stringify(obj, null, '\t')}\n\nException: \n${e}`
                         })
@@ -423,6 +429,10 @@
                             }
                         ]
                     };
+                }
+                if(!r.type || r.type == "") {
+                    d.appendChild(render('inode', template(undefined, r)));
+                    return ;
                 }
                 return new Promise(function (resolve, reject) {
                     self.loadKlass(r.type).then(klass => {
@@ -697,6 +707,16 @@
                     <div>
                         <h4>Top tags</h4>
                         <div id="toptags" class="sidebar-item">
+                        </div>
+                    </div>
+                    <div>
+                        <h4>Post types</h4>
+                        <div id="posttypes" class="sidebar-item">
+                        </div>
+                    </div>
+                    <div>
+                        <h4>Top contributors</h4>
+                        <div id="topcontributors" class="sidebar-item">
                         </div>
                     </div>
                 </div>

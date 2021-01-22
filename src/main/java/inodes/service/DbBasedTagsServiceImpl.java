@@ -74,7 +74,7 @@ public class DbBasedTagsServiceImpl extends TagsService {
     }
 
     @Override
-    public Map<String, Long> getTrendingTags(int max) throws Exception {
-        return DS.getTopTags(max);
+    public Map<String, Long> getTrendingTags(String type, int max) throws Exception {
+        return DS.getTopTags(type, max);
     }
 }

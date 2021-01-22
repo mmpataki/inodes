@@ -3,10 +3,7 @@ package inodes.controllers;
 import inodes.models.Document;
 import inodes.service.api.TagsService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Collection;
 import java.util.Map;
@@ -27,11 +24,11 @@ public class TrendingController {
     }
 
     @RequestMapping(value = "/trendingTags", method = RequestMethod.GET)
-    public Map<String, Long> getTrendingTags(Integer max) throws Exception {
+    public Map<String, Long> getTrendingTags(@RequestParam("type") String type, Integer max) throws Exception {
         if(max == null) {
             max = 10;
         }
-        return TS.getTrendingTags(max);
+        return TS.getTrendingTags(type, max);
     }
 
 }
