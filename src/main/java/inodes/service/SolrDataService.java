@@ -118,6 +118,9 @@ public class SolrDataService extends DataService {
         idoc.addField("ctime", doc.getPostTime());
         idoc.addField("owner", doc.getOwner());
         idoc.addField("visibility", doc.getVisibility());
+        if(doc.getId() != null && !doc.getId().isEmpty()) {
+            idoc.setField("id", doc.getId());
+        }
         try {
             solr.add(idoc);
             solr.commit();

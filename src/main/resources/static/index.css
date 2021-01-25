@@ -29,7 +29,7 @@ body {
 }
 
 #tags-editor {
-    width: 80%;
+    width: 100%;
     margin-bottom: 10px;
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
@@ -256,4 +256,45 @@ body {
 .action-item {
     padding-bottom: 3px;
     display: block;
+}
+
+.inode-context-btn {
+    margin-left: 6px;
+}
+
+.inode-context-btn:hover {
+    color: red;
+}
+
+.inode-context-btns {
+    color: #ccc;
+    font-weight: bolder;
+    position: absolute;
+    right: 5px;
+    top: 2px;
+    cursor: pointer;
+    visibility: hidden;
+}
+
+.inode-container:hover .inode-context-btns {
+    color: black;
+    visibility: visible;
+}
+
+.fullscreen-inode {
+    position: absolute;
+    top: 0px;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+    background-color: white;
+    padding: 20px;
+}
+
+.closefullscreen-btn {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    cursor: pointer;
+    font-size: 1.5em;
 }

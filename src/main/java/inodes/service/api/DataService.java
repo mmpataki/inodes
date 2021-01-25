@@ -81,9 +81,19 @@ public abstract class DataService extends Observable {
             Objects.nonNull(doc.getVisibility()) &&
             Objects.nonNull(doc.getType());
 
-        AS.checkCreatePermission(user, doc);
-        doc.setPostTime(System.currentTimeMillis());
-        doc.setOwner(user);
+        if(doc.getId() != null && !doc.getId().isEmpty()) {
+            Document oldDoc = get(user, doc.getId());
+            AS.checkEditPermission(user, oldDoc);
+            doc.setOwner(oldDoc.getOwner());
+            doc.setVotes(oldDoc.getVotes());
+            doc.setComments(oldDoc.getComments());
+            doc.setPostTime(oldDoc.getPostTime());
+            doc.setType(oldDoc.getType());
+        } else {
+            AS.checkCreatePermission(user, doc);
+            doc.setPostTime(System.currentTimeMillis());
+            doc.setOwner(user);
+        }
         notifyObservers(ObservableEvents.NEW, doc);
         _putData(doc);
     }

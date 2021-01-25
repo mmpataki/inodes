@@ -31,7 +31,7 @@
                 console.log(q)
                 this.doSearch(q)
             }
-            populateFacets(typ, max=10, elemId, searchChar) {
+            populateFacets(typ, max = 10, elemId, searchChar) {
                 let self = this;
                 get(`/trendingTags?type=${typ}&max=${max}`).then(d => {
                     let dd = g(elemId)
@@ -72,9 +72,8 @@
             }
             klassChanged(klassName) {
                 let self = this;
-                this.currentClass = klassName;
                 this.loadKlass(klassName).then(d => {
-                    this.renderInput(d)
+                    this.renderInput(d.name, undefined, false)
                 });
             }
             loadScript(path, callBack) {
@@ -116,16 +115,19 @@
                 })
                 return this.scriptPromises[name]
             }
-            renderInput(klass, obj) {
+            renderInput(klassName, obj, force) {
                 let self = this;
-                this.loadKlassScripts(klass).then(klassObj => {
-                    let e = g('editor');
-                    e.innerHTML = '';
-                    if (!klass.editor || obj) {
-                        klass.editor = klassObj.getEditor(obj)
-                    }
-                    e.appendChild(klass.editor)
-                });
+                this.currentPost = obj
+                this.loadKlass(klassName)
+                    .then(klass => this.loadKlassScripts(klass))
+                    .then(klassObj => {
+                        let e = g('editor');
+                        e.innerHTML = '';
+                        if (!klassObj.inodes_editor || force || obj) {
+                            klassObj.inodes_editor = klassObj.getEditor(obj)
+                        }
+                        e.appendChild(klassObj.inodes_editor)
+                    });
             }
             loggedIn() {
                 return getCookie(USER_KEY)
@@ -133,7 +135,7 @@
             showUserInfo() {
                 if (this.loggedIn()) {
                     g('actions').innerHTML = `
-                        <a class="action-item" href="javascript:inodes.openEditor()">New Post</a>
+                        <a class="action-item" href="javascript:inodes.openEditor(undefined, true)">New Post</a>
                         <a class="action-item" href="javascript:inodes.openAccount()">Account (${getCurrentUser()})</a>
                         <a class="action-item" href="javascript:inodes.openMyPosts()">My Posts</a>
                         <a class="action-item" href="javascript:inodes.logout()">Logout</a>
@@ -150,13 +152,15 @@
             }
             post() {
                 let self = this;
+                let currentClass = g('kclasses').value
                 post(
                     '/data',
                     {
-                        content: JSON.stringify(this.klasses[this.currentClass].obj.getContent()),
-                        type: this.currentClass,
+                        content: JSON.stringify(this.klasses[currentClass].obj.getContent()),
+                        type: currentClass,
                         tags: g('tags-editor').value.split(/\s+/),
-                        visibility: g('private-post').checked ? getCurrentUser() : "public"
+                        visibility: g('private-post').checked ? getCurrentUser() : "public",
+                        id: this.currentPost ? this.currentPost.id : undefined
                     },
                     {
                         "Content-Type": "application/json"
@@ -223,25 +227,34 @@
                 }
                 return render('paginator', resp());
             }
+            refresh() {
+                this.triggerSearch(this.getSearchQuery())
+            }
             deleteInode(id) {
                 if (!this.loggedIn()) {
                     alert('Login to delete content')
                     return
                 }
-                delet(`/data/${id}`).then(e => alert('Done')).catch(c => {
-                    if (c == 401) {
-                        alert(`You are unauthorized to delete ${id}`)
-                    }
-                });
+                if(!confirm('Are you sure to delete this content?')) {
+                    return;
+                }
+                delet(`/data/${id}`)
+                    .then(e => alert('Done'))
+                    .then(e => this.refresh())
+                    .catch(c => {
+                        if (c == 401) {
+                            alert(`You are unauthorized to delete ${id}`)
+                        }
+                    });
             }
             editInode(obj) {
                 if (!this.loggedIn()) {
                     alert('Login to post / update content')
                     return
                 }
-                this.renderInput(this.klasses[obj.type], obj)
                 g('tags-editor').value = obj.tags.join(' ')
-                this.openEditor()
+                g('kclasses').value = obj.type
+                this.openEditor(obj, true)
             }
             downvoteInode(id) {
                 post(
@@ -255,15 +268,15 @@
                     {}
                 ).then(a => alert('Done'));
             }
-            showCard(d, r) {
+            showCard(d, obj) {
                 let self = this;
-                let template = function (s, obj) {
+                let template = function (klass, obj) {
                     let card;
                     try {
-                        card = s.getCard(r)
+                        card = klass.getCard(obj)
                     } catch (e) {
-                        if(r.content) {
-                            r.content = JSON.parse(r.content)
+                        if (obj.content) {
+                            obj.content = JSON.parse(obj.content)
                         }
                         card = render('inodes', {
                             ele: 'pre',
@@ -285,9 +298,16 @@
                             position: 'relative'
                         },
                         children: [
+                            self.getContextButtons(klass, obj),
                             {
-                                preBuilt: true,
-                                ele: card
+                                ele: 'div',
+                                classList: 'container-parent',
+                                children: [
+                                    {
+                                        preBuilt: true,
+                                        ele: card
+                                    }
+                                ]
                             },
                             {
                                 ele: 'div',
@@ -299,7 +319,7 @@
                                         children: [
                                             {
                                                 preBuilt: true,
-                                                ele: self.getTagsElement(r.tags, r.owner, r.type)
+                                                ele: self.getTagsElement(obj.tags, obj.owner, obj.type)
                                             },
                                             {
                                                 ele: 'div',
@@ -430,18 +450,56 @@
                         ]
                     };
                 }
-                if(!r.type || r.type == "") {
-                    d.appendChild(render('inode', template(undefined, r)));
-                    return ;
+                if (!obj.type || obj.type == "") {
+                    d.appendChild(render('inode', template(undefined, obj)));
+                    return;
                 }
                 return new Promise(function (resolve, reject) {
-                    self.loadKlass(r.type).then(klass => {
-                        self.loadKlassScripts(klass).then(s => {
-                            d.appendChild(render('inode', template(s, r)));
+                    self.loadKlass(obj.type).then(klassMeta => {
+                        self.loadKlassScripts(klassMeta).then(klass => {
+                            d.appendChild(render('inode', template(klass, obj)));
                             resolve()
                         })
                     })
                 });
+            }
+            getContextButtons(klass, obj) {
+                let self = this;
+                return {
+                    ele: 'div',
+                    classList: 'context-btns',
+                    children: [
+                        {
+                            ele: 'span',
+                            classList: 'context-btn',
+                            text: '&#x26F6;',
+                            attribs: { title: 'Full screen' },
+                            evnts: {
+                                click: function () {
+                                    let x = document.createElement('div')
+                                    x.classList = 'fullscreen-inode'
+                                    document.body.appendChild(x)
+
+                                    let cardEle = this.parentNode.nextSibling.childNodes[0], cardParent = cardEle.parentNode;
+                                    
+                                    let closeBtn = document.createElement('span')
+                                    closeBtn.classList = 'closefullscreen-btn'
+                                    closeBtn.innerHTML = '&#x2715;'
+                                    closeBtn.addEventListener('click', function () {
+                                        cardEle.remove();
+                                        cardParent.appendChild(cardEle)
+                                        x.remove();
+                                        document.querySelector('.content').style.display = 'block'
+                                    })
+
+                                    document.querySelector('.content').style.display = 'none'
+                                    x.appendChild(cardEle)
+                                    x.appendChild(closeBtn)
+                                }
+                            }
+                        }
+                    ]
+                }
             }
             searchUser(user) {
                 this.triggerSearch(`#user !${user}`)
@@ -485,7 +543,6 @@
                 type && x.appendChild(this.createTagElement(type, '%'))
                 return x;
             }
-
             createTagElement(tag, char, hits) {
                 let self = this;
                 let t = document.createElement('span');
@@ -504,8 +561,11 @@
                 })
                 return t;
             }
-            openEditor() {
+            openEditor(obj, force) {
+                this.renderInput(obj ? obj.type : 'posts', obj, true)
                 g('editor-pane').style.display = 'block';
+                g('kclasses').disabled = obj ? true : false
+                g('private-post').checked = obj ? (obj.visibility != 'public') : false;
             }
             closeEditor() {
                 g('editor-pane').style.display = 'none';
@@ -560,7 +620,6 @@
             openRegisterPage() {
                 this.triggerSearch('#register #inodesapp')
             }
-
             runCommand(scriptText, pnode) {
 
                 if (!pnode) {
@@ -616,7 +675,6 @@
                     }
                 })
             }
-
         }
 
         function render(name, spec, elemCreated, container) {
@@ -682,10 +740,10 @@
                 <label for="editor">Post editor</label><br />
                 <div id="editor"></div><br />
                 <label for="tags-editor">Tags</label><br />
-                <input type="text" id="tags-editor"></input>
-                <span class="private-post-panel"><input type="checkbox" id="private-post">private</input></span>
+                <input type="text" id="tags-editor"></input><br/>
+                <input type="checkbox" id="private-post">Make this a private post</input>
                 <br /><br />
-                <button onclick="inodes.post()">Submit</button>
+                <button onclick="inodes.post()">Post</button>
             </fieldset>
         </div>
         <div class="ppane">

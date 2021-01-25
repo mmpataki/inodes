@@ -27,10 +27,6 @@ public abstract class AuthorizationService {
         }
     }
 
-    public boolean hasEditPermission(String userId, Document doc) throws Exception {
-        return AS.getUser(userId).getRoles().contains("EDIT") && doc.getOwner().equals(userId);
-    }
-
     public boolean checkUpVotePermission(String userId, Document doc) throws Exception {
         return AS.getUser(userId).getRoles().contains("UPVOTE") && doc.upVotable();
     }
@@ -56,6 +52,12 @@ public abstract class AuthorizationService {
     public void checkUpdatePermission(String userId, Document oldDoc, Document newDoc) throws Exception {
         if((!userId.equals(oldDoc.getOwner())) && !AS.getUser(userId).getRoles().contains("EDIT") && !AS.isAdmin(userId)) {
             throw new UnAuthorizedException(userId + " has no permission to create a klass");
+        }
+    }
+
+    public void checkEditPermission(String userId, Document doc) throws Exception {
+        if(AS.getUser(userId).getRoles().contains("EDIT") && !doc.getOwner().equals(userId)) {
+            throw new UnAuthorizedException(userId + " has no permission to edit " + doc.getId());
         }
     }
 }
