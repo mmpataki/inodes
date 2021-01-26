@@ -3,7 +3,6 @@ package inodes.service;
 import inodes.Configuration;
 import inodes.service.api.UserService;
 import inodes.service.api.NoSuchUserException;
-import inodes.service.api.UnAuthorizedException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +32,7 @@ public class DBBasedUserService extends UserService {
                 }
             }
             _register(new User("mmp", "Madhusoodan Pataki", "m@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT", "", "mpataki@informatica.com"));
-            _register(new User("admin", "Admin", "a@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT", "", "mpataki@informatica.com"));
+            _register(new User("admin", "Admin", "a@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT,ADMIN", "", "mpataki@informatica.com"));
         } catch (Exception throwables) {
             throwables.printStackTrace();
         }
@@ -41,7 +40,7 @@ public class DBBasedUserService extends UserService {
 
     @Override
     public boolean authenticate(User cred) throws Exception {
-        User c = getUser(cred.getUser());
+        User c = getUser(cred.getUserName());
         if (c != null) {
             return c.isVerified() && c.getPassword().equals(cred.getPassword());
         }
@@ -69,7 +68,7 @@ public class DBBasedUserService extends UserService {
     public void _register(User cred) throws Exception {
         PreparedStatement ps = CONN.prepareStatement("INSERT INTO users (username, fullname, password, roles, verified, teamsurl, email, regtok) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
         String tok = R.nextDouble() + "-" + R.nextInt();
-        ps.setString(1, cred.getUser());
+        ps.setString(1, cred.getUserName());
         ps.setString(2, cred.getFullName());
         ps.setString(3, cred.getPassword());
         ps.setString(4, cred.getRoles());
@@ -79,7 +78,7 @@ public class DBBasedUserService extends UserService {
         ps.setString(8, tok);
         try {
             ps.executeUpdate();
-            users.put(cred.getUser(), cred);
+            users.put(cred.getUserName(), cred);
             cred.setRegTok(tok);
         } catch (Exception e) {
             e.printStackTrace();
@@ -91,14 +90,14 @@ public class DBBasedUserService extends UserService {
     public User getUser(String userName) throws Exception {
         User cred = users.get(userName);
         if (cred != null) {
-            return cred;
+            return cred.clone();
         }
         return _getUsers(userName).get(0);
     }
 
     @Override
-    public boolean isAdmin(String userId) {
-        return userId.equals("admin");
+    public boolean isAdmin(String userId) throws Exception {
+        return getUser(userId).getRoles().contains("ADMIN");
     }
 
     @Override
@@ -107,8 +106,16 @@ public class DBBasedUserService extends UserService {
     }
 
     @Override
-    public void _updateUser(String userId, User u) throws Exception {
-
+    public void _updateUser(String modifier, User u) throws Exception {
+        PreparedStatement ps = CONN.prepareStatement("UPDATE users SET fullname = ?, password = ?, roles = ?, teamsurl = ?, email = ? WHERE username=?");
+        ps.setString(1, u.getFullName());
+        ps.setString(2, u.getPassword());
+        ps.setString(3, u.getRoles());
+        ps.setString(4, u.getTeamsUrl());
+        ps.setString(5, u.getEmail());
+        ps.setString(6, u.getUserName());
+        ps.executeUpdate();
+        users.put(u.getUserName(), u);
     }
 
     public List<User> _getUsers(String userName) throws Exception {
@@ -148,7 +155,7 @@ public class DBBasedUserService extends UserService {
     }
 
     private String makeCredentialLine(User cred) {
-        return String.format("%s:%s:%s:%s", cred.getUser(), cred.getPassword(), cred.getRoles(), cred.isVerified());
+        return String.format("%s:%s:%s:%s", cred.getUserName(), cred.getPassword(), cred.getRoles(), cred.isVerified());
     }
 
 }

@@ -45,6 +45,9 @@ public abstract class DataService extends Observable {
     @Autowired
     CollabService CS;
 
+    @Autowired
+    UserService US;
+
     public DataService() {
         register(ObservableEvents.SEARCH, o -> {
             Map<String, Long> votes = CS.getVotes(((List<Document>) o).stream().map(d -> d.getId()).collect(Collectors.toList()));
@@ -76,10 +79,14 @@ public abstract class DataService extends Observable {
 
     public void putData(String user, Document doc) throws Exception {
         assert
+            Objects.nonNull(doc) &&
             Objects.nonNull(doc.getContent()) &&
             Objects.nonNull(doc.getTags()) &&
             Objects.nonNull(doc.getVisibility()) &&
             Objects.nonNull(doc.getType());
+
+        if(doc.getTags().contains("inodesapp") && !US.isAdmin(user))
+            doc.getTags().remove("inodesapp");
 
         if(doc.getId() != null && !doc.getId().isEmpty()) {
             Document oldDoc = get(user, doc.getId());

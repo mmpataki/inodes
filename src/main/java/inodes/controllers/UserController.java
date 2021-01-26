@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
@@ -53,10 +54,16 @@ public class UserController extends AuthenticatedController {
         return getMoreInfo(u);
     }
 
+    @RequestMapping(value = "/auth/user", method = RequestMethod.POST)
+    public void updateUser(@RequestBody User user, @ModelAttribute("loggedinuser") String curUser) throws Exception {
+        Objects.requireNonNull(curUser);
+        AS.updateUser(curUser, user);
+    }
+
     UserInfo getMoreInfo(User u) {
         UserInfo fui = new UserInfo(u);
         try {
-            fui.setPostsCount(DS.getUserPostsFacets(u.getUser()));
+            fui.setPostsCount(DS.getUserPostsFacets(u.getUserName()));
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -128,11 +128,11 @@ public class RateLimitFilter implements Filter {
             try {
                 if (AS.authenticate(cred)) {
                     if (makeSess) {
-                        SessionHeader sh = new SessionHeader(cred.getUser());
-                        sessMap.put(cred.getUser(), sh);
+                        SessionHeader sh = new SessionHeader(cred.getUserName());
+                        sessMap.put(cred.getUserName(), sh);
                         resp.setHeader("AuthInfo", sh.toString());
                     }
-                    req.setAttribute("loggedinuser", cred.getUser());
+                    req.setAttribute("loggedinuser", cred.getUserName());
                     return true;
                 }
             } catch (Exception e) {

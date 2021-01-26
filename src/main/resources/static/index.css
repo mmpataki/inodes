@@ -9,8 +9,7 @@
     display: none;
 }
 body {
-    max-width: 950px;
-    margin: auto;
+    
 }
 
 #toptags {
@@ -213,6 +212,12 @@ body {
     margin-bottom: 10px;
     font-weight: bolder;
     font-family: monospace;
+    
+}
+
+.content {
+    max-width: 950px;
+    margin: auto;
 }
 
 .closebtn {

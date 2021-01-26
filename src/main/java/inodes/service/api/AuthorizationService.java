@@ -20,7 +20,7 @@ public abstract class AuthorizationService {
         }
     }
 
-    public void checkDeletePermission(String userId, Document doc) throws UnAuthorizedException {
+    public void checkDeletePermission(String userId, Document doc) throws Exception {
         if(doc.getOwner() == null) return;
         if(!userId.equals(doc.getOwner()) && AS.isAdmin(userId)) {
             throw new UnAuthorizedException(userId + " has no permission to delete a " + doc.getId());
@@ -56,7 +56,7 @@ public abstract class AuthorizationService {
     }
 
     public void checkEditPermission(String userId, Document doc) throws Exception {
-        if(AS.getUser(userId).getRoles().contains("EDIT") && !doc.getOwner().equals(userId)) {
+        if(!AS.getUser(userId).getRoles().contains("EDIT") && !doc.getOwner().equals(userId) && !AS.isAdmin(userId)) {
             throw new UnAuthorizedException(userId + " has no permission to edit " + doc.getId());
         }
     }
