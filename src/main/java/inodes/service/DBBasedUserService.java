@@ -58,6 +58,7 @@ public class DBBasedUserService extends UserService {
         try {
             ps.executeUpdate();
             u.setVerified(true);
+            users.get(uid).setVerified(true);
         } catch (Exception e) {
             e.printStackTrace();
             throw new Exception("Registration failed" + e.getMessage());

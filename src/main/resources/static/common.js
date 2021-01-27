@@ -14,8 +14,8 @@ function ajax(method, url, data, hdrs) {
                     headers: makeHMap(xhttp.getAllResponseHeaders())
                 })
             }
-            if (this.status == 401) {
-                reject(401);
+            if (this.status != 200) {
+                reject(this.status);
             }
         };
         xhttp.open(method, `${baseUrl}${url}`, true);
