@@ -1,6 +1,7 @@
 package inodes.service;
 
 import inodes.Configuration;
+import inodes.service.api.UserExistsException;
 import inodes.service.api.UserService;
 import inodes.service.api.NoSuchUserException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,7 @@ public class DBBasedUserService extends UserService {
             try {
                 CONN.createStatement().execute("CREATE TABLE users (username VARCHAR(32) PRIMARY KEY, fullname VARCHAR(128), password VARCHAR(64), roles VARCAR(128), verified INT, teamsurl VARCHAR(256), email VARCHAR(64), regtok VARCHAR(64))");
             } catch (Exception ex) {
-                if(!ex.getMessage().contains("name is already used by an existing object")) {
+                if (!ex.getMessage().contains("name is already used by an existing object")) {
                     ex.printStackTrace();
                 }
             }
@@ -50,7 +51,7 @@ public class DBBasedUserService extends UserService {
     @Override
     public void validate(String uid, String tok) throws Exception {
         User u = getUser(uid);
-        if(!u.__getRegTok().equals(tok)) {
+        if (!u.__getRegTok().equals(tok)) {
             throw new Exception("token don't match, re-register");
         }
         PreparedStatement ps = CONN.prepareStatement("UPDATE users SET verified=1 WHERE username=?");
@@ -67,6 +68,9 @@ public class DBBasedUserService extends UserService {
 
     @Override
     public void _register(User cred) throws Exception {
+        if (getUser(cred.getUserName()) != null) {
+            throw new UserExistsException(cred.getUserName() + " already exists");
+        }
         PreparedStatement ps = CONN.prepareStatement("INSERT INTO users (username, fullname, password, roles, verified, teamsurl, email, regtok) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
         String tok = R.nextDouble() + "-" + R.nextInt();
         ps.setString(1, cred.getUserName());
@@ -93,7 +97,8 @@ public class DBBasedUserService extends UserService {
         if (cred != null) {
             return cred.clone();
         }
-        return _getUsers(userName).get(0);
+        List<User> users = _getUsers(userName);
+        return users.isEmpty() ? null : users.get(0);
     }
 
     @Override

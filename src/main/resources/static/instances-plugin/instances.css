@@ -38,14 +38,32 @@
     margin-left: 10px;
 }
 
-.apps-card-urls-container {
+.apps-card-metadata-container {
     margin-left: 20px;
 }
 
-.apps-card-urltag {
+.apps-card-metatag {
     font-style: italic;
     color: gray;
     margin: 5px;
     padding-right: 10px;
     text-align: right;
+}
+
+
+.apps-suggestions {
+    
+}
+
+.docker-text {
+    display: block;
+    padding: 3px;
+}
+
+.docker-instance {
+    border: solid 3px green;
+    border-radius: 5px;
+    width: 300px;
+    padding: 10px;
+    margin: 15px;
 }

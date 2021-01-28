@@ -5,7 +5,7 @@ class instances {
 
     getEditor(obj) {
         let self = this;
-        let APP_URLS = function(url) {
+        let APP_URLS = function (url) {
             return {
                 ele: "div",
                 classList: "app-urls",
@@ -41,8 +41,8 @@ class instances {
                 ]
             }
         }
-        let renderable = function(obj) {
-            if(obj) {
+        let renderable = function (obj) {
+            if (obj) {
                 obj = JSON.parse(obj.content)
             }
             return {
@@ -50,6 +50,19 @@ class instances {
                 id: "app-editor",
                 attribs: { classList: "pane" },
                 children: [
+                    {
+                        ele: 'h3',
+                        text: 'Your dockers'
+                    },
+                    {
+                        ele: 'div',
+                        iden: 'suggestions',
+                        classList: 'suggestions'
+                    },
+                    {
+                        ele: 'h3',
+                        text: 'Manual onboarding'
+                    },
                     {
                         ele: "div",
                         children: [
@@ -61,7 +74,7 @@ class instances {
                                         classList: "app-user",
                                         attribs: {
                                             placeholder: "app username",
-                                            value : obj ? obj.appusername : ""
+                                            value: obj ? obj.appusername : ""
                                         }
                                     },
                                     {
@@ -69,7 +82,7 @@ class instances {
                                         classList: "app-password",
                                         attribs: {
                                             placeholder: "app password",
-                                            value : obj ? obj.apppassword : ""
+                                            value: obj ? obj.apppassword : ""
                                         }
                                     }
                                 ]
@@ -82,7 +95,7 @@ class instances {
                                         classList: "box-user",
                                         attribs: {
                                             placeholder: "box username",
-                                            value : obj ? obj.boxusername : ""
+                                            value: obj ? obj.boxusername : ""
                                         }
                                     },
                                     {
@@ -90,7 +103,7 @@ class instances {
                                         classList: "box-password",
                                         attribs: {
                                             placeholder: "box password",
-                                            value : obj ? obj.boxpassword : ""
+                                            value: obj ? obj.boxpassword : ""
                                         }
                                     }
                                 ]
@@ -103,7 +116,7 @@ class instances {
                                         classList: "ip-addr",
                                         attribs: {
                                             placeholder: "ip addr",
-                                            value : obj ? obj.ipaddr : ""
+                                            value: obj ? obj.ipaddr : ""
                                         }
                                     },
                                     {
@@ -111,7 +124,7 @@ class instances {
                                         classList: "install-loc",
                                         attribs: {
                                             placeholder: "install location",
-                                            value : obj ? obj.installloc : ""
+                                            value: obj ? obj.installloc : ""
                                         }
                                     }
                                 ]
@@ -138,10 +151,121 @@ class instances {
             }
         }
 
-        return render('apps', renderable(obj), (id, e) => { self.elems[id] = e })
+        let docker_instance = function (inst) {
+            return {
+                ele: 'div',
+                classList: 'instance',
+                children: [
+                    {
+                        ele: 'span',
+                        classList: 'text',
+                        text: inst.CONTAINER_ID
+                    },
+                    {
+                        ele: 'span',
+                        classList: 'text',
+                        text: inst.DESCRIPTION
+                    },
+                    {
+                        ele: 'span',
+                        classList: 'text',
+                        text: `tag: ${inst.PVERSION}`
+                    },
+                    {
+                        ele: 'span',
+                        classList: 'text',
+                        text: `Case# : ${inst.CASENUM}`
+                    },
+                    {
+                        ele: 'button',
+                        text: 'Import',
+                        evnts: {
+                            click: function () {
+                                console.log('importing ', inst)
+                                post(
+                                    '/nocors',
+                                    {
+                                        method: 'GET',
+                                        data: JSON.stringify({ 'CONTAINER_ID': inst.CONTAINER_ID }),
+                                        headers: { 'Content-Type': 'application/json' },
+                                        url: 'http://10.23.32.45/labconsole/api/v1/getdockerMetadata'
+                                    },
+                                    { 'Content-Type': 'application/json' }
+                                ).then(resp => {
+                                    resp = JSON.parse(JSON.parse(resp.response).data[0].META_DATA)
+                                    let O = {};
+                                    Object.keys(resp).forEach(k => {
+                                        O[k] = {}
+                                        resp[k].forEach(elem => {
+                                            O[k][Object.keys(elem)[0]] = elem[Object.keys(elem)[0]]
+                                        })
+                                    })
+                                    console.log(O)
+                                    let urls = [];
+                                    let meta = [];
+
+                                    Object.keys(O['URL details']).forEach(k => {
+                                        if (k.toLowerCase().includes('url')) {
+                                            urls.push({ tag: k, url: O['URL details'][k] })
+                                        } else {
+                                            meta.push({ key: k, value: O['URL details'][k] })
+                                        }
+                                    })
+
+                                    self.importedContent = {
+                                        appusername: O['URL details']['Username'],
+                                        apppassword: O['URL details']['Username'],
+                                        boxusername: O['Docker Host and credentials']['User'],
+                                        boxpassword: O['Docker Host and credentials']['Password'],
+                                        ipaddr: O['Docker Host and credentials']['Host name'],
+                                        installloc: O['URL details']['EDC installation'],
+                                        urls: urls,
+                                        meta: meta
+                                    }
+
+                                    self.importedTags = [
+                                        O['Docker Host and credentials']['Cloud'].toLowerCase(),
+                                        O['Docker Host and credentials']['Template'].toLowerCase(),
+                                    ];
+                                    console.log(self.importedContent)
+
+                                    inodes.post()
+                                })
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+
+        let ret = render('apps', renderable(obj), (id, e) => { self.elems[id] = e })
+
+        // get suggestions from dockers list
+        post(
+            '/nocors',
+            {
+                method: 'GET',
+                url: 'http://iservernext/labconsole/api/v1/getdockers',
+                data: JSON.stringify({ email: getCurrentUser() }),
+                headers: { 'Content-Type': 'application/json' }
+            },
+            { 'Content-Type': 'application/json' }
+        ).then((resp) => {
+            let instances = JSON.parse(resp.response).data
+            instances.forEach(inst => {
+                self.elems.suggestions.appendChild(render('docker', docker_instance(inst), x => x))
+            })
+        })
+
+        return ret;
     }
 
     getContent() {
+        if (this.importedContent) {
+            let x = this.importedContent;
+            this.importedContent = undefined;
+            return x;
+        }
         let inputs = this.elems['app-editor'].getElementsByTagName('input');
         let vals = [];
         for (let i = 0; i < inputs.length; i++) {
@@ -164,28 +288,28 @@ class instances {
 
     getCard(obj) {
         obj = JSON.parse(obj.content)
-        let CARD_APP_URL = function (e) {
+        let CARD_META_URL = function (k, v, elem) {
             return {
                 ele: "tr",
-                classList: "card-urls",
+                classList: "card-metadata",
                 children: [
                     {
                         ele: "td",
-                        classList: "card-urltag",
-                        text: e.tag
+                        classList: "card-metatag",
+                        text: k
                     },
                     {
                         ele: "td",
-                        classList: "card-url",
+                        classList: "card-meta",
                         children: [
                             {
-                                ele: "a",
-                                classList: "card-url",
+                                ele: elem,
+                                classList: "card-meta",
                                 attribs: {
-                                    href: e.url,
+                                    href: v,
                                     target: "_blank"
                                 },
-                                text: e.url
+                                text: v
                             }
                         ]
                     }
@@ -208,16 +332,7 @@ class instances {
                         {
                             ele: "span",
                             classList: "card-appusername",
-                            text: obj.appusername
-                        },
-                        {
-                            ele: "span",
-                            text: "/"
-                        },
-                        {
-                            ele: "span",
-                            classList: "card-apppassword",
-                            text: obj.apppassword
+                            text: `${obj.appusername} / ${obj.apppassword}`
                         }
                     ]
                 },
@@ -233,16 +348,7 @@ class instances {
                         {
                             ele: "span",
                             classList: "card-boxusername",
-                            text: obj.boxusername
-                        },
-                        {
-                            ele: "span",
-                            text: "/"
-                        },
-                        {
-                            ele: "span",
-                            classList: "card-boxpassword",
-                            text: obj.boxpassword
+                            text: `${obj.boxusername} / ${obj.boxpassword}`
                         },
                         {
                             ele: "a",
@@ -256,14 +362,42 @@ class instances {
                 },
                 {
                     ele: "table",
-                    classList: "card-urls-container",
+                    classList: "card-metadata-container",
                     children: []
-                }
+                },
+                {
+                    ele: 'div',
+                    styles: {
+
+                    },
+                    children: [
+                        {
+                            ele: "table",
+                            classList: "card-metadata-container",
+                            children: []
+                        }
+                    ]
+                },
             ]
         }
         obj.urls.forEach(u => {
-            card.children[2].children.push(CARD_APP_URL(u))
+            card.children[2].children.push(CARD_META_URL(u.tag, u.url, 'a'))
         })
+        if (obj.meta) {
+            card.children[3].text = 'Other metadata'
+            obj.meta.forEach(u => {
+                card.children[3].children[0].children.push(CARD_META_URL(u.key, u.value, 'span'))
+            })
+        }
         return render('apps', card, z => 0);
+    }
+
+    getTags() {
+        if (this.importedTags) {
+            let t = this.importedTags;
+            this.importedTags = undefined;
+            return t;
+        }
+        return [];
     }
 }

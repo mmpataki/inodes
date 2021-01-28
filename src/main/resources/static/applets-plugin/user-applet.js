@@ -43,6 +43,13 @@
         user = JSON.parse(resps[0].response)
         if(resps.length > 1) {
             curUser = JSON.parse(resps[1].response)
+        } else {
+            curUser = {
+                basic: {
+                    userName: 'anomymous',
+                    roles: '',
+                }
+            }
         }
 
         let ALL_ROLES = ["CREATE", "EDIT", "UPVOTE", "DOWNVOTE", "COMMENT", "DELETE", "ADMIN"]

@@ -158,19 +158,16 @@
                     {
                         content: JSON.stringify(this.klasses[currentClass].obj.getContent()),
                         type: currentClass,
-                        tags: g('tags-editor').value.split(/\s+/),
+                        tags: g('tags-editor').value.split(/\s+/).concat(this.klasses[currentClass].obj.getTags()),
                         visibility: g('private-post').checked ? getCurrentUser() : "public",
                         id: this.currentPost ? this.currentPost.id : undefined
                     },
                     {
                         "Content-Type": "application/json"
                     }
-                ).then(e => alert('Done'))
-                    .catch((code) => {
-                        if (code == 401) {
-                            self.showUserInfo()
-                        }
-                    })
+                )
+                .then(e => showSuccess('Posted successfully'))
+                .catch(msg => showError(msg))
             }
             doSearch(str, offset = 0, pageSize = 10) {
                 this.search(str, offset, pageSize).then(d => {
@@ -232,41 +229,33 @@
             }
             deleteInode(id) {
                 if (!this.loggedIn()) {
-                    alert('Login to delete content')
-                    return
+                    return showError('Login to delete content')
                 }
                 if(!confirm('Are you sure to delete this content?')) {
                     return;
                 }
                 delet(`/data/${id}`)
-                    .then(e => alert('Done'))
+                    .then(e => showSuccess(e.response))
                     .then(e => this.refresh())
-                    .catch(c => {
-                        if (c == 401) {
-                            alert(`You are unauthorized to delete ${id}`)
-                        }
-                    });
+                    .catch(c => showError(c));
             }
             editInode(obj) {
                 if (!this.loggedIn()) {
-                    alert('Login to post / update content')
-                    return
+                    return showError('Login to post / update content')
                 }
                 g('tags-editor').value = obj.tags.join(' ')
                 g('kclasses').value = obj.type
                 this.openEditor(obj, true)
             }
             downvoteInode(id) {
-                post(
-                    `/posts/downvote/${id}`,
-                    {}
-                ).then(a => alert('Done'));
+                post(`/posts/downvote/${id}`, {})
+                .then(a => showSuccess(a.response))
+                .catch(m => showError(m));
             }
             upvoteInode(id) {
-                post(
-                    `/posts/upvote/${id}`,
-                    {}
-                ).then(a => alert('Done'));
+                post(`/posts/upvote/${id}`,{})
+                .then(a => showSuccess(a.response))
+                .catch(m => showError(m));
             }
             showCard(d, obj) {
                 let self = this;
@@ -395,7 +384,10 @@
                                             {
                                                 ele: 'span',
                                                 classList: 'posttime',
-                                                text: `${self.getLocalTime(obj.postTime)}`
+                                                styles: {
+                                                    'font-size': '0.7em'
+                                                },
+                                                text: `${self.getLocalDateTime(obj.postTime)}`
                                             }
                                         ]
                                     }
@@ -518,10 +510,9 @@
                     })
                 })
             }
-            getLocalTime(ep) {
+            getLocalDateTime(ep) {
                 var d = new Date(ep);
-                //d.setUTCSeconds(ep);
-                return d.toLocaleDateString()
+                return `${d.toLocaleDateString()}<br/>${d.toLocaleTimeString()}`
             }
             randColor() {
                 var letters = '0123456789ABCDEF';
@@ -579,7 +570,7 @@
                 eraseCookie(USER_KEY)
                 eraseCookie(TOK_KEY)
                 this.showUserInfo()
-                this.authStatus('logged out successfully', 'green')
+                showSuccess('logged out successfully')
             }
             register() {
                 post(
@@ -591,11 +582,9 @@
                     {
                         'Content-Type': 'application/json'
                     }
-                ).then(() => {
-                    this.authStatus('registration successful. refer some existing user to verify you', 'green')
-                }).catch(() => {
-                    this.authStatus('registration failed', 'red')
-                })
+                )
+                .then(() => showSuccess('registration successful. verify your email address by clicking on the link in the email sent to you'))
+                .catch(m => showError(`registration failed. reason: ${m}`))
             }
             triggerSearch(q) {
                 c('searchbox').value = q;
@@ -603,18 +592,16 @@
             }
             openAccount() {
                 let u = getCurrentUser();
-                if (u) {
-                    this.triggerSearch(`#user !${u}`)
-                } else {
-                    alert('Login first')
+                this.triggerSearch(`#user !${u}`)
+                if (!u) {
+                    showWarning('You are not logged in, so all user options are not available')
                 }
             }
             openMyPosts() {
                 let u = getCurrentUser();
-                if (u) {
-                    this.triggerSearch(`~${u}`)
-                } else {
-                    alert('Login first')
+                this.triggerSearch(`~${u}`)
+                if (!u) {
+                    showError('You are not logged in, so all post related actions might not work')
                 }
             }
             openRegisterPage() {
