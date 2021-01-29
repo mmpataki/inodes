@@ -82,7 +82,7 @@ public abstract class CollabService extends Observable {
     }
 
     public void comment(String user, String id, String comment) throws Exception {
-        AS.checkCreatePermission(user, DS.get(user, id));
+        AS.checkCommentPermission(user, DS.get(user, id));
         _comment(user, id, comment);
         notifyObservers("comment", new String[] {user, id, comment});
     }
