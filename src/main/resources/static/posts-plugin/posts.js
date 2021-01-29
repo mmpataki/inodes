@@ -23,6 +23,8 @@ class posts {
         return `<h3 class='posts-card-title'>${x}</h3>`
     }
 
+    getTags() { return [] }
+
     getEditor(obj) {
         let self = this;
         let renderable = function (obj) {

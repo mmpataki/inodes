@@ -61,7 +61,7 @@ class instances {
                     },
                     {
                         ele: 'h3',
-                        text: 'Manual onboarding'
+                        text: 'Manual instance entry'
                     },
                     {
                         ele: "div",
@@ -255,6 +255,9 @@ class instances {
             instances.forEach(inst => {
                 self.elems.suggestions.appendChild(render('docker', docker_instance(inst), x => x))
             })
+            if(instances.length == 0) {
+                self.elems.suggestions.innerHTML += 'Ooops.. looks like you don\'t have any active docker instances.'
+            }
         })
 
         return ret;
