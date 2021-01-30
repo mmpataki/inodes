@@ -25,3 +25,10 @@
     min-height: 10px;
     padding: 10px;
 }
+
+.app-console {
+    background-color: black;
+    color: white;
+    overflow: auto;
+    padding: 10px;
+}

@@ -277,7 +277,7 @@
                                 padding: "10px",
                                 'overflow-y': 'auto'
                             },
-                            text: `Error while processing \n${JSON.stringify(obj, null, '\t')}\n\nException: \n${e}`
+                            text: `Error while processing \n${JSON.stringify(obj, null, '\t')}\n\nException: \n${e.stack}`
                         })
                     }
                     return {
@@ -458,10 +458,12 @@
             }
             getContextButtons(klass, obj) {
                 let self = this;
+                let getLockIcon = () => obj.visibility != 'public' ? [{ ele: 'span', text: '&#128274;' }] : []
                 return {
                     ele: 'div',
                     classList: 'context-btns',
                     children: [
+                        ...getLockIcon(),
                         {
                             ele: 'span',
                             classList: 'context-btn',

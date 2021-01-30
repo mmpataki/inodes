@@ -255,7 +255,7 @@ class instances {
             instances.forEach(inst => {
                 self.elems.suggestions.appendChild(render('docker', docker_instance(inst), x => x))
             })
-            if(instances.length == 0) {
+            if (instances.length == 0) {
                 self.elems.suggestions.innerHTML += 'Ooops.. looks like you don\'t have any active docker instances.'
             }
         })
@@ -319,80 +319,167 @@ class instances {
                 ]
             }
         }
+        let card_url_template = function (k, v) {
+            return {
+                ele: 'span',
+                classList: 'urltag',
+                children: [
+                    {
+                        ele: 'a',
+                        text: k,
+                        attribs: { href: v, target: "_blank" },
+                    }
+                ]
+            }
+        }
         let card = {
             ele: "div",
             classList: "card",
             children: [
                 {
                     ele: "div",
-                    classList: "app-creds",
+                    classList: 'details',
                     children: [
                         {
-                            ele: "span",
-                            classList: "card-appcreds",
-                            text: "App credentials"
+                            ele: "div",
+                            classList: 'box-creds',
+                            children: [
+                                {
+                                    ele: "span",
+                                    classList: "card-boxcreds",
+                                    text: "Hostname / IP"
+                                },
+                                {
+                                    ele: "span",
+                                    classList: "card-boxusername",
+                                    text: `${obj.ipaddr}`
+                                }
+                            ]
                         },
                         {
-                            ele: "span",
-                            classList: "card-appusername",
-                            text: `${obj.appusername} / ${obj.apppassword}`
-                        }
+                            ele: "div",
+                            classList: "box-creds",
+                            children: [
+                                {
+                                    ele: "span",
+                                    classList: "card-boxcreds",
+                                    text: "Box credentials"
+                                },
+                                {
+                                    ele: "span",
+                                    classList: "card-boxusername",
+                                    text: `${obj.boxusername} / ${obj.boxpassword}`
+                                },
+
+                            ]
+                        },
+                        {
+                            ele: "div",
+                            classList: 'box-creds',
+                            children: [
+                                {
+                                    ele: "span",
+                                    classList: "card-boxcreds",
+                                    text: "Installation location"
+                                },
+                                {
+                                    ele: "span",
+                                    classList: "card-boxusername",
+                                    text: `${obj.installloc}`
+                                }
+                            ]
+                        },
+                        {
+                            ele: "div",
+                            classList: "app-creds",
+                            children: [
+                                {
+                                    ele: "span",
+                                    classList: "card-appcreds",
+                                    text: "App credentials"
+                                },
+                                {
+                                    ele: "span",
+                                    classList: "card-appusername",
+                                    text: `${obj.appusername} / ${obj.apppassword}`
+                                }
+                            ]
+                        },
+                        {
+                            ele: 'a',
+                            text: '...',
+                            styles: {
+                                cursor: 'pointer',
+                                display: obj.meta ? 'block' : 'none',
+                                'margin-left': '5px'
+                            },
+                            attribs: {
+                                title: 'Other metadata'
+                            },
+                            evnts: {
+                                click: function () {
+                                    this.nextSibling.style.display = this.nextSibling.style.display == 'none' ? 'block' : 'none';
+                                }
+                            }
+                        },
+                        {
+                            ele: "table",
+                            classList: "card-metadata-container",
+                            styles: { display: 'none' },
+                            children: []
+                        },
+                        {
+                            ele: "div",
+                            classList: "card-url-container",
+                            children: []
+                        },
                     ]
                 },
                 {
-                    ele: "div",
-                    classList: "box-creds",
+                    ele: 'div',
+                    classList: "icons",
                     children: [
                         {
-                            ele: "span",
-                            classList: "card-boxcreds",
-                            text: "Box credentials"
-                        },
-                        {
-                            ele: "span",
-                            classList: "card-boxusername",
-                            text: `${obj.boxusername} / ${obj.boxpassword}`
+                            ele: "a",
+                            classList: "card-boxlogin",
+                            attribs: {
+                                href: `ssh://${obj.boxusername}:${encodeURIComponent(obj.boxpassword)}@${obj.ipaddr}`,
+                                innerHTML: `<img alt='SSH' src="./instances-plugin/images/putty.png" style="width: 20px"/>`,
+                                title: 'SSH'
+                            }
                         },
                         {
                             ele: "a",
                             classList: "card-boxlogin",
                             attribs: {
-                                href: `ssh://${obj.boxusername}:${encodeURIComponent(obj.boxpassword)}@${obj.ipaddr}`
-                            },
-                            text: "Login"
-                        }
-                    ]
-                },
-                {
-                    ele: "table",
-                    classList: "card-metadata-container",
-                    children: []
-                },
-                {
-                    ele: 'div',
-                    styles: {
-
-                    },
-                    children: [
+                                href: `scp://${obj.boxusername}:${encodeURIComponent(obj.boxpassword)}@${obj.ipaddr}`,
+                                innerHTML: `<img alt='SCP' src="./instances-plugin/images/winscp.jpg" style="width: 20px"/>`,
+                                title: 'SCP'
+                            }
+                        },
                         {
-                            ele: "table",
-                            classList: "card-metadata-container",
-                            children: []
+                            ele: "a",
+                            classList: "card-boxlogin",
+                            attribs: {
+                                href: `ms-rd://full%20address:s:${obj.ipaddr}`,
+                                innerHTML: `<img alt='RDP' src="./instances-plugin/images/rdp.png" style="width: 20px"/>`,
+                                title: 'RDP'
+                            }
                         }
                     ]
-                },
+                }
             ]
         }
+        let start = 6;
         obj.urls.forEach(u => {
-            card.children[2].children.push(CARD_META_URL(u.tag, u.url, 'a'))
+            card.children[0].children[start].children.push(card_url_template(u.tag, u.url))
         })
         if (obj.meta) {
-            card.children[3].text = 'Other metadata'
             obj.meta.forEach(u => {
-                card.children[3].children[0].children.push(CARD_META_URL(u.key, u.value, 'span'))
+                card.children[0].children[start - 1].children.push(CARD_META_URL(u.key, u.value, 'span'))
             })
         }
-        return render('apps', card, z => 0);
+        return render('instances', card, e => 0);
     }
 
     getTags() {

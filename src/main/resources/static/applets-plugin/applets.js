@@ -19,7 +19,25 @@ class applets {
                     {
                         ele: 'script',
                         attribs: {
-                            innerHTML: obj.js
+                            innerHTML: `
+                                (function() {
+                                    let condiv = document.createElement('pre')
+                                    condiv.classList = 'app-console'
+                                    document.currentScript.parentNode.parentNode.appendChild(condiv)
+                                    let console = {
+                                        log : function(val) {
+                                            if (!(typeof val === 'string' || val instanceof String)) {
+                                                val = JSON.stringify(val, null, 4)
+                                            }
+                                            condiv.innerText += val + '\\n'
+                                        }
+                                    }
+                                    let _xxxxx___ = function() {
+                                        ${obj.js}
+                                    }
+                                    _xxxxx___();
+                                })();
+                            `
                         }
                     }
                 ]

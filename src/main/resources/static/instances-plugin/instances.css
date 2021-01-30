@@ -1,48 +1,53 @@
-.apps-ip-addr, .apps-urls-label, .apps-add-url, .apps-install-loc, .apps-app-tag, .apps-app-url, .apps-app-urls, .apps-app-user, .apps-app-password , .apps-box-user ,.apps-box-password {
+.instances-ip-addr, .instances-urls-label, .instances-add-url, .instances-install-loc, .instances-app-tag, .instances-app-url, .instances-app-urls, .instances-app-user, .instances-app-password , .instances-box-user ,.instances-box-password {
     margin: 5px;
 }
 
-.apps-urls-label {
+.instances-urls-label {
     display: block;
     margin-top: 5px;
 }
 
-.apps-remove-url {
+.instances-remove-url {
 
 }
 
-.apps-card-urls {
+.instances-card-urls {
 
 }
 
-.apps-card-urltag {
+.instances-card-urltag {
 
 }
 
-.apps-card-url {
+.instances-card-url {
 
 }
 
-.apps-card-boxcreds, .apps-card-appcreds {
+.instances-card-boxcreds, .instances-card-appcreds {
     margin: 5px;
     margin-right: 10px;
     font-style: italic;
     color: grey;
 }
 
-.apps-card-boxusername, .apps-card-boxpassword, .apps-card-appusername, .apps-card-apppassword {
+.instances-card-boxusername, .instances-card-boxpassword, .instances-card-appusername, .instances-card-apppassword {
     font-weight: bold;
 }
 
-.apps-card-boxlogin {
-    margin-left: 10px;
+.instances-card-boxlogin {
+    display: block;
+    padding: 2px;
+    border-bottom: solid 1px gray;
 }
 
-.apps-card-metadata-container {
-    margin-left: 20px;
+.instances-card-metadata-container {
 }
 
-.apps-card-metatag {
+.instances-card-url-container {
+    margin-top: 10px;
+}
+
+.instances-card-metatag {
     font-style: italic;
     color: gray;
     margin: 5px;
@@ -51,7 +56,7 @@
 }
 
 
-.apps-suggestions {
+.instances-suggestions {
     
 }
 
@@ -66,4 +71,39 @@
     width: 300px;
     padding: 10px;
     margin: 15px;
+}
+
+.instances-urltag {
+    padding: 5px;
+    border-radius: 8px;
+    border: solid 1px lightpink;
+    display: inline-block;
+    margin: 1px 2px;
+    text-transform: lowercase;
+}
+
+.instances-urltag a::after {
+    content: url('./images/outlink.svg');
+    margin-left: 3px;
+}
+
+.instances-urltag a {
+    font-style: italic;
+}
+
+.instances-urltag a:visited {
+    color: blue;
+}
+
+.instances-icons {
+    float: right;
+    top: 30px;
+    position: absolute;
+    bottom: 0px;
+    right: 0px;
+}
+
+.instances-details {
+    float: left;
+    width: 90%;
 }
