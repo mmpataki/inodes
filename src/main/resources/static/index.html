@@ -20,9 +20,6 @@
                     self.populateClassTypes(JSON.parse(data.response));
                 })
                 this.setupSearch();
-                this.populateFacets('tags', 10, 'toptags', '#');
-                this.populateFacets('type', 10, 'posttypes', '%');
-                this.populateFacets('owner', 10, 'topcontributors', '~');
                 this.showUserInfo();
             }
             setupSearch() {
@@ -31,18 +28,16 @@
                 console.log(q)
                 this.doSearch(q)
             }
-            populateFacets(typ, max = 10, elemId, searchChar) {
+            populateFacets(facets, elemId, searchChar) {
                 let self = this;
-                get(`/trendingTags?type=${typ}&max=${max}`).then(d => {
-                    let dd = g(elemId)
-                    let tags = [];
-                    let resp = JSON.parse(d.response)
-                    Object.keys(resp).forEach(k => tags.push({ item: k, hits: resp[k] }))
-                    tags.sort((a, b) => b.hits - a.hits);
-                    tags.forEach(tag => {
-                        dd.appendChild(self.createTagElement(tag.item, searchChar, tag.hits))
-                        dd.appendChild(document.createElement('br'))
-                    })
+                let dd = g(elemId)
+                dd.innerHTML = ''
+                let tags = [];
+                Object.keys(facets).forEach(k => facets[k] > 0 ? tags.push({ item: k, hits: facets[k] }) : 1)
+                tags.sort((a, b) => b.hits - a.hits);
+                tags.forEach(tag => {
+                    dd.appendChild(self.createTagElement(tag.item, searchChar, tag.hits))
+                    dd.appendChild(document.createElement('br'))
                 })
             }
             populateClassTypes(data) {
@@ -167,19 +162,22 @@
                         "Content-Type": "application/json"
                     }
                 )
-                .then(e => showSuccess('Posted successfully'))
-                .catch(msg => showError(msg))
+                    .then(e => showSuccess('Posted successfully'))
+                    .catch(msg => showError(msg))
             }
             doSearch(str, offset = 0, pageSize = 10) {
                 this.search(str, offset, pageSize).then(d => {
                     this.results = JSON.parse(d.response)
-                    this.showResults();
+                    this.showResults();    
+                    this.populateFacets(this.results.facetResults['tags'], 'toptags', '#');
+                    this.populateFacets(this.results.facetResults['type'], 'posttypes', '%');
+                    this.populateFacets(this.results.facetResults['owner'],'topcontributors', '~');
                 })
             }
             search(str, offset = 0, pageSize = 10) {
                 str = str ? str : ""
                 str = str.replace(/\!\w+/, "")
-                return get(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}`)
+                return get(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}&fq=tags&fq=type&fq=owner`)
             }
             showResults() {
                 let d = g('posts');
@@ -232,7 +230,7 @@
                 if (!this.loggedIn()) {
                     return showError('Login to delete content')
                 }
-                if(!confirm('Are you sure to delete this content?')) {
+                if (!confirm('Are you sure to delete this content?')) {
                     return;
                 }
                 delet(`/data/${id}`)
@@ -250,13 +248,13 @@
             }
             downvoteInode(id) {
                 post(`/posts/downvote/${id}`, {})
-                .then(a => showSuccess(a.response))
-                .catch(m => showError(m));
+                    .then(a => showSuccess(a.response))
+                    .catch(m => showError(m));
             }
             upvoteInode(id) {
-                post(`/posts/upvote/${id}`,{})
-                .then(a => showSuccess(a.response))
-                .catch(m => showError(m));
+                post(`/posts/upvote/${id}`, {})
+                    .then(a => showSuccess(a.response))
+                    .catch(m => showError(m));
             }
             showCard(d, obj) {
                 let self = this;
@@ -285,7 +283,9 @@
                         classList: 'container',
                         styles: {
                             borderLeft: `solid 3px ${self.randColor()}`,
-                            position: 'relative'
+                            position: 'relative',
+                            display: 'flex',
+                            'flex-direction': 'column'
                         },
                         children: [
                             self.getContextButtons(klass, obj),
@@ -403,6 +403,10 @@
                                 children: [
                                     {
                                         ele: 'div',
+                                        styles: {
+                                            display: 'flex',
+                                            marginBottom: '10px'
+                                        },
                                         children: [
                                             {
                                                 ele: 'textarea',
@@ -411,22 +415,24 @@
                                                     rows: 2
                                                 },
                                                 styles: {
-                                                    width: '90%'
+                                                    width: '90%',
+                                                    border: 'solid 1px gray',
+                                                    resize: 'none'
                                                 }
                                             },
                                             {
                                                 ele: 'button',
                                                 text: 'Post',
                                                 styles: {
-                                                    width: '8%',
-                                                    height: '40px'
+                                                    width: '10%'
                                                 },
                                                 evnts: {
                                                     click: function (e) {
                                                         post(
                                                             `/posts/comment/${obj.id}`,
                                                             g(`comment-${obj.id}`).value
-                                                        )
+                                                        ).then(x => self.addCommentToList(`oldcomments-${obj.id}`, JSON.parse(x.response)))
+                                                         .catch(e => showError(e.message))
                                                     }
                                                 }
                                             }
@@ -476,7 +482,7 @@
                                     document.body.appendChild(x)
 
                                     let cardEle = this.parentNode.nextSibling.childNodes[0], cardParent = cardEle.parentNode;
-                                    
+
                                     let closeBtn = document.createElement('span')
                                     closeBtn.classList = 'closefullscreen-btn'
                                     closeBtn.innerHTML = '&#x2715;'
@@ -500,18 +506,32 @@
                 this.triggerSearch(`#user !${user}`)
             }
             commentInode(obj) {
+                let self = this;
                 g(`comment-pane-${obj.id}`).style.display = "block";
                 let container = g(`oldcomments-${obj.id}`);
                 container.innerHTML = ""
                 get(`/posts/comments/${obj.id}`).then(comments => {
                     comments = JSON.parse(comments.response)
                     comments.sort((a, b) => a.time - b.time).forEach(comment => {
-                        let c = document.createElement('div')
-                        c.classList = "inode-comment-card"
-                        c.innerHTML = `${JSON.parse(comment.comment)} - <a href="javascript:inodes.searchUser('${comment.user}')">${comment.user}</a>`
-                        container.appendChild(c)
+                        self.addCommentToList(`oldcomments-${obj.id}`, comment)
                     })
                 })
+            }
+            addCommentToList(parentId, comment) {
+                let container = g(parentId);
+                let c = document.createElement('div')
+                c.classList = "inode-comment-card"
+                c.innerHTML = `${JSON.parse(comment.comment).replaceAll(/@([0-9A-Za-z]+)/g, '<a href="/?q=%23user !$1" target="_blank" >$1</a>')} - <a href="/?q=%23user !${comment.user}">${comment.user}</a> ${this.getCommentContextButtons(comment)}`
+                container.appendChild(c)
+            }
+            getCommentContextButtons(c) {
+                if(c.user == getCurrentUser()) {
+                    return `<span onclick='inodes.deleteComment("${c.postid}/${c.user}/${c.time}", this.parentElement)' class='comment-action-btn'>delete</span>`
+                }
+                return ''
+            }
+            deleteComment(id, parEle) {
+                delet(`/posts/comment/${id}`).then(parEle.remove())
             }
             getLocalDateTime(ep) {
                 var d = new Date(ep);
@@ -586,8 +606,8 @@
                         'Content-Type': 'application/json'
                     }
                 )
-                .then(() => showSuccess('registration successful. verify your email address by clicking on the link in the email sent to you'))
-                .catch(m => showError(`registration failed. reason: ${m}`))
+                    .then(() => showSuccess('registration successful. verify your email address by clicking on the link in the email sent to you'))
+                    .catch(m => showError(`registration failed. reason: ${m}`))
             }
             triggerSearch(q) {
                 c('searchbox').value = q;
@@ -718,10 +738,12 @@
 </head>
 
 <body>
-    <div class="content">
-        <div class="top">
+    <div class="title-bar">
+        <div class="maxwidth" style="margin: auto;">
             <span class="title">i-nodes</span>
         </div>
+    </div>
+    <div class="content maxwidth">
         <div id="editor-pane">
             <fieldset>
                 <span onclick="inodes.closeEditor()" class="closebtn">x</span>
@@ -730,15 +752,14 @@
                 <label for="editor">Post editor</label><br />
                 <div id="editor"></div><br />
                 <label for="tags-editor">Tags</label><br />
-                <input type="text" id="tags-editor"></input><br/>
+                <input type="text" id="tags-editor"></input><br />
                 <input type="checkbox" id="private-post">Make this a private post</input>
                 <br /><br />
                 <button onclick="inodes.post()">Post</button>
             </fieldset>
         </div>
         <div class="ppane">
-            <span id="server-messages"></span>
-            <div class="search-pane">
+            <div class="searchbox-container">
                 <input type="text" placeholder="search" class="searchbox" oninput="inodes.doSearch(this.value)" />
             </div>
             <div class="posts-trending">

@@ -20,7 +20,16 @@ public abstract class DataService extends Observable {
 
     public static class SearchResponse {
         List<Document> results;
+        Map<String, Map<String, Long>> facetResults;
         long totalResults;
+
+        public Map<String, Map<String, Long>> getFacetResults() {
+            return facetResults;
+        }
+
+        public void setFacetResults(Map<String, Map<String, Long>> facetResults) {
+            this.facetResults = facetResults;
+        }
 
         public List<Document> getResults() {
             return results;
@@ -58,8 +67,8 @@ public abstract class DataService extends Observable {
         });
     }
 
-    public SearchResponse search(String user, String q, long offset, int pageSize, List<String> sortOn) throws Exception {
-        SearchResponse resp = _search(user, q, null, offset, pageSize, sortOn);
+    public SearchResponse search(String user, String q, long offset, int pageSize, List<String> sortOn, List<String> fq, Integer fqLimit) throws Exception {
+        SearchResponse resp = _search(user, q, null, offset, pageSize, sortOn, fq, fqLimit);
         notifyObservers(ObservableEvents.SEARCH, resp.getResults());
         return resp;
     }
@@ -71,7 +80,7 @@ public abstract class DataService extends Observable {
 
     public Document get(String user, String id) throws Exception {
         try {
-            return _search(user, "", id, 0, 1, null).getResults().get(0);
+            return _search(user, "", id, 0, 1, null, null, 0).getResults().get(0);
         } catch (IndexOutOfBoundsException i) {
             throw new NoSuchDocumentException(id);
         }
@@ -112,7 +121,7 @@ public abstract class DataService extends Observable {
 
     protected abstract void _updateDoc(String user, Document doc);
 
-    protected abstract SearchResponse _search(String user, String q, String id, long offset, int pageSize, List<String> sortOn) throws Exception;
+    protected abstract SearchResponse _search(String user, String q, String id, long offset, int pageSize, List<String> sortOn, List<String> fq, Integer fqLimit) throws Exception;
 
     protected abstract void _deleteObj(String id) throws IOException, Exception;
 

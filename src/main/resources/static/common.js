@@ -101,7 +101,7 @@ function showWarning(x) {
 function showMessage(x, col) {
     let d = document.createElement('div')
     d.classList = 'fade-out'
-    d.style = `position: absolute; right: 10px; top: 10px; background-color: ${col.background}; border: solid 2px ${col.border}; border-radius: 3px; padding: 10px; color: ${col.color}; font-size: 1em`
+    d.style = `position: fixed; right: 10px; top: 10px; background-color: ${col.background}; border: solid 2px ${col.border}; border-radius: 3px; padding: 10px; color: ${col.color}; font-size: 1em`
     d.innerText = x
     document.body.appendChild(d)
     setTimeout(() => d.remove(), 8000)

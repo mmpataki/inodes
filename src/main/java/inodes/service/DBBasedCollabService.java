@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class DBBasedCollabService extends CollabService {
@@ -81,12 +80,23 @@ public class DBBasedCollabService extends CollabService {
     }
 
     @Override
-    protected void _comment(String user, String id, String comment) throws Exception {
-        PreparedStatement ps = CONN.prepareStatement("INSERT into pcomments (postid, userid, itime, txt) values (?, ?, ?, ?)");
+    protected Comment _comment(String user, String id, String comment) throws Exception {
+        Comment c = new Comment(id, user, System.currentTimeMillis(), comment);
+        PreparedStatement ps = CONN.prepareStatement("INSERT INTO pcomments (postid, userid, itime, txt) values (?, ?, ?, ?)");
         ps.setString(1, id);
         ps.setString(2, user);
-        ps.setLong(3, System.currentTimeMillis());
+        ps.setLong(3, c.time);
         ps.setString(4, comment);
+        ps.executeUpdate();
+        return c;
+    }
+
+    @Override
+    protected void _deleteComment(String id, String owner, long time) throws Exception {
+        PreparedStatement ps = CONN.prepareStatement("DELETE FROM pcomments WHERE postid=? AND userid=? AND itime=?");
+        ps.setString(1, id);
+        ps.setString(2, owner);
+        ps.setLong(3, time);
         ps.executeUpdate();
     }
 

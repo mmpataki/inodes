@@ -9,8 +9,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public abstract class CollabService extends Observable {
@@ -33,10 +34,29 @@ public abstract class CollabService extends Observable {
             new Thread(() -> {
                 try {
                     String chunks[] = (String[]) o;
+                    String comment = (new Gson()).fromJson(chunks[2], String.class);
+
                     Document d = DS.get("admin", chunks[1]);
                     UserService.User owner = US.getUser(d.getOwner());
+
+                    Set<String> rcpnts = new HashSet<String>();
+                    rcpnts.add(owner.getEmail());
+                    Matcher m = Pattern.compile("\\@([0-9A-Za-z]+)").matcher(comment);
+                    while(m.find()) {
+                        try {
+                            String uName = m.group(1);
+                            System.out.println(uName);
+                            String email = US.getUser(uName).getEmail();
+                            if(email != null && !email.isEmpty()) {
+                                rcpnts.add(email);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+
                     if(owner.getEmail() != null) {
-                        ES.sendEmail(owner.getEmail(), getCommentEmailSubject(chunks[0]), getCommentEmailBody(chunks[0], chunks[1], (new Gson()).fromJson(chunks[2], String.class)));
+                        ES.sendEmail(rcpnts, getCommentEmailSubject(chunks[0]), getCommentEmailBody(chunks[0], chunks[1], comment));
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -81,13 +101,22 @@ public abstract class CollabService extends Observable {
         _downvote(user, id);
     }
 
-    public void comment(String user, String id, String comment) throws Exception {
+    public Comment comment(String user, String id, String comment) throws Exception {
         AS.checkCommentPermission(user, DS.get(user, id));
-        _comment(user, id, comment);
+        Comment c = _comment(user, id, comment);
         notifyObservers("comment", new String[] {user, id, comment});
+        return c;
     }
 
-    protected abstract void _comment(String user, String id, String comment) throws Exception;
+    // id's made up of three parts
+    public void deleteComment(String user, String id, String owner, long time) throws Exception {
+        AS.checkCommentDeletePermission(user, id, owner, time, DS.get(user, id));
+        _deleteComment(id, owner, time);
+    }
+
+    protected abstract Comment _comment(String user, String id, String comment) throws Exception;
+
+    protected abstract void _deleteComment(String id, String owner, long time) throws Exception;
 
     protected abstract void _downvote(String user, String id) throws Exception;
 

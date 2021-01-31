@@ -9,7 +9,7 @@
     display: none;
 }
 body {
-    
+    margin: 0px;
 }
 
 #toptags {
@@ -117,13 +117,11 @@ body {
 .inode-container {
     border-bottom: solid 1px lightgray;
     padding: 5px;
-    margin-bottom: 15px;
     padding: 10px 10px 0px 10px;
     border: solid 1px lightgray;
-    margin: 10px;
+    margin: 20px;
     border-radius: 5px;
     background-color: #fdfdfd;
-    border-left: solid 3px orangered;
 }
 
 .inode-user-time {
@@ -153,15 +151,19 @@ body {
 
 .searchbox {
     width: 100%;
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
-    box-sizing: border-box;
     font-size: 1.3em;
-    border: solid 2px skyblue;
+    border-radius: 5px;
+}
+
+.searchbox-container {
+    height: 100%;
+    padding: 10px;
+    width: 98%;
+    display: inline-block;
+    text-align: center;
 }
 
 .search-pane {
-    margin-bottom: 10px;
 }
 
 #editor-pane {
@@ -199,24 +201,33 @@ body {
     padding: 5px;
 }
 
+.posts-container {
+    margin-top: 10px;
+}
+
 .loginui {
     display: inline;
 }
 
 .title {
     font-size: 28px;
+    padding-left: 10px;
+    color: black;
 }
 
-.top {
+.title-bar {
     position: relative;
     margin-bottom: 10px;
     font-weight: bolder;
+    background-color: #eaeaea;
     font-family: monospace;
-    
+}
+
+.maxwidth {
+    max-width: 950px;
 }
 
 .content {
-    max-width: 950px;
     margin: auto;
 }
 
@@ -357,7 +368,7 @@ animation: fadeOut ease 8s;
 }
 
 ::-webkit-scrollbar {
-    width: 4px;
+    width: 3px;
     height: 4px;
 }
     
@@ -369,6 +380,16 @@ animation: fadeOut ease 8s;
     
     /* Handle */
 ::-webkit-scrollbar-thumb {
-    background: red;
+    background: indigo;
     border-radius: 5px;
+}
+
+.comment-action-btn {
+    font-size: .8em;
+    color: lightgray;
+    cursor: pointer;
+}
+
+.comment-action-btn:hover {
+    color:gray;
 }

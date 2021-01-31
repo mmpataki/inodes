@@ -147,9 +147,10 @@ public class RateLimitFilter implements Filter {
         return new UserService.User(chunks[0], chunks[1]);
     }
 
-    private void sendNoAuth(HttpServletRequest req, HttpServletResponse r) {
+    private void sendNoAuth(HttpServletRequest req, HttpServletResponse r) throws IOException {
         r.setStatus(401);
         r.setHeader("401", "Unauthorized");
+        r.getOutputStream().write("{\"message\": \"Unauthorized, login first!\"}".getBytes());
     }
 
     @Override

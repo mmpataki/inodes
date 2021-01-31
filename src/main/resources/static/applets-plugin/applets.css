@@ -27,8 +27,19 @@
 }
 
 .app-console {
-    background-color: black;
-    color: white;
+    background-color: transparent;
+    border: solid 1px lightgray;
+    color: black;
     overflow: auto;
     padding: 10px;
+    display: none;
+    max-height: 200px;
+    margin-top: 0px;
+}
+
+.app-console-title {
+    margin-top: 10px;
+    cursor: pointer;
+    font-style: underline;
+    display: none;
 }

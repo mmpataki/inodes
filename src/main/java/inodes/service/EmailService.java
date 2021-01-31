@@ -7,7 +7,10 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import javax.mail.*;
 import javax.mail.internet.*;
+import java.util.List;
 import java.util.Properties;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class EmailService {
@@ -28,13 +31,13 @@ public class EmailService {
         session = Session.getInstance(prop);
     }
 
-    public void sendEmail(String to, String subject, String body) throws Exception {
+    public void sendEmail(Set<String> to, String subject, String body) throws Exception {
 
         System.out.println("to = " + to + ", subject = " + subject + ", body = " + body);
 
         Message message = new MimeMessage(session);
         message.setFrom(new InternetAddress(conf.getProperty("emailservice.sender.email.id")));
-        message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(to));
+        message.setRecipients(Message.RecipientType.BCC, InternetAddress.parse(to.stream().collect(Collectors.joining(";"))));
         message.setSubject(subject);
 
         MimeBodyPart mimeBodyPart = new MimeBodyPart();

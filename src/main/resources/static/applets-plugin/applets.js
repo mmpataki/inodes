@@ -21,11 +21,20 @@ class applets {
                         attribs: {
                             innerHTML: `
                                 (function() {
+                                    let title = document.createElement('a')
+                                    title.innerHTML = "show console"
+                                    title.classList = 'app-console-title'
+                                    title.addEventListener('click', function () {
+                                        condiv.style.display = condiv.style.display != 'block' ? 'block' : 'none'
+                                        title.innerHTML = title.innerHTML.includes('show') ? 'hide console' : 'show console'
+                                    })
                                     let condiv = document.createElement('pre')
                                     condiv.classList = 'app-console'
+                                    document.currentScript.parentNode.parentNode.appendChild(title)
                                     document.currentScript.parentNode.parentNode.appendChild(condiv)
                                     let console = {
                                         log : function(val) {
+                                            title.style.display = 'block'
                                             if (!(typeof val === 'string' || val instanceof String)) {
                                                 val = JSON.stringify(val, null, 4)
                                             }

@@ -6,10 +6,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 @Service
-public abstract class UserService extends Observable{
+public abstract class UserService extends Observable {
 
     @Autowired
     EmailService ES;
@@ -21,12 +24,12 @@ public abstract class UserService extends Observable{
             String url = String.format("http://%s/auth/validate/%s?tok=%s", Inodes.getLocalAddr(), u.getUserName(), u.__getRegTok());
 
             ES.sendEmail(
-                u.getEmail(),
-                "Verify your account",
-                String.format(
-                    "Thanks for registering on inodes. <br/><br/><a href='%s'>Click here</a> to verify your inodes account, or open this url manually<br/>%s<br/><br/>Intial credentials<br/>%s / %s",
-                    url, url, u.getUserName(), u.getPassword()
-                )
+                    Collections.singleton(u.getEmail()),
+                    "Verify your account",
+                    String.format(
+                            "Thanks for registering on inodes. <br/><br/><a href='%s'>Click here</a> to verify your inodes account, or open this url manually<br/>%s<br/><br/>Intial credentials<br/>%s / %s",
+                            url, url, u.getUserName(), u.getPassword()
+                    )
             );
         });
     }
@@ -41,6 +44,7 @@ public abstract class UserService extends Observable{
         _register(cred);
         notifyObservers("register", cred);
     }
+
     public abstract void _register(User cred) throws Exception;
 
     public abstract User getUser(String userName) throws Exception;
@@ -52,11 +56,11 @@ public abstract class UserService extends Observable{
 
 
     public void updateUser(String modifier, User u) throws Exception {
-        if(!modifier.equals(u.getUserName()) && !isAdmin(modifier)) {
+        if (!modifier.equals(u.getUserName()) && !isAdmin(modifier)) {
             throw new UnAuthorizedException("Unauthorized");
         }
         User modifierUser = getUser(modifier);
-        if(u.getRoles() != null) {
+        if (u.getRoles() != null) {
             for (String role : u.getRoles().split(",")) {
                 if (!modifierUser.getRoles().contains(role)) {
                     throw new UnAuthorizedException("You are not authorized to modify roles of this user");
@@ -66,7 +70,7 @@ public abstract class UserService extends Observable{
 
         User origUser = getUser(u.getUserName());
         for (String role : origUser.getRoles().split(",")) {
-            if(!modifierUser.getRoles().contains(role)) {
+            if (!modifierUser.getRoles().contains(role)) {
                 throw new UnAuthorizedException("You are not authorized to modify roles of this user");
             }
         }
@@ -74,14 +78,14 @@ public abstract class UserService extends Observable{
         // this origUser is cached, so don't update it right now, let implementation do it.
         User copyUser = origUser.clone();
 
-        if(u.getRoles() != null)
+        if (u.getRoles() != null)
             copyUser.setRoles(u.getRoles());
 
-        if(isAdmin(modifier) || modifier.equals(u.getUserName())) {
+        if (isAdmin(modifier) || modifier.equals(u.getUserName())) {
             copyUser.setFullName(u.getFullName());
             copyUser.setEmail(u.getEmail());
             copyUser.setTeamsUrl(u.getTeamsUrl());
-            if(u.getPassword() != null && !u.getPassword().isEmpty())
+            if (u.getPassword() != null && !u.getPassword().isEmpty())
                 copyUser.setPassword(u.getPassword());
         }
 
@@ -173,7 +177,8 @@ public abstract class UserService extends Observable{
             this.roles = roles;
         }
 
-        User(){}
+        User() {
+        }
 
         public String getUserName() {
             return userName;

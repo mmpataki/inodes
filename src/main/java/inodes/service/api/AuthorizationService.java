@@ -39,6 +39,12 @@ public abstract class AuthorizationService {
         return AS.getUser(userId).getRoles().contains("COMMENT") && doc.commentable();
     }
 
+    public void checkCommentDeletePermission(String userId, String id, String owner, long time, Document doc) throws Exception {
+        if(!userId.equals(owner) || !AS.getUser(userId).getRoles().contains("COMMENT") || !doc.commentable()) {
+            throw new UnAuthorizedException(userId + " has no permission to delete comment from " + owner);
+        }
+    }
+
     public boolean checkTagCreatePermission(String userId) throws Exception {
         return AS.getUser(userId).getRoles().contains("TAGCREATE");
     }

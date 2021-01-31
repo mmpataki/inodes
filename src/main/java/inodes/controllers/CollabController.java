@@ -5,9 +5,7 @@ import inodes.service.api.CollabService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @CrossOrigin
@@ -27,8 +25,16 @@ public class CollabController extends AuthenticatedController {
     }
 
     @RequestMapping(value = "/posts/comment/{id}", method = RequestMethod.POST)
-    public void comment(@PathVariable String id, @RequestBody String comment, @ModelAttribute("loggedinuser") String user) throws Exception {
-        CS.comment(user, id, comment);
+    public Comment comment(@PathVariable String id, @RequestBody String comment, @ModelAttribute("loggedinuser") String user) throws Exception {
+        if(comment.trim().isEmpty()) {
+            throw new Exception("Empty comments not allowed!");
+        }
+        return CS.comment(user, id, comment);
+    }
+
+    @RequestMapping(value = "/posts/comment/{postid}/{owner}/{time}", method = RequestMethod.DELETE)
+    public void deleteComment(@PathVariable("postid") String postId, @PathVariable("owner") String owner, @PathVariable("time") String time, @ModelAttribute("loggedinuser") String user) throws Exception {
+        CS.deleteComment(user, postId, owner, Long.parseLong(time));
     }
 
     @RequestMapping(value = "/posts/comments/{id}", method = RequestMethod.GET)

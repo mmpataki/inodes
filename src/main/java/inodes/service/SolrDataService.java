@@ -33,7 +33,7 @@ public class SolrDataService extends DataService {
     }
 
     private String getSearchQuery(String userId, String str, String id) {
-        String visibility = String.format("visibility:(public OR \"\"%s) AND ", userId == null ? "" : " OR \"" + userId +"\"");
+        String visibility = String.format("visibility:(public OR \"\"%s) AND ", userId == null ? "" : " OR \"" + userId + "\"");
         if (id != null) {
             return String.format("%s id:(%s)", visibility, id);
         }
@@ -71,17 +71,25 @@ public class SolrDataService extends DataService {
 
     }
 
-    public SearchResponse _search(String userId, String q, String id, long offset, int pageSize, List<String> sortOn) throws Exception {
+    public SearchResponse _search(String userId, String q, String id, long offset, int pageSize, List<String> sortOn, List<String> fq, Integer fqLimit) throws Exception {
         SolrQuery query = new SolrQuery();
         q = getSearchQuery(userId, q, id);
         System.out.println(q);
         query.set("q", q);
         query.setStart((int) offset);
 
+        if (fq != null && !fq.isEmpty()) {
+            query.setFacet(true);
+            query.setFacetLimit(fqLimit < 1 ? 10 : fqLimit);
+            query.setFacetSort("count");
+            fq.forEach(ff -> query.addFacetField(ff));
+        }
+
         QueryResponse response = solr.query(query);
+
+        // docs
         SolrDocumentList docList = response.getResults();
         List<Document> docs = new ArrayList<>(docList.size());
-
         for (SolrDocument doc : docList) {
             Document d = new Document();
             try {
@@ -98,9 +106,23 @@ public class SolrDataService extends DataService {
             docs.add(d);
         }
 
+        // facets
+        List<FacetField> ffs = response.getFacetFields();
+        Map<String, Map<String, Long>> facetResults = new HashMap<>();
+        if(ffs != null) {
+            ffs.forEach(ff -> {
+                Map<String, Long> m = new HashMap<>();
+                facetResults.put(ff.getName(), m);
+                ff.getValues().forEach(fc -> {
+                    m.put(fc.getName(), fc.getCount());
+                });
+            });
+        }
+
         SearchResponse resp = new SearchResponse();
         resp.setResults(docs);
         resp.setTotalResults(response.getResults().getNumFound());
+        resp.setFacetResults(facetResults);
 
         return resp;
     }
@@ -118,7 +140,7 @@ public class SolrDataService extends DataService {
         idoc.addField("ctime", doc.getPostTime());
         idoc.addField("owner", doc.getOwner());
         idoc.addField("visibility", doc.getVisibility());
-        if(doc.getId() != null && !doc.getId().isEmpty()) {
+        if (doc.getId() != null && !doc.getId().isEmpty()) {
             idoc.setField("id", doc.getId());
         }
         try {
@@ -131,7 +153,7 @@ public class SolrDataService extends DataService {
 
     @Override
     public Map<String, Long> getTopTags(String type, int max) throws Exception {
-        if(max <= 0) {
+        if (max <= 0) {
             max = 10;
         }
         return getFacets("*", max, "count", Arrays.asList(type));
@@ -142,9 +164,9 @@ public class SolrDataService extends DataService {
         q.setQuery(sq);
         q.setFacet(true);
         q.setFacetLimit(max);
-        if(sortField != null)
+        if (sortField != null)
             q.setFacetSort(sortField);
-        if(facetFields != null)
+        if (facetFields != null)
             facetFields.forEach(ff -> q.addFacetField(ff));
 
         List<FacetField> ffs = solr.query(q).getFacetFields();
