@@ -2,13 +2,21 @@ class posts {
 
     constructor() {
         this.elems = {}
+        this.extensions = [{
+            type: 'output',
+            regex: new RegExp(`<([A-Za-z]+)>`, 'g'),
+            replace: `<$1 class="shdn-$1">`
+        }]
     }
 
     getCard(obj) {
         let pre = document.createElement('div');
         pre.classList = "preview"
-        showdown.setFlavor('github');
-        var converter = new showdown.Converter()
+        var converter = new showdown.Converter({
+            extensions: this.extensions,
+            noHeaderId: true // important to add this, else regex match doesn't work
+        })
+        converter.setFlavor('github');
         try {
             obj = JSON.parse(obj.content)
             pre.innerHTML = this.getTitle(obj.title) + converter.makeHtml(obj.content);

@@ -19,3 +19,22 @@
 .posts-card-title {
     margin: 5px 0px;
 }
+
+.shdn-dark-pre {
+    border-left: 2px solid #f47920;
+    font-size: 1.1em;
+}
+
+.shdn-pre {
+    font-size: 1.1em;
+    margin-left: 10px;
+}
+
+.shdn-code {
+}
+
+.shdn-blockquote {
+    border-left: 2px solid #f47920;
+    padding: 1px 10px;
+    background-color: #f1f1f1;
+}

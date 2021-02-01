@@ -47,7 +47,7 @@ class instances {
             }
             return {
                 ele: "div",
-                id: "app-editor",
+                iden: "app-editor",
                 attribs: { classList: "pane" },
                 children: [
                     {

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>i-nodes</title>
     <link rel="stylesheet" href="./index.css">
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/picnic"> -->
     <!-- <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script> -->
     <script src="/common.js"></script>
     <script>
@@ -464,7 +465,7 @@
             }
             getContextButtons(klass, obj) {
                 let self = this;
-                let getLockIcon = () => obj.visibility != 'public' ? [{ ele: 'span', text: '&#128274;' }] : []
+                let getLockIcon = () => obj.visibility != 'public' ? [{ ele: 'span', text: '&#128274;', attribs: {title: 'Private (only visible to you)'} }] : []
                 return {
                     ele: 'div',
                     classList: 'context-btns',
@@ -535,7 +536,7 @@
             }
             getLocalDateTime(ep) {
                 var d = new Date(ep);
-                return `${d.toLocaleDateString()}<br/>${d.toLocaleTimeString()}`
+                return `${d.toLocaleDateString()}`
             }
             randColor() {
                 var letters = '0123456789ABCDEF';
