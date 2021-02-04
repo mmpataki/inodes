@@ -206,7 +206,8 @@ class edcresconfig {
 
     getContent() {
         if(!this.value) {
-            alert('Get the resource config first')
+            // alert('Get the resource config first')
+            throw "Get the resource config first"
             return;
         }
         let self = this

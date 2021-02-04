@@ -150,10 +150,17 @@
                 let self = this;
                 let currentClass = g('kclasses').value
                 let obj = this.klasses[currentClass].obj
+                let content = ''
+                try{
+                     content = JSON.stringify(obj.getContent());
+                }catch(err){
+                    showError(err);
+                    return
+                }
                 post(
                     '/data',
                     {
-                        content: JSON.stringify(obj.getContent()),
+                        content,
                         type: currentClass,
                         tags: g('tags-editor').value.split(/\s+/).concat(obj.getTags ? obj.getTags() : []),
                         visibility: g('private-post').checked ? getCurrentUser() : "public",
