@@ -1,6 +1,6 @@
 package inodes.beans;
 
-import inodes.service.api.UserService;
+import inodes.service.api.UserGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +18,7 @@ public class RateLimitFilter implements Filter {
     }
 
     @Autowired
-    UserService AS;
+    UserGroupService AS;
 
     static Random R = new Random();
     Map<String, SessionHeader> sessMap = new HashMap<>();
@@ -124,7 +124,7 @@ public class RateLimitFilter implements Filter {
     private boolean doLogin(HttpServletRequest req, HttpServletResponse resp, boolean makeSess) {
         String authHdr = req.getHeader("Authorization");
         if (authHdr != null) {
-            UserService.User cred = makeCredential(authHdr);
+            UserGroupService.User cred = makeCredential(authHdr);
             try {
                 if (AS.authenticate(cred)) {
                     if (makeSess) {
@@ -142,9 +142,9 @@ public class RateLimitFilter implements Filter {
         return false;
     }
 
-    private UserService.User makeCredential(String authHdr) {
+    private UserGroupService.User makeCredential(String authHdr) {
         String chunks[] = new String(Base64.getDecoder().decode(authHdr.split(" ")[1].getBytes())).split(":");
-        return new UserService.User(chunks[0], chunks[1]);
+        return new UserGroupService.User(chunks[0], chunks[1]);
     }
 
     private void sendNoAuth(HttpServletRequest req, HttpServletResponse r) throws IOException {

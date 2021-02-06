@@ -1,10 +1,15 @@
 {
   "name": "applets",
   "jsPaths": [
-    "applets-plugin/applets.js"
+    "applets-plugin/applets.js",
+    "applets-plugin/beautify-html.js",
+    "applets-plugin/beautify.js",
+    "posts-plugin/highlight.min.js"
   ],
   "cssPaths": [
-    "applets-plugin/applets.css"
+    "applets-plugin/applets.css",
+    "posts-plugin/default.min.css"
   ],
-  "version": 0
+  "version": 0,
+  "editApprovalNeeded": true
 }

@@ -1,0 +1,12 @@
+.inodes-uapi-input, .inodes-uapi-textarea, .inodes-uapi-button {
+    margin: 5px;
+    display: block;
+}
+
+.inodes-uapi-input, .inodes-uapi-textarea {
+    width: 40%;
+}
+
+.inodes-uapi-label {
+    margin: 5px;
+}

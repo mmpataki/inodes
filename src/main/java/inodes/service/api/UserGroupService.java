@@ -2,17 +2,19 @@ package inodes.service.api;
 
 import inodes.Inodes;
 import inodes.service.EmailService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
+import java.sql.SQLException;
+import java.util.*;
 
 @Service
-public abstract class UserService extends Observable {
+public abstract class UserGroupService extends Observable {
+
+    Logger LOG = LoggerFactory.getLogger(UserGroupService.class);
 
     @Autowired
     EmailService ES;
@@ -49,11 +51,9 @@ public abstract class UserService extends Observable {
 
     public abstract User getUser(String userName) throws Exception;
 
-
     public abstract boolean isAdmin(String userId) throws Exception;
 
     public abstract List<User> getUsers() throws Exception;
-
 
     public void updateUser(String modifier, User u) throws Exception {
         if (!modifier.equals(u.getUserName()) && !isAdmin(modifier)) {
@@ -93,6 +93,45 @@ public abstract class UserService extends Observable {
     }
 
     public abstract void _updateUser(String modifier, User u) throws Exception;
+
+
+    public static final String SECURITY = "security";
+    public static final String ADMIN = "admin";
+
+    @Autowired
+    AuthorizationService AS;
+
+    public abstract List<String> getAllGroups() throws Exception;
+
+    public abstract List<String> getGroupsOf(String user) throws SQLException, Exception;
+
+    public Group getGroup(String groupName) throws Exception {
+        return _getGroup(groupName);
+    }
+
+    public void createGroup(String user, Group grp) throws Exception {
+        AS.checkGroupCreationPermissions(user);
+        _createGroup(grp);
+    }
+
+    public void addUserToGroup(String curUser, String group, String user) throws Exception {
+        AS.checkAddUserToGroupPermission(curUser, group);
+        _addUserToGroup(group, user);
+    }
+
+    public void deleteUserFromGroup(String curUser, String group, String user) throws Exception {
+        AS.checkDeleteUserFromGroupPermission(curUser, group);
+        _deleteUserFromGroup(group, user);
+    }
+
+    protected abstract void _addUserToGroup(String group, String user) throws Exception;
+
+    protected abstract void _createGroup(Group grp) throws Exception;
+
+    protected abstract Group _getGroup(String groupName) throws Exception;
+
+    public abstract void _deleteUserFromGroup(String group, String user) throws SQLException, Exception;
+
 
     public static class User implements Cloneable {
         String userName;
@@ -205,4 +244,63 @@ public abstract class UserService extends Observable {
         }
     }
 
+    public static class Group implements Cloneable {
+        String groupName;
+        String desc;
+        String teamsUrl;
+        String email;
+
+        // transient (not stored with group record)
+        Set<String> users = new HashSet<>();
+
+        public String getGroupName() {
+            return groupName;
+        }
+
+        public void setGroupName(String groupName) {
+            this.groupName = groupName;
+        }
+
+        public String getDesc() {
+            return desc;
+        }
+
+        public void setDesc(String desc) {
+            this.desc = desc;
+        }
+
+        public String getTeamsUrl() {
+            return teamsUrl;
+        }
+
+        public void setTeamsUrl(String teamsUrl) {
+            this.teamsUrl = teamsUrl;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public void setEmail(String email) {
+            this.email = email;
+        }
+
+        public Group() {
+        }
+
+        public Group(String groupName, String desc, String teamsUrl, String email) {
+            this.groupName = groupName;
+            this.desc = desc;
+            this.teamsUrl = teamsUrl;
+            this.email = email;
+        }
+
+        public Set<String> getUsers() {
+            return users;
+        }
+
+        public void addUser(String username) {
+            users.add(username);
+        }
+    }
 }

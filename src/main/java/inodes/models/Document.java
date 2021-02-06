@@ -1,92 +1,43 @@
 package inodes.models;
 
+import lombok.Data;
+import org.apache.solr.client.solrj.beans.Field;
+
+import java.beans.Transient;
 import java.util.List;
 
+@Data
 public class Document {
 
+    @Field
     String id;
+
+    @Field
     String content;
+
+    @Field
     String type;
+
+    @Field
     List<String> tags;
 
+    @Field
     String owner;
+
+    @Field
     long postTime;
-    long votes;
 
-    List<Comment> comments;
-    String visibility;
+    @Field
+    List<String> visibility;
 
-    public String getVisibility() {
-        return visibility;
-    }
+    @Field
+    List<String> savedVisibility;
 
-    public void setVisibility(String visibility) {
-        this.visibility = visibility;
-    }
+    @Field
+    boolean needsApproval;
 
-    public long getVotes() {
-        return votes;
-    }
-
-    public void setVotes(long votes) {
-        this.votes = votes;
-    }
-
-    public String getOwner() {
-        return owner;
-    }
-
-    public void setOwner(String owner) {
-        this.owner = owner;
-    }
-
-    public long getPostTime() {
-        return postTime;
-    }
-
-    public void setPostTime(long postTime) {
-        this.postTime = postTime;
-    }
-
-    public List<Comment> getComments() {
-        return comments;
-    }
-
-    public void setComments(List<Comment> comments) {
-        this.comments = comments;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public List<String> getTags() {
-        return tags;
-    }
-
-    public void setTags(List<String> tags) {
-        this.tags = tags;
-    }
+    transient long votes;
+    transient List<Comment> comments;
 
     public boolean upVotable() {
         return true;
@@ -99,4 +50,5 @@ public class Document {
     public boolean commentable() {
         return true;
     }
+
 }

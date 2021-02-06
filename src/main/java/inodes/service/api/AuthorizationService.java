@@ -8,7 +8,10 @@ import org.springframework.stereotype.Service;
 public abstract class AuthorizationService {
 
     @Autowired
-    UserService AS;
+    UserGroupService AS;
+
+    @Autowired
+    UserGroupService GS;
 
     boolean hasCommentPermission(String userId, Document doc) throws Exception {
         return AS.getUser(userId).getRoles().contains("COMMENT");
@@ -17,6 +20,12 @@ public abstract class AuthorizationService {
     public void checkCreatePermission(String userId, Document doc) throws Exception {
         if(!AS.getUser(userId).getRoles().contains("CREATE")) {
             throw new UnAuthorizedException(userId + " has no permission to create a post");
+        }
+    }
+
+    public void checkApprovePermission(String userId, Document doc) throws Exception {
+        if(!AS.getGroupsOf(userId).contains(UserGroupService.SECURITY)) {
+            throw new UnAuthorizedException("Not authorized to approve");
         }
     }
 
@@ -64,6 +73,22 @@ public abstract class AuthorizationService {
     public void checkEditPermission(String userId, Document doc) throws Exception {
         if(!AS.getUser(userId).getRoles().contains("EDIT") && !doc.getOwner().equals(userId) && !AS.isAdmin(userId)) {
             throw new UnAuthorizedException(userId + " has no permission to edit " + doc.getId());
+        }
+    }
+
+    public void checkGroupCreationPermissions(String user) throws Exception {
+        // logged in? then fine
+    }
+
+    public void checkAddUserToGroupPermission(String user, String group) throws Exception {
+        if(!AS.isAdmin(user) && !GS.getGroup(group).getUsers().contains(user)) {
+            throw new UnAuthorizedException("You are not allowed to add users to these groups");
+        }
+    }
+
+    public void checkDeleteUserFromGroupPermission(String user, String group) throws Exception {
+        if(!AS.isAdmin(user) && !GS.getGroup(group).getUsers().contains(user)) {
+            throw new UnAuthorizedException("You are not allowed to delete users from this group");
         }
     }
 }

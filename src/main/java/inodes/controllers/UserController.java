@@ -1,11 +1,10 @@
 package inodes.controllers;
 
-import static inodes.service.api.UserService.*;
+import static inodes.service.api.UserGroupService.*;
 
 import inodes.models.UserInfo;
-import inodes.service.api.UserService;
+import inodes.service.api.UserGroupService;
 import inodes.service.api.DataService;
-import inodes.service.api.UnAuthorizedException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -21,7 +20,7 @@ import java.util.stream.Collectors;
 public class UserController extends AuthenticatedController {
 
     @Autowired
-    UserService AS;
+    UserGroupService AS;
 
     @Autowired
     DataService DS;
@@ -40,11 +39,8 @@ public class UserController extends AuthenticatedController {
     }
 
     @RequestMapping(value = "/auth/users", method = RequestMethod.GET)
-    public List<UserInfo> getUsers(@ModelAttribute("loggedinuser") String user) throws Exception {
-        if (!user.equals("admin")) {
-            throw new UnAuthorizedException("Unauthorized");
-        }
-        return AS.getUsers().stream().map(u -> getMoreInfo(u)).collect(Collectors.toList());
+    public List<String> getUsers(@ModelAttribute("loggedinuser") String user) throws Exception {
+        return AS.getUsers().stream().map(u -> u.getUserName()).collect(Collectors.toList());
     }
 
     @RequestMapping(value = "/auth/user/{uid}", method = RequestMethod.GET)
@@ -69,4 +65,35 @@ public class UserController extends AuthenticatedController {
         }
         return fui;
     }
+
+    @RequestMapping(value = "/auth/groups", method = RequestMethod.POST)
+    public void addGroup(@RequestBody UserGroupService.Group grp, @ModelAttribute("loggedinuser") String user) throws Exception {
+        AS.createGroup(user, grp);
+        AS.addUserToGroup(user, grp.getGroupName(), user);
+    }
+
+    @RequestMapping(value = "/auth/groups/{gname}/add", method = RequestMethod.POST)
+    public void addUserToGroup(@PathVariable("gname") String group, @RequestParam("user") List<String> users, @ModelAttribute("loggedinuser") String curUser) throws Exception {
+        for (String user : users) {
+            AS.addUserToGroup(curUser, group, user);
+        }
+    }
+
+    @RequestMapping(value = "/auth/groups/{gname}/delete", method = RequestMethod.POST)
+    public void deleteUserFromGroup(@PathVariable("gname") String group, @RequestParam("user") List<String> users, @ModelAttribute("loggedinuser") String curUser) throws Exception {
+        for (String user : users) {
+            AS.deleteUserFromGroup(curUser, group, user);
+        }
+    }
+
+    @RequestMapping(value = "/auth/groups/{gname}", method = RequestMethod.GET)
+    public UserGroupService.Group getGroup(@PathVariable("gname") String group) throws Exception {
+        return AS.getGroup(group);
+    }
+
+    @RequestMapping(value = "/auth/groups", method = RequestMethod.GET)
+    public List<String> getGroupNames() throws Exception {
+        return AS.getAllGroups();
+    }
+
 }

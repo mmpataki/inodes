@@ -3,13 +3,14 @@ class applets {
         this.elems = {}
     }
     getCard(obj) {
-        let template = function(obj) {
+        let self = this;
+        let template = function (obj) {
             obj = JSON.parse(obj.content);
             return {
                 ele: 'div',
                 classList: 'container',
                 children: [
-                    {  
+                    {
                         ele: 'div',
                         classList: 'card-preview',
                         attribs: {
@@ -19,34 +20,7 @@ class applets {
                     {
                         ele: 'script',
                         attribs: {
-                            innerHTML: `
-                                (function() {
-                                    let title = document.createElement('a')
-                                    title.innerHTML = "show console"
-                                    title.classList = 'app-console-title'
-                                    title.addEventListener('click', function () {
-                                        condiv.style.display = condiv.style.display != 'block' ? 'block' : 'none'
-                                        title.innerHTML = title.innerHTML.includes('show') ? 'hide console' : 'show console'
-                                    })
-                                    let condiv = document.createElement('pre')
-                                    condiv.classList = 'app-console'
-                                    document.currentScript.parentNode.parentNode.appendChild(title)
-                                    document.currentScript.parentNode.parentNode.appendChild(condiv)
-                                    let console = {
-                                        log : function(val) {
-                                            title.style.display = 'block'
-                                            if (!(typeof val === 'string' || val instanceof String)) {
-                                                val = JSON.stringify(val, null, 4)
-                                            }
-                                            condiv.innerText += val + '\\n'
-                                        }
-                                    }
-                                    let _xxxxx___ = function() {
-                                        ${obj.js}
-                                    }
-                                    _xxxxx___();
-                                })();
-                            `
+                            innerHTML: self.getScript(obj.js)
                         }
                     }
                 ]
@@ -55,9 +29,75 @@ class applets {
         return render('applet', template(obj));
     }
 
+    getSafeCard(obj) {
+        let self = this;
+        let template = function (obj) {
+            obj = JSON.parse(obj.content);
+            return {
+                ele: 'div',
+                classList: 'container',
+                children: [
+                    { ele: 'h4', text: 'HTML'},
+                    {
+                        ele: 'pre',
+                        iden: 'jscode',
+                        classList: 'language-html',
+                        styles: { overflow: 'auto', padding: '10px', border: 'solid 1px gray'},
+                        attribs: {
+                            innerText: html_beautify(obj.html)
+                        }
+                    },
+                    { ele: 'h4', text: 'Javascript'},
+                    {
+                        ele: 'pre',
+                        iden: 'jscode',
+                        classList: 'language-js',
+                        styles: { overflow: 'auto', padding: '10px', border: 'solid 1px gray'},
+                        attribs: {
+                            innerText: js_beautify(obj.js)
+                        }
+                    }
+                ]
+            }
+        }
+        let x = render('applet', template(obj), (id, e) => self[id] = e);
+        hljs.highlightBlock(this.jscode);
+        return x;
+    }
+
+    getScript(js) {
+        return `
+        (function() {
+            let title = document.createElement('a')
+            title.innerHTML = "show console"
+            title.classList = 'app-console-title'
+            title.addEventListener('click', function () {
+                condiv.style.display = condiv.style.display != 'block' ? 'block' : 'none'
+                title.innerHTML = title.innerHTML.includes('show') ? 'hide console' : 'show console'
+            })
+            let condiv = document.createElement('pre')
+            condiv.classList = 'app-console'
+            document.currentScript.parentNode.parentNode.appendChild(title)
+            document.currentScript.parentNode.parentNode.appendChild(condiv)
+            let console = {
+                log : function(val) {
+                    title.style.display = 'block'
+                    if (!(typeof val === 'string' || val instanceof String)) {
+                        val = JSON.stringify(val, null, 4)
+                    }
+                    condiv.innerText += val + '\\n'
+                }
+            }
+            let _xxxxx___ = function() {
+                ${js}
+            }
+            _xxxxx___();
+        })();`
+    }
+
     getEditor(obj) {
         let self = this;
-        if(obj) {
+        if (obj) {
             obj = JSON.parse(obj.content);
         }
         let renderable = function (obj) {
@@ -144,9 +184,9 @@ class applets {
         this.editor.style.display = "none"
         this.scripteditor.style.display = "none"
         this.preview.style.display = "block"
-        this.preview.innerHTML =  this.editor.value;
+        this.preview.innerHTML = this.editor.value;
         let scrpt = document.createElement('script');
-        scrpt.innerHTML = this.scripteditor.value;
+        scrpt.innerHTML = this.getScript(this.scripteditor.value);
         this.preview.appendChild(scrpt)
     }
     showEditor() {

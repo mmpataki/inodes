@@ -24,12 +24,27 @@ public class DataController extends AuthenticatedController {
             @RequestParam(required = false, defaultValue = "10") Integer fqLimit,
             @ModelAttribute("loggedinuser") String user
     ) throws Exception {
-        return DS.search(user, q, offset, pageSize, sortOn, fq, fqLimit);
+        return DS.search(
+                user,
+                DataService.SearchQuery.builder()
+                    .q(q)
+                    .offset(offset)
+                    .pageSize(pageSize)
+                    .sortOn(sortOn)
+                    .fq(fq)
+                    .fqLimit(fqLimit)
+                    .build()
+        );
     }
 
     @RequestMapping(value = "/data", method = RequestMethod.POST)
     public void put(@RequestBody Document doc, @ModelAttribute("loggedinuser") String user) throws Exception {
         DS.putData(user, doc);
+    }
+
+    @RequestMapping(value = "/data/{docId}/approve", method = RequestMethod.POST)
+    public void approve(@ModelAttribute("loggedinuser") String userId, @PathVariable("docId") String docId) throws Exception {
+        DS.approve(userId, docId);
     }
 
     @RequestMapping(value = "/data/{id}", method = RequestMethod.DELETE)

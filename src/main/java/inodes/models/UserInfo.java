@@ -1,25 +1,25 @@
 package inodes.models;
 
-import inodes.service.api.UserService;
+import inodes.service.api.UserGroupService;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class UserInfo {
 
-    UserService.User basic;
+    UserGroupService.User basic;
     Map<String, Long> postsCount;
 
-    public UserInfo(UserService.User basic) {
+    public UserInfo(UserGroupService.User basic) {
         this.basic = basic;
         this.postsCount = new HashMap<>();
     }
 
-    public UserService.User getBasic() {
+    public UserGroupService.User getBasic() {
         return basic;
     }
 
-    public void setBasic(UserService.User basic) {
+    public void setBasic(UserGroupService.User basic) {
         this.basic = basic;
     }
 

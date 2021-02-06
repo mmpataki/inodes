@@ -1,21 +1,25 @@
 package inodes.service.api;
 
+import inodes.Inodes;
 import inodes.models.Document;
+import inodes.models.Klass;
+import inodes.service.EmailService;
+import lombok.Builder;
+import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public abstract class DataService extends Observable {
 
-    public static enum ObservableEvents {
+    public enum ObservableEvents {
         SEARCH,
-        NEW
+        NEW,
+        APPROVAL_NEEDED
     }
 
     public static class SearchResponse {
@@ -55,7 +59,14 @@ public abstract class DataService extends Observable {
     CollabService CS;
 
     @Autowired
-    UserService US;
+    UserGroupService UGS;
+
+    @Autowired
+    KlassService KS;
+
+    @Autowired
+    EmailService ES;
+
 
     public DataService() {
         register(ObservableEvents.SEARCH, o -> {
@@ -65,10 +76,30 @@ public abstract class DataService extends Observable {
                 doc.setVotes(l == null ? 0 : l);
             }
         });
+        register(ObservableEvents.APPROVAL_NEEDED, o -> {
+            Document d = (Document) o;
+            ES.sendEmail(
+                UGS
+                .getGroup(UserGroupService.SECURITY)
+                .getUsers()
+                .stream()
+                .map(u -> { try { return UGS.getUser(u).getEmail(); } catch (Exception e) { return null; }})
+                .collect(Collectors.toSet()),
+                "New applet alert",
+                String.format("New <a href=\"%s/?q=@%s\">applet alert</a>", Inodes.getLocalAddr(), d.getId())
+            );
+        });
     }
 
-    public SearchResponse search(String user, String q, long offset, int pageSize, List<String> sortOn, List<String> fq, Integer fqLimit) throws Exception {
-        SearchResponse resp = _search(user, q, null, offset, pageSize, sortOn, fq, fqLimit);
+    public SearchResponse search(String user, SearchQuery q) throws Exception {
+        q.setVisibility(new HashSet<>());
+        if(user != null && !user.isEmpty()) {
+            q.getVisibility().add(user);
+        }
+        q.getVisibility().add("public");
+        q.getVisibility().addAll(UGS.getGroupsOf(user));
+
+        SearchResponse resp = _search(user, q);
         notifyObservers(ObservableEvents.SEARCH, resp.getResults());
         return resp;
     }
@@ -80,7 +111,7 @@ public abstract class DataService extends Observable {
 
     public Document get(String user, String id) throws Exception {
         try {
-            return _search(user, "", id, 0, 1, null, null, 0).getResults().get(0);
+            return search(user, SearchQuery.builder().id(id).pageSize(1).build()).getResults().get(0);
         } catch (IndexOutOfBoundsException i) {
             throw new NoSuchDocumentException(id);
         }
@@ -94,7 +125,7 @@ public abstract class DataService extends Observable {
             Objects.nonNull(doc.getVisibility()) &&
             Objects.nonNull(doc.getType());
 
-        if(doc.getTags().contains("inodesapp") && !US.isAdmin(user))
+        if(doc.getTags().contains("inodesapp") && !UGS.isAdmin(user))
             doc.getTags().remove("inodesapp");
 
         if(doc.getId() != null && !doc.getId().isEmpty()) {
@@ -107,28 +138,49 @@ public abstract class DataService extends Observable {
             doc.setType(oldDoc.getType());
         } else {
             AS.checkCreatePermission(user, doc);
+            doc.setId(UUID.randomUUID().toString());
             doc.setPostTime(System.currentTimeMillis());
             doc.setOwner(user);
         }
         notifyObservers(ObservableEvents.NEW, doc);
+        Klass klass = KS.getKlass(doc.getType());
+        if(klass.isEditApprovalNeeded()) {
+            doc.setNeedsApproval(true);
+            doc.setSavedVisibility(doc.getVisibility());
+            doc.setVisibility(Arrays.asList(doc.getOwner(), UserGroupService.SECURITY));
+            notifyObservers(ObservableEvents.APPROVAL_NEEDED, doc);
+        }
         _putData(doc);
     }
 
-    public void updateDocument(String user, Document doc) throws Exception {
-        AS.checkUpdatePermission(user, get(user, doc.getId()), doc);
-        _updateDoc(user, doc);
+    public void approve(String userId, String docId) throws Exception {
+        Document doc = get(userId, docId);
+        AS.checkApprovePermission(userId, doc);
+        doc.setVisibility(doc.getSavedVisibility());
+        doc.setNeedsApproval(false);
+        _putData(doc);
     }
 
-    protected abstract void _updateDoc(String user, Document doc);
+    protected abstract SearchResponse _search(String user, SearchQuery q) throws Exception;
 
-    protected abstract SearchResponse _search(String user, String q, String id, long offset, int pageSize, List<String> sortOn, List<String> fq, Integer fqLimit) throws Exception;
-
-    protected abstract void _deleteObj(String id) throws IOException, Exception;
+    protected abstract void _deleteObj(String id) throws Exception;
 
     protected abstract void _putData(Document doc) throws IOException;
 
-    public abstract Map<String, Long> getTopTags(String type, int max) throws Exception;
+    public Map<String, Long> getUserPostsFacets(String userName) throws Exception {
+        return search(userName, SearchQuery.builder().q("*").fq(Arrays.asList("type")).fqLimit(Integer.MAX_VALUE).build()).getFacetResults().get("type");
+    }
 
-    public abstract Map<String, Long> getUserPostsFacets(String user) throws Exception;
+    @Builder @Data
+    public static class SearchQuery {
+        String q;
+        String id;
+        long offset;
+        int pageSize;
+        List<String> sortOn;
+        List<String> fq;
+        int fqLimit;
+        Set<String> visibility;
+    }
 
 }

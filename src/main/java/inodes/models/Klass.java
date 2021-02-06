@@ -7,6 +7,15 @@ public class Klass {
     List<String> jsPaths;
     List<String> cssPaths;
     Integer version;
+    boolean editApprovalNeeded;
+
+    public boolean isEditApprovalNeeded() {
+        return editApprovalNeeded;
+    }
+
+    public void setEditApprovalNeeded(boolean editApprovalNeeded) {
+        this.editApprovalNeeded = editApprovalNeeded;
+    }
 
     public List<String> getJsPaths() {
         return jsPaths;

@@ -5,6 +5,7 @@ import inodes.models.Document;
 import inodes.models.Tag;
 import inodes.service.api.DataService;
 import inodes.service.api.TagsService;
+import inodes.service.api.UserGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -75,6 +76,6 @@ public class DbBasedTagsServiceImpl extends TagsService {
 
     @Override
     public Map<String, Long> getTrendingTags(String type, int max) throws Exception {
-        return DS.getTopTags(type, max);
+        throw new UnsupportedOperationException("not supported yet");
     }
 }

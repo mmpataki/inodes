@@ -3,23 +3,32 @@ package inodes.service;
 import inodes.Configuration;
 import inodes.models.Document;
 import inodes.service.api.DataService;
+import inodes.service.api.UserGroupService;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.request.schema.SchemaRequest;
 import org.apache.solr.client.solrj.response.FacetField;
 import org.apache.solr.client.solrj.response.QueryResponse;
+import org.apache.solr.client.solrj.response.schema.SchemaResponse;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.SolrInputDocument;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
+import java.lang.reflect.Modifier;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class SolrDataService extends DataService {
+
+    Logger LOG = LoggerFactory.getLogger(SolrDataService.class);
 
     @Autowired
     Configuration conf;
@@ -30,14 +39,59 @@ public class SolrDataService extends DataService {
     void init() {
         String urlString = conf.getProperty("searchservice.solr.url");
         solr = new HttpSolrClient.Builder(urlString).build();
+        registerSchema();
     }
 
-    private String getSearchQuery(String userId, String str, String id) {
-        String visibility = String.format("visibility:(public OR \"\"%s) AND ", userId == null ? "" : " OR \"" + userId + "\"");
-        if (id != null) {
-            return String.format("%s id:(%s)", visibility, id);
+    void registerSchema() {
+        Class<Document> klass = Document.class;
+        Arrays.stream(klass.getDeclaredFields())
+                .filter(f -> !Modifier.isTransient(f.getModifiers()))
+                .map(f -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("name", f.getName());
+                    m.put("type", mapType(f.getType()));
+                    m.put("multiValued", isMultiValued(f.getType()));
+                    m.put("stored", true);
+                    m.put("indexed", true);
+                    m.put("required", true);
+                    return m;
+                })
+                .map(m -> new SchemaRequest.AddField(m))
+                .forEach(a -> {
+                    try {
+                        a.process(solr);
+                    } catch (Exception e) {
+                        LOG.error("Solr add field failed.", e);
+                    }
+                });
+    }
+
+    private boolean isMultiValued(Class<?> type) {
+        return type.isArray() || type.isAssignableFrom(List.class);
+    }
+
+    Map<String, String> clasToTypeMap = new HashMap<String, String>() {{
+        put("String", "text_general");
+        put("long", "plongs");
+        put("List", "text_general");
+        put("int", "plongs");
+        put("boolean", "booleans");
+    }};
+    private String mapType(Class<?> klass) {
+        if(clasToTypeMap.containsKey(klass.getSimpleName()))
+            return clasToTypeMap.get(klass.getSimpleName());
+        return "text_general";
+    }
+
+    private String getSearchQuery(String userId, SearchQuery sq) throws Exception {
+        String visibility = String.format("visibility:(%s) AND ",
+                sq.getVisibility().stream().map(x -> String.format("\"%s\"", x)).collect(Collectors.joining(" OR ")));
+
+        if (sq.getId() != null && !sq.getId().isEmpty()) {
+            return String.format("%s id:(%s)", visibility, sq.getId());
         }
-        String[] chunks = str.split("\\s+");
+
+        String[] chunks = sq.getQ().split("\\s+");
         StringBuilder q = new StringBuilder();
         q.append(visibility);
         for (String chunk : chunks) {
@@ -66,45 +120,24 @@ public class SolrDataService extends DataService {
         return q.substring(0, q.length() - 5);
     }
 
-    @Override
-    protected void _updateDoc(String user, Document doc) {
-
-    }
-
-    public SearchResponse _search(String userId, String q, String id, long offset, int pageSize, List<String> sortOn, List<String> fq, Integer fqLimit) throws Exception {
+    public SearchResponse _search(String userId, SearchQuery sq) throws Exception {
         SolrQuery query = new SolrQuery();
-        q = getSearchQuery(userId, q, id);
-        System.out.println(q);
-        query.set("q", q);
-        query.setStart((int) offset);
+        query.set("q", getSearchQuery(userId, sq));
+        query.setStart((int) sq.getOffset());
+        query.setRows(sq.getPageSize());
 
-        if (fq != null && !fq.isEmpty()) {
+        if (sq.getFq() != null && !sq.getFq().isEmpty()) {
             query.setFacet(true);
-            query.setFacetLimit(fqLimit < 1 ? 10 : fqLimit);
+            query.setFacetLimit(sq.getFqLimit() < 1 ? 10 : sq.getFqLimit());
             query.setFacetSort("count");
-            fq.forEach(ff -> query.addFacetField(ff));
+            sq.getFq().forEach(ff -> query.addFacetField(ff));
         }
 
+        LOG.info("Search query: {}", query);
         QueryResponse response = solr.query(query);
 
         // docs
-        SolrDocumentList docList = response.getResults();
-        List<Document> docs = new ArrayList<>(docList.size());
-        for (SolrDocument doc : docList) {
-            Document d = new Document();
-            try {
-                d.setId((String) doc.getFieldValue("id"));
-                d.setContent((String) ((List) doc.getFieldValue("content")).get(0));
-                d.setType((String) ((List) doc.getFieldValue("type")).get(0));
-                d.setTags((List<String>) doc.getFieldValue("tags"));
-                d.setPostTime((Long) ((List) doc.getFieldValue("ctime")).get(0));
-                d.setOwner((String) ((List) doc.getFieldValue("owner")).get(0));
-                d.setVisibility((String) ((List) doc.getFieldValue("visibility")).get(0));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            docs.add(d);
-        }
+        List<Document> docs = response.getBeans(Document.class);
 
         // facets
         List<FacetField> ffs = response.getFacetFields();
@@ -133,52 +166,12 @@ public class SolrDataService extends DataService {
     }
 
     public void _putData(Document doc) throws IOException {
-        SolrInputDocument idoc = new SolrInputDocument();
-        idoc.addField("content", doc.getContent());
-        idoc.addField("type", doc.getType());
-        idoc.addField("tags", doc.getTags());
-        idoc.addField("ctime", doc.getPostTime());
-        idoc.addField("owner", doc.getOwner());
-        idoc.addField("visibility", doc.getVisibility());
-        if (doc.getId() != null && !doc.getId().isEmpty()) {
-            idoc.setField("id", doc.getId());
-        }
         try {
-            solr.add(idoc);
+            solr.addBean(doc);
             solr.commit();
         } catch (SolrServerException e) {
             e.printStackTrace();
         }
     }
 
-    @Override
-    public Map<String, Long> getTopTags(String type, int max) throws Exception {
-        if (max <= 0) {
-            max = 10;
-        }
-        return getFacets("*", max, "count", Arrays.asList(type));
-    }
-
-    private Map<String, Long> getFacets(String sq, int max, String sortField, List<String> facetFields) throws SolrServerException, IOException {
-        SolrQuery q = new SolrQuery();
-        q.setQuery(sq);
-        q.setFacet(true);
-        q.setFacetLimit(max);
-        if (sortField != null)
-            q.setFacetSort(sortField);
-        if (facetFields != null)
-            facetFields.forEach(ff -> q.addFacetField(ff));
-
-        List<FacetField> ffs = solr.query(q).getFacetFields();
-        Map<String, Long> ret = new HashMap<>();
-        ffs.get(0).getValues().forEach(f -> {
-            ret.put(f.getName(), f.getCount());
-        });
-        return ret;
-    }
-
-    @Override
-    public Map<String, Long> getUserPostsFacets(String user) throws Exception {
-        return getFacets("owner:" + user, 1000000, null, Arrays.asList("type"));
-    }
 }

@@ -8,10 +8,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.sql.*;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 public class DBBasedCollabService extends CollabService {
@@ -41,6 +38,9 @@ public class DBBasedCollabService extends CollabService {
 
     @Override
     protected Map<String, Long> _getVotes(List<String> ids) throws Exception {
+
+        if(ids.isEmpty()) return Collections.EMPTY_MAP;
+
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < ids.size() - 1; i++) sb.append("?, ");
         sb.append('?');
