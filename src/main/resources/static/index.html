@@ -168,6 +168,7 @@
                         type: currentClass,
                         tags: g('tags-editor').value.split(/\s+/).concat(obj.getTags ? obj.getTags() : []),
                         visibility: g('private-post').value.split(/\s+/),
+                        savedVisibility: this.currentPost ? this.currentPost.savedVisibility : ['none'],
                         id: this.currentPost ? this.currentPost.id : undefined
                     },
                     {
@@ -631,7 +632,7 @@
                 this.renderInput(obj ? obj.type : 'posts', obj, true)
                 g('editor-pane').style.display = 'block';
                 g('kclasses').disabled = obj ? true : false
-                g('private-post').value = obj ? (obj.visibility) : "";
+                g('private-post').value = obj ? (obj.needsApproval ? obj.savedVisibility : obj.visibility) : "";
             }
             closeEditor() {
                 g('editor-pane').style.display = 'none';

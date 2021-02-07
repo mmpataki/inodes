@@ -12,7 +12,7 @@ let gMail = A.makeSpan({})
 let gTUrl = A.makeSpan({})
 gUsersDiv = A.makeDiv({ style: 'display: block; padding:5px; border: solid 1px #f2f2f2; border-radius: 8px; margin-top: 5px' })
 A.makeSpan({ innerText: 'All users', style: 'margin: 5px 0px; font-weight: bolder' })
-allUsers = A.makeDiv({ style: 'display: block; padding:5px; border: solid 1px #f2f2f2; border-radius: 8px; margin-top: 5px' })
+aUsersDiv = A.makeDiv({ style: 'display: block; padding:5px; border: solid 1px #f2f2f2; border-radius: 8px; margin-top: 5px' })
 
 get(`/auth/groups/${g}`).then(x => {
     grp = JSON.parse(x.response)
@@ -54,7 +54,7 @@ function addToAList(user) {
     if(all__userToSpan[user]) {
         all__userToSpan[user].remove()
     }
-    let uspan = A.makeSpan({ style: tagStyle, innerText: user }, allUsers);
+    let uspan = A.makeSpan({ style: tagStyle, innerText: user }, aUsersDiv);
     all__userToSpan[user] = uspan;
     if (!grp.users.includes(user)) {
         let uadd = A.makeSpan({ uid: user, style: 'padding: 0px 3px; font-size: 0.8em; border-radius: 50%; background-color: green; color: white; margin-left: 5px', innerHTML: '+' }, uspan);
