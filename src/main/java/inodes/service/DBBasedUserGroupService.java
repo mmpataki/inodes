@@ -35,7 +35,7 @@ public class DBBasedUserGroupService extends UserGroupService {
             CONN = DriverManager.getConnection(conf.getProperty("authservice.db.url"), conf.getProperty("authservice.db.user"), conf.getProperty("authservice.db.password"));
 
             tc(() -> CONN.createStatement().execute("CREATE TABLE users (username VARCHAR(32) PRIMARY KEY, fullname VARCHAR(128), password VARCHAR(64), roles VARCAR(128), verified INT, teamsurl VARCHAR(256), email VARCHAR(64), regtok VARCHAR(64))"));
-            tc(() -> CONN.createStatement().execute("CREATE TABLE groups (groupname VARCHAR(32) PRIMARY KEY, desc VARCHAR(1024), teamsurl VARCHAR(256), email VARCHAR(64))"));
+            tc(() -> CONN.createStatement().execute("CREATE TABLE groups (groupname VARCHAR(32) PRIMARY KEY, description VARCHAR(1024), teamsurl VARCHAR(256), email VARCHAR(64))"));
             tc(() -> CONN.createStatement().execute("CREATE TABLE groupmap (groupname VARCHAR(32), username VARCHAR(32), PRIMARY KEY(groupname, username))"));
 
             tc(() -> _register(new User("mmp", "Madhusoodan Pataki", "m@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT", "", "")));
@@ -189,7 +189,7 @@ public class DBBasedUserGroupService extends UserGroupService {
 
     @Override
     protected void _createGroup(Group grp) throws Exception {
-        PreparedStatement ps = CONN.prepareStatement("INSERT INTO groups (groupname, desc, teamsUrl, email) VALUES (?, ?, ?, ?)");
+        PreparedStatement ps = CONN.prepareStatement("INSERT INTO groups (groupname, description, teamsUrl, email) VALUES (?, ?, ?, ?)");
         ps.setString(1, grp.getGroupName());
         ps.setString(2, grp.getDesc());
         ps.setString(3, grp.getTeamsUrl());
@@ -205,7 +205,7 @@ public class DBBasedUserGroupService extends UserGroupService {
         }
         Group g = new Group();
 
-        PreparedStatement ps1 = CONN.prepareStatement("SELECT groupname, desc, teamsurl, email FROM groups WHERE groupname = ?");
+        PreparedStatement ps1 = CONN.prepareStatement("SELECT groupname, description, teamsurl, email FROM groups WHERE groupname = ?");
         ps1.setString(1, groupName);
         if (ps1.execute()) {
             ResultSet rs = ps1.getResultSet();
@@ -213,7 +213,7 @@ public class DBBasedUserGroupService extends UserGroupService {
                 throw new Exception("No such group");
             }
             g.setGroupName(rs.getString("groupname"));
-            g.setDesc(rs.getString("desc"));
+            g.setDesc(rs.getString("description"));
             g.setEmail(rs.getString("email"));
             g.setTeamsUrl(rs.getString("teamsurl"));
         }

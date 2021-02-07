@@ -149,9 +149,6 @@ public abstract class DataService extends Observable {
             doc.setNeedsApproval(true);
             doc.setSavedVisibility(doc.getVisibility());
             doc.setVisibility(Arrays.asList(doc.getOwner(), UserGroupService.SECURITY));
-            if(doc.getVisibility().contains(UserGroupService.PUBLIC)) {
-                doc.getVisibility().add(UserGroupService.PUBLIC);
-            }
             notifyObservers(ObservableEvents.APPROVAL_NEEDED, doc);
         }
         _putData(doc);
