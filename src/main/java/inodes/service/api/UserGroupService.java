@@ -2,6 +2,7 @@ package inodes.service.api;
 
 import inodes.Inodes;
 import inodes.service.EmailService;
+import inodes.util.UrlUtil;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,9 +22,14 @@ public abstract class UserGroupService extends Observable {
     @Autowired
     EmailService ES;
 
+    enum Events {
+        USER_REGISTERED,
+        USER_ADDED_TO_GROUP
+    }
+
     @PostConstruct
     public void _init() {
-        register("register", o -> {
+        register(Events.USER_REGISTERED, o -> {
             User u = (User) o;
             String url = String.format("http://%s/auth/validate/%s?tok=%s", Inodes.getLocalAddr(), u.getUserName(), u.__getRegTok());
 
@@ -33,6 +39,22 @@ public abstract class UserGroupService extends Observable {
                     String.format(
                             "Thanks for registering on inodes. <br/><br/><a href='%s'>Click here</a> to verify your inodes account, or open this url manually<br/>%s<br/><br/>Intial credentials<br/>%s / %s",
                             url, url, u.getUserName(), u.getPassword()
+                    )
+            );
+        });
+
+        register(Events.USER_ADDED_TO_GROUP, o -> {
+            List l = (List) o;
+            String adder = (String) l.get(0);
+            User u = getUser((String) l.get(1));
+            String group = (String) l.get(2);
+
+            ES.sendEmail(
+                    Collections.singleton(u.getEmail()),
+                    String.format("%s added you to %s", adder, group),
+                    String.format(
+                            "Congratualations! <a href='%s'>%s</a> added you to group <a href='%s'>%s</a>",
+                            UrlUtil.getUserUrl(adder), adder, UrlUtil.getGroupUrl(group), group
                     )
             );
         });
@@ -46,7 +68,7 @@ public abstract class UserGroupService extends Observable {
         cred.setRoles("UPVOTE,DOWNVOTE,COMMENT");
         cred.setVerified(false);
         _register(cred);
-        notifyObservers("register", cred);
+        notifyObservers(Events.USER_REGISTERED, cred);
     }
 
     public abstract void _register(User cred) throws Exception;
@@ -119,6 +141,7 @@ public abstract class UserGroupService extends Observable {
     public void addUserToGroup(String curUser, String group, String user) throws Exception {
         AS.checkAddUserToGroupPermission(curUser, group);
         _addUserToGroup(group, user);
+        notifyObservers(Events.USER_ADDED_TO_GROUP, Arrays.asList(curUser, user, group));
     }
 
     public void deleteUserFromGroup(String curUser, String group, String user) throws Exception {
@@ -180,6 +203,7 @@ public abstract class UserGroupService extends Observable {
             this.userName = userName;
             this.password = password;
         }
+        User() {}
     }
 
     @Data

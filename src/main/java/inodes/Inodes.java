@@ -35,7 +35,7 @@ public class Inodes implements ApplicationListener<ApplicationReadyEvent> {
     public void onApplicationEvent(ApplicationReadyEvent event) {
         try {
             int port = applicationContext.getBean(Environment.class).getProperty("server.port", Integer.class, 8080);
-            localAddr = InetAddress.getLocalHost().getHostName() + ":" + port;
+            localAddr = "http://" + InetAddress.getLocalHost().getHostName() + ":" + port;
             System.out.println(localAddr);
         } catch (UnknownHostException e) {
             e.printStackTrace();

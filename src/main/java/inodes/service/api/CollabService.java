@@ -5,6 +5,7 @@ import inodes.models.Comment;
 import inodes.models.Document;
 import inodes.service.EmailService;
 import inodes.service.DBBasedUserGroupService;
+import inodes.util.UrlUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -68,12 +69,10 @@ public abstract class CollabService extends Observable {
     private String getCommentEmailBody(String user, String id, String comment) {
         return String.format(
                 "<div style='padding: 10px; border: solid 1px skyblue; display: block'>" +
-                "<a href='%s/?q=%%23user !%s'>%s</a> commented on your <a href='%s/?q=@%s'>post</a></br>" +
+                "<a href='%s'>%s</a> commented on your <a href='%s'>post</a></br>" +
                 "<div style='padding: 10px; background-color: #f2f2f2; border: solid 1px gray; display: block'>%s</div>" +
                 "</div>",
-                "http://localhost:8080", user, user,
-                "http://localhost:8080", id,
-                comment
+                UrlUtil.getUserUrl(user), user, UrlUtil.getDocUrl(id), comment
         );
     }
 

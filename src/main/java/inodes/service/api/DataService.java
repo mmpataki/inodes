@@ -4,6 +4,7 @@ import inodes.Inodes;
 import inodes.models.Document;
 import inodes.models.Klass;
 import inodes.service.EmailService;
+import inodes.util.UrlUtil;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -86,7 +87,7 @@ public abstract class DataService extends Observable {
                 .map(u -> { try { return UGS.getUser(u).getEmail(); } catch (Exception e) { return null; }})
                 .collect(Collectors.toSet()),
                 "New applet alert",
-                String.format("New <a href=\"%s/?q=@%s\">applet alert</a>", Inodes.getLocalAddr(), d.getId())
+                String.format("New <a href='%s'>applet alert</a>", UrlUtil.getDocUrl(d.getId()))
             );
         });
     }
