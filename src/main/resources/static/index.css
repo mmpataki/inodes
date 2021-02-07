@@ -65,7 +65,12 @@ body {
 }
 
 .inode-actions {
+    float: left;
     margin: 10px 0px 5px 0px;
+}
+.inode-actions-list {
+    width: 100%;
+    float: left;
 }
 
 .inode-action-upvote {
@@ -100,6 +105,11 @@ body {
 }
 
 .inode-tag-owner {
+    width: 100%;
+    float: left;
+}
+
+.inode-tag-owner-actions {
     display: block;
     padding-top: 10px;
 }
@@ -147,6 +157,7 @@ body {
 
 .tags-container {
     margin-top: 10px;
+    float: left;
 }
 
 .searchbox {

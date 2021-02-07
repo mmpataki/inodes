@@ -46,7 +46,6 @@ public class DBBasedCollabService extends CollabService {
         sb.append('?');
 
         String sql = String.format("SELECT postid, nvotes FROM votes WHERE postid in (%s)", sb.toString());
-        System.out.println(sql);
 
         PreparedStatement ps = CONN.prepareStatement(sql);
         int i = 1;

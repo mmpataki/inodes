@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Test</title>
-    <script type="text/javascript" src="common.js"></script>
+    <script type="text/javascript" src="../common.js"></script>
+    <script type="text/javascript" src="api.js"></script>
 </head>
 <body>
     <input class="searchbox" type="text" value="!mmp"></input>
@@ -13,12 +14,9 @@
 let capitalizeFirstLetter = function(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
-let getInput = function() {
-    let xx = c('searchbox').value.split(/\s+/).filter(x => x[0] == '!')[0]
-    if(!xx) return null;
-    return xx.substring(1)
-}
-let inputUserId = getInput()
+
+let A = new UApi();
+let inputUserId = A.getInput()
 let curUserId = getCurrentUser()
 inputUserId = inputUserId ? inputUserId : curUserId
 
@@ -123,6 +121,11 @@ Promise.all(proms).then(function(resps) {
         </tr>
         `
     });
+    html += `<tr><td style="text-align: center; padding-right: 10px"><h3>Groups</h3></td></tr><tr><td colspan="2"><div style='margin-left: 50px; width: 100%; display: block;'>`
+    user.groups.forEach(grp => {
+        html += `<span style='background-color: skyblue; padding: 2px 8px; cursor: pointer; border-radius: 5px; display: inline-block; margin-right: 2px' onclick='inodes.triggerSearch("#inodesapp #viewgroup !${grp}")'>${grp}</span>`
+    })
+    html += `</div></td></tr>`
 
     d.innerHTML = html;
     d.querySelector('button.saveuserinfo-btn-stupid').addEventListener('click', () => {

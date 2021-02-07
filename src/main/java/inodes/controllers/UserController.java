@@ -1,6 +1,7 @@
 package inodes.controllers;
 
 import static inodes.service.api.UserGroupService.*;
+import static inodes.util.TryCatchUtil.tc;
 
 import inodes.models.UserInfo;
 import inodes.service.api.UserGroupService;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -58,11 +60,8 @@ public class UserController extends AuthenticatedController {
 
     UserInfo getMoreInfo(User u) {
         UserInfo fui = new UserInfo(u);
-        try {
-            fui.setPostsCount(DS.getUserPostsFacets(u.getUserName()));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        tc(() -> fui.setPostsCount(DS.getUserPostsFacets(u.getUserName())));
+        tc(() -> fui.setGroups(AS.getGroupsOf(u.getUserName())));
         return fui;
     }
 

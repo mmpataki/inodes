@@ -1,6 +1,8 @@
 package inodes.beans;
 
 import inodes.service.api.UserGroupService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -11,11 +13,13 @@ import java.io.IOException;
 import java.util.*;
 
 @Component
-public class RateLimitFilter implements Filter {
+public class InodesFilter implements Filter {
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
 
     }
+
+    Logger LOG = LoggerFactory.getLogger(InodesFilter.class);
 
     @Autowired
     UserGroupService AS;
@@ -93,6 +97,9 @@ public class RateLimitFilter implements Filter {
             }
         }
         filterChain.doFilter(servletRequest, servletResponse);
+
+        Object user = req.getAttribute("loggedinuser");
+        LOG.info("[{}] - {} {} - {}", user == null ? "--" : user.toString(), method, url, resp.getStatus());
     }
 
     private boolean isLoggedIn(HttpServletRequest req, HttpServletResponse resp) {

@@ -2,12 +2,14 @@ package inodes.service.api;
 
 import inodes.Inodes;
 import inodes.service.EmailService;
+import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import java.beans.Transient;
 import java.sql.SQLException;
 import java.util.*;
 
@@ -132,7 +134,7 @@ public abstract class UserGroupService extends Observable {
 
     public abstract void _deleteUserFromGroup(String group, String user) throws SQLException, Exception;
 
-
+    @Data
     public static class User implements Cloneable {
         String userName;
         String fullName;
@@ -163,6 +165,9 @@ public abstract class UserGroupService extends Observable {
             return regTok;
         }
 
+        @Transient
+        public String getRegTok() { return regTok; }
+
         public void setRegTok(String regTok) {
             this.regTok = regTok;
         }
@@ -175,75 +180,9 @@ public abstract class UserGroupService extends Observable {
             this.userName = userName;
             this.password = password;
         }
-
-        public String getTeamsUrl() {
-            return teamsUrl;
-        }
-
-        public void setTeamsUrl(String teamsUrl) {
-            this.teamsUrl = teamsUrl;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getFullName() {
-            return fullName;
-        }
-
-        public void setFullName(String fullName) {
-            this.fullName = fullName;
-        }
-
-        public boolean isVerified() {
-            return verified;
-        }
-
-        public void setVerified(boolean verified) {
-            this.verified = verified;
-        }
-
-        public String getRoles() {
-            return roles;
-        }
-
-        public void setRoles(String roles) {
-            this.roles = roles;
-        }
-
-        User() {
-        }
-
-        public String getUserName() {
-            return userName;
-        }
-
-        public void setUserName(String user) {
-            this.userName = user;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-
-        @Override
-        public String toString() {
-            return "Credentials{" +
-                    "user='" + userName + '\'' +
-                    ", password='" + password + '\'' +
-                    '}';
-        }
     }
 
+    @Data
     public static class Group implements Cloneable {
         String groupName;
         String desc;
@@ -253,38 +192,6 @@ public abstract class UserGroupService extends Observable {
         // transient (not stored with group record)
         Set<String> users = new HashSet<>();
 
-        public String getGroupName() {
-            return groupName;
-        }
-
-        public void setGroupName(String groupName) {
-            this.groupName = groupName;
-        }
-
-        public String getDesc() {
-            return desc;
-        }
-
-        public void setDesc(String desc) {
-            this.desc = desc;
-        }
-
-        public String getTeamsUrl() {
-            return teamsUrl;
-        }
-
-        public void setTeamsUrl(String teamsUrl) {
-            this.teamsUrl = teamsUrl;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
         public Group() {
         }
 
@@ -293,10 +200,6 @@ public abstract class UserGroupService extends Observable {
             this.desc = desc;
             this.teamsUrl = teamsUrl;
             this.email = email;
-        }
-
-        public Set<String> getUsers() {
-            return users;
         }
 
         public void addUser(String username) {

@@ -155,9 +155,9 @@
                 let currentClass = g('kclasses').value
                 let obj = this.klasses[currentClass].obj
                 let content = ''
-                try{
-                     content = JSON.stringify(obj.getContent());
-                }catch(err){
+                try {
+                    content = JSON.stringify(obj.getContent());
+                } catch (err) {
                     showError(err);
                     return
                 }
@@ -180,10 +180,10 @@
             doSearch(str, offset = 0, pageSize = 10) {
                 this.search(str, offset, pageSize).then(d => {
                     this.results = JSON.parse(d.response)
-                    this.showResults();    
+                    this.showResults();
                     this.populateFacets(this.results.facetResults['tags'], 'toptags', '#');
                     this.populateFacets(this.results.facetResults['type'], 'posttypes', '%');
-                    this.populateFacets(this.results.facetResults['owner'],'topcontributors', '~');
+                    this.populateFacets(this.results.facetResults['owner'], 'topcontributors', '~');
                 })
             }
             search(str, offset = 0, pageSize = 10) {
@@ -273,7 +273,7 @@
                 let template = function (klass, obj) {
                     let card;
                     try {
-                        if(obj.needsApproval && getCurrentUser() && getCurrentUser() != obj.owner) {
+                        if (obj.needsApproval && getCurrentUser() && getCurrentUser() != obj.owner) {
                             card = klass.getSafeCard(obj);
                         } else {
                             card = klass.getCard(obj)
@@ -294,6 +294,7 @@
                             text: `Error while processing \n${JSON.stringify(obj, null, '\t')}\n\nException: \n${e.stack}`
                         })
                     }
+                    let getApproveIcon = () => obj.needsApproval ? [{ ele: 'span', classList: 'action', text: 'approve', evnts: { click: () => self.approveInode(obj.id) } }] : [];
                     return {
                         ele: 'div',
                         classList: 'container',
@@ -317,16 +318,48 @@
                             },
                             {
                                 ele: 'div',
-                                classList: 'tag-owner',
+                                classList: 'tag-owner-actions',
                                 children: [
                                     {
                                         ele: 'div',
-                                        classList: 'tag-actions',
+                                        classList: 'tag-owner',
                                         children: [
                                             {
                                                 preBuilt: true,
                                                 ele: self.getTagsElement(obj.tags, obj.owner, obj.type)
                                             },
+                                            {
+                                                ele: 'div',
+                                                classList: 'user-time',
+                                                styles: { float: 'right'},
+                                                children: [
+                                                    {
+                                                        ele: 'span',
+                                                        classList: 'postowner',
+                                                        text: `${obj.owner}`,
+                                                        evnts: {
+                                                            click: function (e) {
+                                                                self.searchUser(obj.owner);
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        classList: 'posttime',
+                                                        styles: {
+                                                            'font-size': '0.7em'
+                                                        },
+                                                        text: `${self.getLocalDateTime(obj.postTime)}`
+                                                    }
+                                                ]
+                                            },
+
+                                        ]
+                                    },
+                                    {
+                                        ele: 'div',
+                                        classList: 'actions-list',
+                                        children: [
                                             {
                                                 ele: 'div',
                                                 classList: 'actions',
@@ -381,30 +414,20 @@
                                                     }
                                                 ]
                                             }
-                                        ]
-                                    }
-                                    ,
-                                    {
-                                        ele: 'div',
-                                        classList: 'user-time',
-                                        children: [
+                                            ,
                                             {
-                                                ele: 'span',
-                                                classList: 'postowner',
-                                                text: `${obj.owner}`,
-                                                evnts: {
-                                                    click: function (e) {
-                                                        self.searchUser(obj.owner);
-                                                    }
-                                                }
-                                            },
-                                            {
-                                                ele: 'span',
-                                                classList: 'posttime',
-                                                styles: {
-                                                    'font-size': '0.7em'
-                                                },
-                                                text: `${self.getLocalDateTime(obj.postTime)}`
+                                                ele: 'div',
+                                                classList: 'actions',
+                                                styles: {float: 'right'},
+                                                children: [
+                                                    {
+                                                        ele: 'span',
+                                                        classList: 'action',
+                                                        text: 'flag',
+                                                        evnts: { click: () => self.flagInode(obj.id) }
+                                                    },
+                                                    ...getApproveIcon()
+                                                ]
                                             }
                                         ]
                                     }
@@ -448,7 +471,7 @@
                                                             `/posts/comment/${obj.id}`,
                                                             g(`comment-${obj.id}`).value
                                                         ).then(x => self.addCommentToList(`oldcomments-${obj.id}`, JSON.parse(x.response)))
-                                                         .catch(e => showError(e.message))
+                                                            .catch(e => showError(e.message))
                                                     }
                                                 }
                                             }
@@ -480,13 +503,11 @@
             }
             getContextButtons(klass, obj) {
                 let self = this;
-                let getLockIcon = () => obj.visibility != 'public' ? [{ ele: 'span', text: '&#128274;', attribs: {title: 'Private (only visible to you)'} }] : []
-                let getApproveIcon = () => obj.needsApproval ? [{ele: 'span', styles: {margin: '0px 5px;'}, text: 'Approve', evnts: {click: () => self.approve(obj.id)}}] : [];
+                let getLockIcon = () => obj.visibility != 'public' ? [{ ele: 'span', text: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []
                 return {
                     ele: 'div',
                     classList: 'context-btns',
                     children: [
-                        ...getApproveIcon(),
                         ...getLockIcon(),
                         {
                             ele: 'span',
@@ -520,11 +541,17 @@
                     ]
                 }
             }
-            
-            approve(docId) {
+
+            approveInode(docId) {
                 post(`/data/${docId}/approve`, {}, {})
-                .then(x => showSuccess('Approved'))
-                .catch(x => showError(x.message))
+                    .then(x => showSuccess('Approved'))
+                    .catch(x => showError(x.message))
+            }
+            
+            flagInode(docId) {
+                post(`/data/${docId}/flag`, {}, {})
+                    .then(x => showSuccess('Flagged, a notification is sent to owner and security team'))
+                    .catch(x => showError(x.message))
             }
 
             searchUser(user) {
@@ -550,7 +577,7 @@
                 container.appendChild(c)
             }
             getCommentContextButtons(c) {
-                if(c.user == getCurrentUser()) {
+                if (c.user == getCurrentUser()) {
                     return `<span onclick='inodes.deleteComment("${c.postid}/${c.user}/${c.time}", this.parentElement)' class='comment-action-btn'>delete</span>`
                 }
                 return ''

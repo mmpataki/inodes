@@ -47,6 +47,11 @@ public class DataController extends AuthenticatedController {
         DS.approve(userId, docId);
     }
 
+    @RequestMapping(value = "/data/{docId}/flag", method = RequestMethod.POST)
+    public void flag(@ModelAttribute("loggedinuser") String userId, @PathVariable("docId") String docId) throws Exception {
+        DS.flag(userId, docId);
+    }
+
     @RequestMapping(value = "/data/{id}", method = RequestMethod.DELETE)
     public void delete(@PathVariable String id, @ModelAttribute("loggedinuser") String user) throws Exception {
         DS.deleteObj(user, id);

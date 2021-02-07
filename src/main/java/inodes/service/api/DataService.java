@@ -161,6 +161,15 @@ public abstract class DataService extends Observable {
         _putData(doc);
     }
 
+    public void flag(String userId, String docId) throws Exception {
+        Document doc = get(userId, docId);
+        AS.checkFlagPermission(userId, doc);
+        doc.setSavedVisibility(doc.getVisibility());
+        doc.setVisibility(Arrays.asList(doc.getOwner(), UserGroupService.SECURITY));
+        doc.setNeedsApproval(true);
+        _putData(doc);
+    }
+
     protected abstract SearchResponse _search(String user, SearchQuery q) throws Exception;
 
     protected abstract void _deleteObj(String id) throws Exception;
