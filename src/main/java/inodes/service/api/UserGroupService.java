@@ -121,6 +121,8 @@ public abstract class UserGroupService extends Observable {
 
     public static final String SECURITY = "security";
     public static final String ADMIN = "admin";
+    public static final String PUBLIC = "public";
+
 
     @Autowired
     AuthorizationService AS;

@@ -97,7 +97,7 @@ public abstract class DataService extends Observable {
         if(user != null && !user.isEmpty()) {
             q.getVisibility().add(user);
         }
-        q.getVisibility().add("public");
+        q.getVisibility().add(UserGroupService.PUBLIC);
         q.getVisibility().addAll(UGS.getGroupsOf(user));
 
         SearchResponse resp = _search(user, q);
@@ -149,6 +149,9 @@ public abstract class DataService extends Observable {
             doc.setNeedsApproval(true);
             doc.setSavedVisibility(doc.getVisibility());
             doc.setVisibility(Arrays.asList(doc.getOwner(), UserGroupService.SECURITY));
+            if(doc.getVisibility().contains(UserGroupService.PUBLIC)) {
+                doc.getVisibility().add(UserGroupService.PUBLIC);
+            }
             notifyObservers(ObservableEvents.APPROVAL_NEEDED, doc);
         }
         _putData(doc);
