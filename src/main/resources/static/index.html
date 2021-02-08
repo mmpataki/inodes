@@ -683,7 +683,7 @@
             openRegisterPage() {
                 this.triggerSearch('#register #inodesapp')
             }
-            runCommand(scriptText, pnode) {
+            runCommand(scriptText, pnode, callBack) {
 
                 if (!pnode) {
                     pnode = document.createElement('div');
@@ -694,10 +694,12 @@
                 status.style = "display: block"
                 pnode.appendChild(status);
 
-                let out = document.createElement('pre');
-                out.style = "background-color: black; color: white; width: 100%; height: 200px; overflow: auto"
-                pnode.appendChild(out);
-
+                let out;
+                if(pnode) {
+                    out = document.createElement('pre');
+                    out.style = "background-color: black; color: white; width: 100%; height: 200px; overflow: auto"
+                    pnode.appendChild(out);
+                }
 
                 let ajax = function (method, url, data, hdrs) {
                     return new Promise((resolve, reject) => {
@@ -736,7 +738,10 @@
                                 event.target.close()
                                 return
                             }
-                            out.innerHTML += event.data + "<br/>"
+                            if(out)
+                                out.innerHTML += event.data + "<br/>"
+                            if(callBack)
+                                callBack(event.data)
                         }
                     })
                 });
