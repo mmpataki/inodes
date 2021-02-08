@@ -332,7 +332,7 @@
                                             {
                                                 ele: 'div',
                                                 classList: 'user-time',
-                                                styles: { float: 'right'},
+                                                styles: { float: 'right' },
                                                 children: [
                                                     {
                                                         ele: 'span',
@@ -419,7 +419,7 @@
                                             {
                                                 ele: 'div',
                                                 classList: 'actions',
-                                                styles: {float: 'right'},
+                                                styles: { float: 'right' },
                                                 children: [
                                                     {
                                                         ele: 'span',
@@ -548,7 +548,7 @@
                     .then(x => showSuccess('Approved'))
                     .catch(x => showError(x.message))
             }
-            
+
             flagInode(docId) {
                 post(`/data/${docId}/flag`, {}, {})
                     .then(x => showSuccess('Flagged, a notification is sent to owner and security team'))
@@ -719,24 +719,27 @@
                     return ajax('POST', url, JSON.stringify(data), hdrs);
                 }
 
-                post(
-                    'http://inedctst01:5000/cli',
-                    { script: scriptText },
-                    { 'Content-Type': 'application/json' }
-                ).then(d => {
-                    d = d.response
-                    status.innerHTML = `<b style="color:blue">Starting</b>`
-                    var source = new EventSource(`http://inedctst01:5000/poll?rid=${d}`);
-                    source.onmessage = function (event) {
-                        status.innerHTML = `<b style="color:orange">Running</b>`
-                        if (event.data == 'MPATAKI-STOP_EVENT-SOURCE') {
-                            status.innerHTML = `<b style="color:green">Done</b>`
-                            event.target.close()
-                            return
+                return new Promise((resolve, reject) => {
+                    post(
+                        'http://inedctst01:5000/cli',
+                        { script: scriptText },
+                        { 'Content-Type': 'application/json' }
+                    ).then(d => {
+                        d = d.response
+                        resolve(d)
+                        status.innerHTML = `<b style="color:blue">Starting</b>`
+                        var source = new EventSource(`http://inedctst01:5000/poll?rid=${d}`);
+                        source.onmessage = function (event) {
+                            status.innerHTML = `<b style="color:orange">Running</b>`
+                            if (event.data == 'MPATAKI-STOP_EVENT-SOURCE') {
+                                status.innerHTML = `<b style="color:green">Done</b>`
+                                event.target.close()
+                                return
+                            }
+                            out.innerHTML += event.data + "<br/>"
                         }
-                        out.innerHTML += event.data + "<br/>"
-                    }
-                })
+                    })
+                });
             }
         }
 
