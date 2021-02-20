@@ -37,7 +37,7 @@ public class EmailService {
 
         Message message = new MimeMessage(session);
         message.setFrom(new InternetAddress(conf.getProperty("emailservice.sender.email.id")));
-        message.setRecipients(Message.RecipientType.BCC, InternetAddress.parse(to.stream().collect(Collectors.joining(";"))));
+        message.setRecipients(Message.RecipientType.BCC, InternetAddress.parse(to.stream().collect(Collectors.joining(","))));
         message.setSubject(subject);
 
         MimeBodyPart mimeBodyPart = new MimeBodyPart();

@@ -31,7 +31,7 @@ public abstract class UserGroupService extends Observable {
     public void _init() {
         register(Events.USER_REGISTERED, o -> {
             User u = (User) o;
-            String url = String.format("http://%s/auth/validate/%s?tok=%s", Inodes.getLocalAddr(), u.getUserName(), u.__getRegTok());
+            String url = String.format("%s/auth/validate/%s?tok=%s", Inodes.getLocalAddr(), u.getUserName(), u.__getRegTok());
 
             ES.sendEmail(
                     Collections.singleton(u.getEmail()),
