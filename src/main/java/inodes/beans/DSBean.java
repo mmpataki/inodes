@@ -20,7 +20,7 @@ public class DSBean {
         dataSourceBuilder.driverClassName(conf.getProperty("db.driver.class"));
         dataSourceBuilder.url(conf.getProperty("db.url"));
         dataSourceBuilder.username(conf.getProperty("db.user"));
-        dataSourceBuilder.password("db.password");
+        dataSourceBuilder.password(conf.getProperty("db.password"));
         return dataSourceBuilder.build();
     }
 

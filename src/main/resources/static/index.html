@@ -574,12 +574,12 @@
                 let container = g(parentId);
                 let c = document.createElement('div')
                 c.classList = "inode-comment-card"
-                c.innerHTML = `${JSON.parse(comment.comment).replaceAll(/@([0-9A-Za-z]+)/g, '<a href="/?q=%23user !$1" target="_blank" >$1</a>')} - <a href="/?q=%23user !${comment.user}">${comment.user}</a> ${this.getCommentContextButtons(comment)}`
+                c.innerHTML = `${JSON.parse(comment.txt).replaceAll(/@([0-9A-Za-z]+)/g, '<a href="/?q=%23user !$1" target="_blank" >$1</a>')} - <a href="/?q=%23user !${comment.userid}">${comment.userid}</a> ${this.getCommentContextButtons(comment)}`
                 container.appendChild(c)
             }
             getCommentContextButtons(c) {
-                if (c.user == getCurrentUser()) {
-                    return `<span onclick='inodes.deleteComment("${c.postid}/${c.user}/${c.time}", this.parentElement)' class='comment-action-btn'>delete</span>`
+                if (c.userid == getCurrentUser()) {
+                    return `<span onclick='inodes.deleteComment("${c.postid}/${c.userid}/${c.itime}", this.parentElement)' class='comment-action-btn'>delete</span>`
                 }
                 return ''
             }

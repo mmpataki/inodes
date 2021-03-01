@@ -9,12 +9,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Data
-@Entity
-@Table(name = "t_group")
+@Entity(name = "groups")
 public class Group implements Cloneable {
     @Id
     String groupName;
-    String desc;
+    String description;
     String teamsUrl;
     String email;
 
@@ -25,9 +24,9 @@ public class Group implements Cloneable {
     public Group() {
     }
 
-    public Group(String groupName, String desc, String teamsUrl, String email) {
+    public Group(String groupName, String description, String teamsUrl, String email) {
         this.groupName = groupName;
-        this.desc = desc;
+        this.description = description;
         this.teamsUrl = teamsUrl;
         this.email = email;
     }

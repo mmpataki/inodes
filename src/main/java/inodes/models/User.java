@@ -1,6 +1,5 @@
 package inodes.models;
 
-import inodes.service.api.UserGroupService;
 import lombok.Builder;
 import lombok.Data;
 
@@ -9,7 +8,7 @@ import javax.persistence.Id;
 import java.beans.Transient;
 
 @Data
-@Entity
+@Entity(name = "USERS")
 @Builder
 public class User implements Cloneable {
     @Id

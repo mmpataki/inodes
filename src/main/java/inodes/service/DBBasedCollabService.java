@@ -36,14 +36,14 @@ public class DBBasedCollabService extends CollabService {
 
     @Override
     protected Comment _comment(String user, String id, String comment) throws Exception {
-        Comment c = Comment.builder().postid(id).user(user).time(System.currentTimeMillis()).comment(comment).build();
+        Comment c = Comment.builder().postid(id).userid(user).itime(System.currentTimeMillis()).txt(comment).build();
         CR.save(c);
         return c;
     }
 
     @Override
     protected void _deleteComment(String id, String owner, long time) throws Exception {
-        CR.delete(Comment.CID.builder().postid(id).user(owner).time(time).build());
+        CR.delete(Comment.CID.builder().postid(id).userid(owner).itime(time).build());
     }
 
     @Override

@@ -8,7 +8,7 @@ import javax.persistence.Id;
 import javax.persistence.IdClass;
 import java.io.Serializable;
 
-@Entity
+@Entity(name = "COMMENTS")
 @IdClass(Comment.CID.class)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -24,19 +24,17 @@ public class Comment {
     @Setter
     public static class CID implements Serializable {
         String postid;
-        String user;
-        long time;
+        String userid;
+        long itime;
     }
 
     @Id
     String postid;
     @Id
-    @Column(name = "user")
-    String user;
+    String userid;
     @Id
-    @Column(name = "itime")
-    long time;
+    long itime;
 
-    public String comment;
+    public String txt;
 
 }
