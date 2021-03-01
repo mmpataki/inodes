@@ -1,26 +1,38 @@
 package inodes.service.api;
 
 import inodes.Inodes;
+import inodes.models.Group;
+import inodes.models.User;
+import inodes.repository.GroupRepo;
+import inodes.repository.UserRepo;
 import inodes.service.EmailService;
 import inodes.util.UrlUtil;
-import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.beans.Transient;
-import java.sql.SQLException;
 import java.util.*;
+import java.util.stream.Collectors;
+
+import static inodes.util.TryCatchUtil.tc;
 
 @Service
-public abstract class UserGroupService extends Observable {
+public class UserGroupService extends Observable {
 
     Logger LOG = LoggerFactory.getLogger(UserGroupService.class);
 
     @Autowired
     EmailService ES;
+
+    @Autowired
+    UserRepo UR;
+
+    @Autowired
+    GroupRepo GR;
+
+    Random R = new Random();
 
     enum Events {
         USER_REGISTERED,
@@ -58,28 +70,74 @@ public abstract class UserGroupService extends Observable {
                     )
             );
         });
+
+        tc(() -> _register(new User("mmp", "Madhusoodan Pataki", "m@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT", "", "")));
+        tc(() -> _register(new User("admin", "Admin", "a@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT,ADMIN", "", "")));
+
+        tc(() -> _createGroup(new Group(ADMIN, "admin group", "", "")));
+        tc(() -> _createGroup(new Group(SECURITY, "security group to review content", "", "")));
+
+        tc(() -> _addUserToGroup(ADMIN, "admin"));
+        tc(() -> _addUserToGroup(SECURITY, "admin"));
     }
 
-    public abstract boolean authenticate(User cred) throws Exception;
+    public boolean authenticate(User cred) throws Exception {
+        User c = getUser(cred.getUserName());
+        if (c != null) {
+            return c.isVerified() && c.getPassword().equals(cred.getPassword());
+        }
+        return false;
+    }
 
-    public abstract void validate(String uid, String tok) throws Exception;
+    public void validate(String uid, String tok) throws Exception {
+        User u = getUser(uid);
+        if (!u.__getRegTok().equals(tok)) {
+            throw new Exception("token don't match, re-register");
+        }
+        u.setVerified(true);
+        UR.save(u);
+    }
 
     public void register(User cred) throws Exception {
+        if (getUser(cred.getUserName()) != null) {
+            throw new UserExistsException(cred.getUserName() + " already exists");
+        }
         cred.setRoles("UPVOTE,DOWNVOTE,COMMENT");
         cred.setVerified(false);
+        cred.setRegTok(R.nextDouble() + "-" + R.nextInt());
         _register(cred);
         notifyObservers(Events.USER_REGISTERED, cred);
     }
 
-    public abstract void _register(User cred) throws Exception;
+    private void _register(User cred) throws Exception {
+        UR.save(cred);
+    }
 
-    public abstract User getUser(String userName) throws Exception;
+    /**
+     * @param userName
+     * @returnb : null if not present, clone of the user otherwise
+     * @throws Exception
+     */
+    public User getUser(String userName) throws Exception {
+        User cred = UR.findOne(userName);
+        if (cred != null) {
+            return cred.clone();
+        }
+        return null;
+    }
 
-    public abstract boolean isAdmin(String userId) throws Exception;
+    public boolean isAdmin(String userId) throws Exception {
+        return getUser(userId).getRoles().contains("ADMIN");
+    }
 
-    public abstract List<User> getUsers() throws Exception;
+    public List<User> getUsers() throws Exception {
+        List<User> ret = new LinkedList<>();
+        UR.findAll().forEach(ret::add);
+        return ret;
+    }
 
     public void updateUser(String modifier, User u) throws Exception {
+
         if (!modifier.equals(u.getUserName()) && !isAdmin(modifier)) {
             throw new UnAuthorizedException("Unauthorized");
         }
@@ -113,11 +171,8 @@ public abstract class UserGroupService extends Observable {
                 copyUser.setPassword(u.getPassword());
         }
 
-        _updateUser(modifier, copyUser);
+        UR.save(copyUser);
     }
-
-    public abstract void _updateUser(String modifier, User u) throws Exception;
-
 
     public static final String SECURITY = "security";
     public static final String ADMIN = "admin";
@@ -127,12 +182,21 @@ public abstract class UserGroupService extends Observable {
     @Autowired
     AuthorizationService AS;
 
-    public abstract List<String> getAllGroups() throws Exception;
+    public List<String> getAllGroups() throws Exception {
+        List<String> ret = new LinkedList<>();
+        GR.findAll().forEach(x -> ret.add(x.getGroupName()));
+        return ret;
+    }
 
-    public abstract List<String> getGroupsOf(String user) throws SQLException, Exception;
+    public List<String> getGroupsOf(String user) throws Exception {
+        if(user == null) {
+            return Collections.EMPTY_LIST;
+        }
+        return GR.findGroupNameByUsers(User.builder().userName(user).build()).stream().map(x -> x.getGroupName()).collect(Collectors.toList());
+    }
 
     public Group getGroup(String groupName) throws Exception {
-        return _getGroup(groupName);
+        return GR.findOne(groupName);
     }
 
     public void createGroup(String user, Group grp) throws Exception {
@@ -151,85 +215,21 @@ public abstract class UserGroupService extends Observable {
         _deleteUserFromGroup(group, user);
     }
 
-    protected abstract void _addUserToGroup(String group, String user) throws Exception;
-
-    protected abstract void _createGroup(Group grp) throws Exception;
-
-    protected abstract Group _getGroup(String groupName) throws Exception;
-
-    public abstract void _deleteUserFromGroup(String group, String user) throws SQLException, Exception;
-
-    @Data
-    public static class User implements Cloneable {
-        String userName;
-        String fullName;
-        String password;
-        boolean verified;
-        String roles;
-        String teamsUrl;
-        String email;
-        String regTok;
-
-        public User(String userName, String fullName, String password, boolean verified, String roles, String teamsUrl, String email, String regTok) {
-            this.userName = userName;
-            this.fullName = fullName;
-            this.password = password;
-            this.verified = verified;
-            this.roles = roles;
-            this.teamsUrl = teamsUrl;
-            this.email = email;
-            this.regTok = regTok;
-        }
-
-        @Override
-        public User clone() throws CloneNotSupportedException {
-            return (User) super.clone();
-        }
-
-        public String __getRegTok() {
-            return regTok;
-        }
-
-        @Transient
-        public String getRegTok() { return regTok; }
-
-        public void setRegTok(String regTok) {
-            this.regTok = regTok;
-        }
-
-        public User(String userName, String fullName, String password, boolean verified, String roles, String teamsUrl, String email) {
-            this(userName, fullName, password, verified, roles, teamsUrl, email, null);
-        }
-
-        public User(String userName, String password) {
-            this.userName = userName;
-            this.password = password;
-        }
-        User() {}
+    protected void _addUserToGroup(String groupName, String userName) throws Exception {
+        Group grp = getGroup(groupName);
+        User user = getUser(userName);
+        grp.addUser(user);
+        GR.save(grp);
     }
 
-    @Data
-    public static class Group implements Cloneable {
-        String groupName;
-        String desc;
-        String teamsUrl;
-        String email;
-
-        // transient (not stored with group record)
-        Set<String> users = new HashSet<>();
-
-        public Group() {
-        }
-
-        public Group(String groupName, String desc, String teamsUrl, String email) {
-            this.groupName = groupName;
-            this.desc = desc;
-            this.teamsUrl = teamsUrl;
-            this.email = email;
-        }
-
-        public void addUser(String username) {
-            users.add(username);
-        }
+    protected void _createGroup(Group grp) throws Exception {
+        GR.save(grp);
     }
+
+    public void _deleteUserFromGroup(String group, String user) throws Exception {
+        Group grp = getGroup(group);
+        grp.deleteUser(user);
+        GR.save(grp);
+    }
+
 }

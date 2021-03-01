@@ -3,8 +3,8 @@ package inodes.service.api;
 import com.google.gson.Gson;
 import inodes.models.Comment;
 import inodes.models.Document;
+import inodes.models.User;
 import inodes.service.EmailService;
-import inodes.service.DBBasedUserGroupService;
 import inodes.util.UrlUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 public abstract class CollabService extends Observable {
 
     @Autowired
-    DBBasedUserGroupService US;
+    UserGroupService US;
 
     @Autowired
     AuthorizationService AS;
@@ -38,7 +38,7 @@ public abstract class CollabService extends Observable {
                     String comment = (new Gson()).fromJson(chunks[2], String.class);
 
                     Document d = DS.get("admin", chunks[1]);
-                    UserGroupService.User owner = US.getUser(d.getOwner());
+                    User owner = US.getUser(d.getOwner());
 
                     Set<String> rcpnts = new HashSet<String>();
                     rcpnts.add(owner.getEmail());

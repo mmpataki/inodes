@@ -56,12 +56,14 @@ public class SolrDataService extends DataService {
                     m.put("required", true);
                     return m;
                 })
+                .map(m -> { LOG.info("registering solr field: " + m); return m; })
                 .map(m -> new SchemaRequest.AddField(m))
                 .forEach(a -> {
                     try {
                         a.process(solr);
                     } catch (Exception e) {
-                        LOG.error("Solr add field failed.", e);
+                        LOG.error("Solr add field failed. This can be a flase alarm as well. Enable debug logging to know more");
+                        LOG.debug("Exception stack trace", e);
                     }
                 });
     }

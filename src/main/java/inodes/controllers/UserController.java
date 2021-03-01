@@ -1,8 +1,9 @@
 package inodes.controllers;
 
-import static inodes.service.api.UserGroupService.*;
 import static inodes.util.TryCatchUtil.tc;
 
+import inodes.models.Group;
+import inodes.models.User;
 import inodes.models.UserInfo;
 import inodes.service.api.UserGroupService;
 import inodes.service.api.DataService;
@@ -14,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -66,7 +66,7 @@ public class UserController extends AuthenticatedController {
     }
 
     @RequestMapping(value = "/auth/groups", method = RequestMethod.POST)
-    public void addGroup(@RequestBody UserGroupService.Group grp, @ModelAttribute("loggedinuser") String user) throws Exception {
+    public void addGroup(@RequestBody Group grp, @ModelAttribute("loggedinuser") String user) throws Exception {
         AS.createGroup(user, grp);
         AS.addUserToGroup(user, grp.getGroupName(), user);
     }
@@ -86,7 +86,7 @@ public class UserController extends AuthenticatedController {
     }
 
     @RequestMapping(value = "/auth/groups/{gname}", method = RequestMethod.GET)
-    public UserGroupService.Group getGroup(@PathVariable("gname") String group) throws Exception {
+    public Group getGroup(@PathVariable("gname") String group) throws Exception {
         return AS.getGroup(group);
     }
 

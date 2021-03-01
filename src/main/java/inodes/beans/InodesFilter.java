@@ -1,5 +1,6 @@
 package inodes.beans;
 
+import inodes.models.User;
 import inodes.service.api.UserGroupService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,7 +88,7 @@ public class InodesFilter implements Filter {
             } else if (url.equals("/auth/logout")) {
                 doLogout(req, resp);
                 return;
-            } else if(url.equals("/auth/register") || url.equals("/nocors")) {
+            } else if(url.equals("/auth/register") || url.equals("/nocors") || url.startsWith("/h2-console")) {
                 // leave these guys
             } else {
                 if (!isLoggedIn(req, resp) && !method.equals("GET")) {
@@ -131,7 +132,7 @@ public class InodesFilter implements Filter {
     private boolean doLogin(HttpServletRequest req, HttpServletResponse resp, boolean makeSess) {
         String authHdr = req.getHeader("Authorization");
         if (authHdr != null) {
-            UserGroupService.User cred = makeCredential(authHdr);
+            User cred = makeCredential(authHdr);
             try {
                 if (AS.authenticate(cred)) {
                     if (makeSess) {
@@ -149,9 +150,9 @@ public class InodesFilter implements Filter {
         return false;
     }
 
-    private UserGroupService.User makeCredential(String authHdr) {
+    private User makeCredential(String authHdr) {
         String chunks[] = new String(Base64.getDecoder().decode(authHdr.split(" ")[1].getBytes())).split(":");
-        return new UserGroupService.User(chunks[0], chunks[1]);
+        return new User(chunks[0], chunks[1]);
     }
 
     private void sendNoAuth(HttpServletRequest req, HttpServletResponse r) throws IOException {

@@ -32,21 +32,10 @@ public class DbBasedTagsServiceImpl extends TagsService {
 
     @PostConstruct
     void init() throws Exception {
-        CONN = DriverManager.getConnection(
-                conf.getProperty("trendingservice.db.url"),
-                conf.getProperty("trendingservice.db.user"),
-                conf.getProperty("trendingservice.db.password")
-        );
-        try {
-            CONN.createStatement().execute("CREATE TABLE tags (tag VARCHAR(32), hits NUMBER)");
-        } catch (SQLException throwables) {
-            if(!throwables.getMessage().contains("name is already used by an existing object"))
-                throwables.printStackTrace();
-        }
         DS.register(DataService.ObservableEvents.SEARCH, o -> {
             Set<String> tags = new HashSet<>();
-            for (Document doc : (List<Document>)o) {
-                if(doc.getTags() != null) {
+            for (Document doc : (List<Document>) o) {
+                if (doc.getTags() != null) {
                     for (String tag : doc.getTags()) {
                         tags.add(tag);
                     }

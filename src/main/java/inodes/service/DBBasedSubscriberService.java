@@ -20,22 +20,6 @@ import static inodes.util.TryCatchUtil.tc;
 @Service
 public class DBBasedSubscriberService extends SubscriptionService {
 
-    @Autowired
-    Configuration conf;
-
-    Connection CONN;
-    Random R = new Random();
-
-    @PostConstruct
-    void init() throws Exception {
-        try {
-            CONN = DriverManager.getConnection(conf.getProperty("subscriptionservice.db.url"), conf.getProperty("subscriptionservice.db.user"), conf.getProperty("subscriptionservice.db.password"));
-            tc(() -> CONN.createStatement().execute("CREATE TABLE subscription (id VARCHAR(32) PRIMARY KEY, typ INT)"));
-        } catch (Exception throwables) {
-            throwables.printStackTrace();
-        }
-    }
-
     @Override
     protected void _saveSubscription(SubscriptionService.Subscription subscription) {
 

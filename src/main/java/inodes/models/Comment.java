@@ -1,18 +1,42 @@
 package inodes.models;
 
-import lombok.Data;
+import lombok.*;
 
-@Data
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.IdClass;
+import java.io.Serializable;
+
+@Entity
+@IdClass(Comment.CID.class)
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@Getter
+@Setter
 public class Comment {
-    public String postid;
-    public String user;
-    public Long time;
+
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    @Getter
+    @Setter
+    public static class CID implements Serializable {
+        String postid;
+        String user;
+        long time;
+    }
+
+    @Id
+    String postid;
+    @Id
+    @Column(name = "user")
+    String user;
+    @Id
+    @Column(name = "itime")
+    long time;
+
     public String comment;
 
-    public Comment(String postid, String user, Long time, String comment) {
-        this.postid = postid;
-        this.user = user;
-        this.time = time;
-        this.comment = comment;
-    }
 }
