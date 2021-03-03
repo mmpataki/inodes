@@ -1,18 +1,17 @@
 package inodes.service.api;
 
-import inodes.Inodes;
 import inodes.models.Document;
-import inodes.models.Klass;
-import inodes.service.EmailService;
-import inodes.util.UrlUtil;
+import inodes.models.UserInfo;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
+
+import static inodes.util.TryCatchUtil.tc;
 
 @Service
 public abstract class DataService extends Observable {
@@ -23,85 +22,38 @@ public abstract class DataService extends Observable {
         APPROVAL_NEEDED
     }
 
+    @Data
     public static class SearchResponse {
         List<Document> results;
         Map<String, Map<String, Long>> facetResults;
         long totalResults;
-
-        public Map<String, Map<String, Long>> getFacetResults() {
-            return facetResults;
-        }
-
-        public void setFacetResults(Map<String, Map<String, Long>> facetResults) {
-            this.facetResults = facetResults;
-        }
-
-        public List<Document> getResults() {
-            return results;
-        }
-
-        public void setResults(List<Document> results) {
-            this.results = results;
-        }
-
-        public long getTotalResults() {
-            return totalResults;
-        }
-
-        public void setTotalResults(long totalResults) {
-            this.totalResults = totalResults;
-        }
     }
 
     @Autowired
     AuthorizationService AS;
 
     @Autowired
-    CollabService CS;
-
-    @Autowired
-    UserGroupService UGS;
-
-    @Autowired
-    KlassService KS;
-
-    @Autowired
-    EmailService ES;
+    UserGroupService US;
 
 
-    public DataService() {
-        register(ObservableEvents.SEARCH, o -> {
-            Map<String, Long> votes = CS.getVotes(((List<Document>) o).stream().map(d -> d.getId()).collect(Collectors.toList()));
-            for (Document doc : (List<Document>)o) {
-                Long l = votes.get(doc.getId());
-                doc.setVotes(l == null ? 0 : l);
-            }
-        });
-        register(ObservableEvents.APPROVAL_NEEDED, o -> {
-            Document d = (Document) o;
-            ES.sendEmail(
-                UGS
-                .getGroup(UserGroupService.SECURITY)
-                .getUsers()
-                .stream()
-                .map(u -> { try { return UGS.getUser(u).getEmail(); } catch (Exception e) { return null; }})
-                .collect(Collectors.toSet()),
-                "New applet alert",
-                String.format("New <a href='%s'>applet alert</a>", UrlUtil.getDocUrl(d.getId()))
-            );
+    @PostConstruct
+    public void _init() {
+        US.registerPostEvent(UserGroupService.Events.USER_SEARCH, o -> {
+            UserInfo userInfo = (UserInfo) o;
+            userInfo.addExtraInfo("postCount", getUserPostsFacets(userInfo.getBasic().getUserName()));
         });
     }
 
     public SearchResponse search(String user, SearchQuery q) throws Exception {
         q.setVisibility(new HashSet<>());
-        if(user != null && !user.isEmpty()) {
+        if (user != null && !user.isEmpty()) {
             q.getVisibility().add(user);
         }
         q.getVisibility().add(UserGroupService.PUBLIC);
-        q.getVisibility().addAll(UGS.getGroupsOf(user));
+        q.getVisibility().addAll(US.getGroupsOf(user));
 
         SearchResponse resp = _search(user, q);
-        notifyObservers(ObservableEvents.SEARCH, resp.getResults());
+        notifyPostEvent(ObservableEvents.SEARCH, resp.getResults());
         return resp;
     }
 
@@ -120,16 +72,16 @@ public abstract class DataService extends Observable {
 
     public void putData(String user, Document doc) throws Exception {
         assert
-            Objects.nonNull(doc) &&
-            Objects.nonNull(doc.getContent()) &&
-            Objects.nonNull(doc.getTags()) &&
-            Objects.nonNull(doc.getVisibility()) &&
-            Objects.nonNull(doc.getType());
+                Objects.nonNull(doc) &&
+                        Objects.nonNull(doc.getContent()) &&
+                        Objects.nonNull(doc.getTags()) &&
+                        Objects.nonNull(doc.getVisibility()) &&
+                        Objects.nonNull(doc.getType());
 
-        if(doc.getTags().contains("inodesapp") && !UGS.isAdmin(user))
+        if (doc.getTags().contains("inodesapp") && !US.isAdmin(user))
             doc.getTags().remove("inodesapp");
 
-        if(doc.getId() != null && !doc.getId().isEmpty()) {
+        if (doc.getId() != null && !doc.getId().isEmpty()) {
             Document oldDoc = get(user, doc.getId());
             AS.checkEditPermission(user, oldDoc);
             doc.setOwner(oldDoc.getOwner());
@@ -143,15 +95,9 @@ public abstract class DataService extends Observable {
             doc.setPostTime(System.currentTimeMillis());
             doc.setOwner(user);
         }
-        notifyObservers(ObservableEvents.NEW, doc);
-        Klass klass = KS.getKlass(doc.getType());
-        if(klass.isEditApprovalNeeded()) {
-            doc.setNeedsApproval(true);
-            doc.setSavedVisibility(doc.getVisibility());
-            doc.setVisibility(Arrays.asList(doc.getOwner(), UserGroupService.SECURITY));
-            notifyObservers(ObservableEvents.APPROVAL_NEEDED, doc);
-        }
+        notifyPreEvent(ObservableEvents.NEW, doc);
         _putData(doc);
+        notifyPostEvent(ObservableEvents.NEW, doc);
     }
 
     public void approve(String userId, String docId) throws Exception {
@@ -181,7 +127,8 @@ public abstract class DataService extends Observable {
         return search(userName, SearchQuery.builder().q("*").fq(Arrays.asList("type")).fqLimit(Integer.MAX_VALUE).build()).getFacetResults().get("type");
     }
 
-    @Builder @Data
+    @Builder
+    @Data
     public static class SearchQuery {
         String q;
         String id;

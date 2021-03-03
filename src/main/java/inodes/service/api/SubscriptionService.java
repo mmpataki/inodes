@@ -1,50 +1,65 @@
 package inodes.service.api;
 
+import inodes.models.Subscription;
+import inodes.models.UserInfo;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import javax.annotation.PostConstruct;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-public abstract class SubscriptionService {
+public abstract class SubscriptionService extends Observable {
 
-    enum Event {
-        NEW_DOC,
-        DOC_UPDATE,
-        USER_ADDED,
-        GROUP_ADDED,
-        ALL
+    @Autowired
+    AuthorizationService AS;
+
+    @Autowired
+    UserGroupService US;
+
+    enum EventType {
+        NEW_SUBSCRIPTION
     }
 
-    enum SubscriberType {
-        USER,
-        GROUP
+    @PostConstruct
+    public void init() {
+        US.registerPostEvent(UserGroupService.Events.USER_SEARCH, o -> {
+            UserInfo u = (UserInfo) o;
+            u.addExtraInfo("direct_subscriptions", getSubscribers(Subscription.SubscriberType.USER, u.getBasic().getUserName()));
+            Map<String, List<Subscription>> gSubscriptions = new HashMap<>();
+            US.getGroupsOf(u.getBasic().getUserName()).forEach(gid -> {
+                gSubscriptions.put(gid, getSubscribers(Subscription.SubscriberType.GROUP, gid));
+            });
+            u.addExtraInfo("group_subscriptions", gSubscriptions);
+        });
     }
 
-    public static class Subscription {
-        String subscriberId;
-        String docid;
-        SubscriberType typ;
-        Event evnt;
-        String state;
-        long lastUpdTime;
+    public void subscribe(
+            String user,
+            Subscription.SubscriberType subscriberType, String subscriberId,
+            Subscription.SubscribedObjectType objTyp, String objId,
+            Subscription.Event event) throws Exception {
 
-        public Subscription(String subscriberId, String docid, SubscriberType typ, Event evnt, String state, long lastUpdTime) {
-            this.subscriberId = subscriberId;
-            this.docid = docid;
-            this.typ = typ;
-            this.evnt = evnt;
-            this.state = state;
-            this.lastUpdTime = lastUpdTime;
-        }
-    }
+        AS.checkSubscribePermission(user, subscriberType, subscriberId);
 
-    public void subscribeUser(String user, String id, Event evnt) {
-        _saveSubscription(new Subscription(user, id, SubscriberType.USER, evnt, "", System.currentTimeMillis()));
-    }
+        Subscription s = Subscription.builder()
+                .subscriberType(subscriberType).subscriberId(subscriberId)
+                .objType(objTyp).objid(objId)
+                .event(event)
+                .lastUpdTime(System.currentTimeMillis())
+                .build();
+        _saveSubscription(s);
 
-    public void subscribeGroup(String user, String id, Event evnt) {
-        _saveSubscription(new Subscription(user, id, SubscriberType.GROUP, evnt, "", System.currentTimeMillis()));
+        notifyPostEvent(EventType.NEW_SUBSCRIPTION, s);
     }
 
     protected abstract void _saveSubscription(Subscription subscription);
 
-    protected abstract List<Subscription> getSubscribers(String id);
+    public abstract List<Subscription> getSubscriptions();
 
+    public abstract List<Subscription> getSubscribers(Subscription.SubscribedObjectType objType, String objid);
+
+    public abstract List<Subscription> getSubscribers(Subscription.SubscriberType subsciberTyp, String subscriberId);
+
+    public abstract List<Subscription> getSubscriptions(Subscription.SubscribedObjectType objType, String objid, Subscription.SubscriberType subsciberTyp, String subscriberId);
 }

@@ -1,24 +1,16 @@
 package inodes.service.api;
 
-import com.google.gson.Gson;
 import inodes.models.Comment;
 import inodes.models.Document;
-import inodes.models.User;
-import inodes.service.EmailService;
-import inodes.util.UrlUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 public abstract class CollabService extends Observable {
-
-    @Autowired
-    UserGroupService US;
 
     @Autowired
     AuthorizationService AS;
@@ -26,69 +18,26 @@ public abstract class CollabService extends Observable {
     @Autowired
     DataService DS;
 
-    @Autowired
-    EmailService ES;
+    enum EventType {
+        NEW_COMMENT
+    }
 
     @PostConstruct
     public void _init() {
-        register("comment", o -> {
-            new Thread(() -> {
-                try {
-                    String chunks[] = (String[]) o;
-                    String comment = (new Gson()).fromJson(chunks[2], String.class);
 
-                    Document d = DS.get("admin", chunks[1]);
-                    User owner = US.getUser(d.getOwner());
-
-                    Set<String> rcpnts = new HashSet<String>();
-                    rcpnts.add(owner.getEmail());
-                    Matcher m = Pattern.compile("\\@([0-9A-Za-z]+)").matcher(comment);
-                    while(m.find()) {
-                        try {
-                            String uName = m.group(1);
-                            System.out.println(uName);
-                            String email = US.getUser(uName).getEmail();
-                            if(email != null && !email.isEmpty()) {
-                                rcpnts.add(email);
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    if(owner.getEmail() != null) {
-                        ES.sendEmail(rcpnts, getCommentEmailSubject(chunks[0]), getCommentEmailBody(chunks[0], chunks[1], comment));
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }).start();
+        /* append votes to the search results */
+        registerPostEvent(DataService.ObservableEvents.SEARCH, o -> {
+            Map<String, Long> votes = this.getVotes(((List<Document>) o).stream().map(d -> d.getId()).collect(Collectors.toList()));
+            for (Document doc : (List<Document>)o) {
+                Long l = votes.get(doc.getId());
+                doc.setVotes(l == null ? 0 : l);
+            }
         });
-    }
-
-    private String getCommentEmailBody(String user, String id, String comment) {
-        return String.format(
-                "<div style='padding: 10px; border: solid 1px skyblue; display: block'>" +
-                "<a href='%s'>%s</a> commented on your <a href='%s'>post</a></br>" +
-                "<div style='padding: 10px; background-color: #f2f2f2; border: solid 1px gray; display: block'>%s</div>" +
-                "</div>",
-                UrlUtil.getUserUrl(user), user, UrlUtil.getDocUrl(id), comment
-        );
-    }
-
-    private String getCommentEmailSubject(String who) {
-        return who + " commented on your post";
     }
 
     public Map<String, Long> getVotes(List<String> id) throws Exception {
         return _getVotes(id);
     }
-
-    public List<Comment> getComments(String id) throws Exception {
-        return _getComments(id);
-    }
-
-    protected abstract List<Comment> _getComments(String id) throws Exception;
 
     public void upVote(String user, String id) throws Exception {
         AS.checkUpVotePermission(user, DS.get(user, id));
@@ -100,10 +49,14 @@ public abstract class CollabService extends Observable {
         _downvote(user, id);
     }
 
+    public List<Comment> getComments(String id) throws Exception {
+        return _getComments(id);
+    }
+
     public Comment comment(String user, String id, String comment) throws Exception {
         AS.checkCommentPermission(user, DS.get(user, id));
         Comment c = _comment(user, id, comment);
-        notifyObservers("comment", new String[] {user, id, comment});
+        notifyPostEvent(EventType.NEW_COMMENT, Arrays.asList(user, id, comment));
         return c;
     }
 
@@ -113,14 +66,13 @@ public abstract class CollabService extends Observable {
         _deleteComment(id, owner, time);
     }
 
-    protected abstract Comment _comment(String user, String id, String comment) throws Exception;
 
+    protected abstract List<Comment> _getComments(String id) throws Exception;
+    protected abstract Comment _comment(String user, String id, String comment) throws Exception;
     protected abstract void _deleteComment(String id, String owner, long time) throws Exception;
 
     protected abstract void _downvote(String user, String id) throws Exception;
-
     protected abstract void _upvote(String user, String id) throws Exception;
-
     protected abstract Map<String, Long> _getVotes(List<String> id) throws Exception;
 
 }

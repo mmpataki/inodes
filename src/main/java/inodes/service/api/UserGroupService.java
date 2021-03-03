@@ -1,12 +1,10 @@
 package inodes.service.api;
 
-import inodes.Inodes;
 import inodes.models.Group;
 import inodes.models.User;
+import inodes.models.UserInfo;
 import inodes.repository.GroupRepo;
 import inodes.repository.UserRepo;
-import inodes.service.EmailService;
-import inodes.util.UrlUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +22,7 @@ public class UserGroupService extends Observable {
     Logger LOG = LoggerFactory.getLogger(UserGroupService.class);
 
     @Autowired
-    EmailService ES;
+    EventService ES;
 
     @Autowired
     UserRepo UR;
@@ -36,39 +34,22 @@ public class UserGroupService extends Observable {
 
     enum Events {
         USER_REGISTERED,
-        USER_ADDED_TO_GROUP
+        USER_ADDED_TO_GROUP,
+        USER_SEARCH
     }
 
     @PostConstruct
     public void _init() {
-        register(Events.USER_REGISTERED, o -> {
-            User u = (User) o;
-            String url = String.format("%s/auth/validate/%s?tok=%s", Inodes.getLocalAddr(), u.getUserName(), u.__getRegTok());
 
-            ES.sendEmail(
-                    Collections.singleton(u.getEmail()),
-                    "Verify your account",
-                    String.format(
-                            "Thanks for registering on inodes. <br/><br/><a href='%s'>Click here</a> to verify your inodes account, or open this url manually<br/>%s<br/><br/>Intial credentials<br/>%s / %s",
-                            url, url, u.getUserName(), u.getPassword()
-                    )
-            );
+        /* send user registration emails : push to show this is NEEDED */
+        registerPostEvent(Events.USER_REGISTERED, o -> {
+            ES.post(EventService.Type.REGISTER_USER, o);
         });
 
-        register(Events.USER_ADDED_TO_GROUP, o -> {
-            List l = (List) o;
-            String adder = (String) l.get(0);
-            User u = getUser((String) l.get(1));
-            String group = (String) l.get(2);
-
-            ES.sendEmail(
-                    Collections.singleton(u.getEmail()),
-                    String.format("%s added you to %s", adder, group),
-                    String.format(
-                            "Congratualations! <a href='%s'>%s</a> added you to group <a href='%s'>%s</a>",
-                            UrlUtil.getUserUrl(adder), adder, UrlUtil.getGroupUrl(group), group
-                    )
-            );
+        /* add user groups to user info */
+        registerPostEvent(Events.USER_SEARCH, o -> {
+            UserInfo u = (UserInfo) o;
+            u.addExtraInfo("groups", getGroupsOf(u.getBasic().getUserName()));
         });
 
         tc(() -> _register(new User("mmp", "Madhusoodan Pataki", "m@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT", "", "")));
@@ -98,15 +79,15 @@ public class UserGroupService extends Observable {
         UR.save(u);
     }
 
-    public void register(User cred) throws Exception {
-        if (getUser(cred.getUserName()) != null) {
-            throw new UserExistsException(cred.getUserName() + " already exists");
+    public void register(User user) throws Exception {
+        if (getUser(user.getUserName()) != null) {
+            throw new UserExistsException(user.getUserName() + " already exists");
         }
-        cred.setRoles("UPVOTE,DOWNVOTE,COMMENT");
-        cred.setVerified(false);
-        cred.setRegTok(R.nextDouble() + "-" + R.nextInt());
-        _register(cred);
-        notifyObservers(Events.USER_REGISTERED, cred);
+        user.setRoles("UPVOTE,DOWNVOTE,COMMENT");
+        user.setVerified(false);
+        user.setRegTok(R.nextDouble() + "-" + R.nextInt());
+        _register(user);
+        notifyPostEvent(Events.USER_REGISTERED, user);
     }
 
     private void _register(User cred) throws Exception {
@@ -115,8 +96,8 @@ public class UserGroupService extends Observable {
 
     /**
      * @param userName
-     * @returnb : null if not present, clone of the user otherwise
      * @throws Exception
+     * @returnb : null if not present, clone of the user otherwise
      */
     public User getUser(String userName) throws Exception {
         User cred = UR.findOne(userName);
@@ -134,6 +115,13 @@ public class UserGroupService extends Observable {
         List<User> ret = new LinkedList<>();
         UR.findAll().forEach(ret::add);
         return ret;
+    }
+
+    public UserInfo getUserInfo(String uid) throws Exception {
+        User user = getUser(uid);
+        UserInfo uInfo = new UserInfo(user);
+        notifyPostEvent(Events.USER_SEARCH, uInfo);
+        return uInfo;
     }
 
     public void updateUser(String modifier, User u) throws Exception {
@@ -189,7 +177,7 @@ public class UserGroupService extends Observable {
     }
 
     public List<String> getGroupsOf(String user) throws Exception {
-        if(user == null) {
+        if (user == null) {
             return Collections.EMPTY_LIST;
         }
         return GR.findGroupNameByUsers(User.builder().userName(user).build()).stream().map(x -> x.getGroupName()).collect(Collectors.toList());
@@ -207,7 +195,7 @@ public class UserGroupService extends Observable {
     public void addUserToGroup(String curUser, String group, String user) throws Exception {
         AS.checkAddUserToGroupPermission(curUser, group);
         _addUserToGroup(group, user);
-        notifyObservers(Events.USER_ADDED_TO_GROUP, Arrays.asList(curUser, user, group));
+        notifyPostEvent(Events.USER_ADDED_TO_GROUP, Arrays.asList(curUser, user, group));
     }
 
     public void deleteUserFromGroup(String curUser, String group, String user) throws Exception {

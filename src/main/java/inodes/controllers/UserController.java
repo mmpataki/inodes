@@ -22,19 +22,19 @@ import java.util.stream.Collectors;
 public class UserController extends AuthenticatedController {
 
     @Autowired
-    UserGroupService AS;
+    UserGroupService US;
 
     @Autowired
     DataService DS;
 
     @RequestMapping(value = "/auth/register", method = RequestMethod.POST)
     public void register(@RequestBody User cred) throws Exception {
-        AS.register(cred);
+        US.register(cred);
     }
 
     @RequestMapping(value = "/auth/validate/{uid}", method = RequestMethod.GET)
     public ResponseEntity<String> validate(@PathVariable("uid") String uid, @RequestParam("tok") String tok) throws Exception {
-        AS.validate(uid, tok);
+        US.validate(uid, tok);
         HttpHeaders headers = new HttpHeaders();
         headers.add("Location", "/?q=hello");
         return new ResponseEntity<String>(headers, HttpStatus.FOUND);
@@ -42,57 +42,50 @@ public class UserController extends AuthenticatedController {
 
     @RequestMapping(value = "/auth/users", method = RequestMethod.GET)
     public List<String> getUsers(@ModelAttribute("loggedinuser") String user) throws Exception {
-        return AS.getUsers().stream().map(u -> u.getUserName()).collect(Collectors.toList());
+        return US.getUsers().stream().map(u -> u.getUserName()).collect(Collectors.toList());
     }
 
     @RequestMapping(value = "/auth/user/{uid}", method = RequestMethod.GET)
     public UserInfo getUser(@PathVariable String uid) throws Exception {
-        User u = AS.getUser(uid);
-        u.setPassword(null);
-        return getMoreInfo(u);
+        UserInfo u = US.getUserInfo(uid);
+        u.getBasic().setPassword(null);
+        return u;
     }
 
     @RequestMapping(value = "/auth/user", method = RequestMethod.POST)
     public void updateUser(@RequestBody User user, @ModelAttribute("loggedinuser") String curUser) throws Exception {
         Objects.requireNonNull(curUser);
-        AS.updateUser(curUser, user);
-    }
-
-    UserInfo getMoreInfo(User u) {
-        UserInfo fui = new UserInfo(u);
-        tc(() -> fui.setPostsCount(DS.getUserPostsFacets(u.getUserName())));
-        tc(() -> fui.setGroups(AS.getGroupsOf(u.getUserName())));
-        return fui;
+        US.updateUser(curUser, user);
     }
 
     @RequestMapping(value = "/auth/groups", method = RequestMethod.POST)
     public void addGroup(@RequestBody Group grp, @ModelAttribute("loggedinuser") String user) throws Exception {
-        AS.createGroup(user, grp);
-        AS.addUserToGroup(user, grp.getGroupName(), user);
+        US.createGroup(user, grp);
+        US.addUserToGroup(user, grp.getGroupName(), user);
     }
 
     @RequestMapping(value = "/auth/groups/{gname}/add", method = RequestMethod.POST)
     public void addUserToGroup(@PathVariable("gname") String group, @RequestParam("user") List<String> users, @ModelAttribute("loggedinuser") String curUser) throws Exception {
         for (String user : users) {
-            AS.addUserToGroup(curUser, group, user);
+            US.addUserToGroup(curUser, group, user);
         }
     }
 
     @RequestMapping(value = "/auth/groups/{gname}/delete", method = RequestMethod.POST)
     public void deleteUserFromGroup(@PathVariable("gname") String group, @RequestParam("user") List<String> users, @ModelAttribute("loggedinuser") String curUser) throws Exception {
         for (String user : users) {
-            AS.deleteUserFromGroup(curUser, group, user);
+            US.deleteUserFromGroup(curUser, group, user);
         }
     }
 
     @RequestMapping(value = "/auth/groups/{gname}", method = RequestMethod.GET)
     public Group getGroup(@PathVariable("gname") String group) throws Exception {
-        return AS.getGroup(group);
+        return US.getGroup(group);
     }
 
     @RequestMapping(value = "/auth/groups", method = RequestMethod.GET)
     public List<String> getGroupNames() throws Exception {
-        return AS.getAllGroups();
+        return US.getAllGroups();
     }
 
 }

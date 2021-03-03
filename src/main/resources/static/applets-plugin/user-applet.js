@@ -109,10 +109,10 @@ Promise.all(proms).then(function(resps) {
             </tr>`
     })
     html += `<tr><td/><td><button class='saveuserinfo-btn-stupid'>Save</button></td></tr><tr></tr><tr><td style="text-align: center; padding-right: 10px"><h3>Posts</h3></td></tr>`
-    Object.keys(user.postsCount).forEach(function(k) {
+    Object.keys(user.extra.postCount).forEach(function(k) {
         html += `
         <tr>
-        <td style="width: 30px; text-align: right"><b>${user.postsCount[k]}</b></td>
+        <td style="width: 30px; text-align: right"><b>${user.extra.postCount[k]}</b></td>
         <td style="padding-left: 10px">
             <a href="?q=${ encodeURIComponent("~" + user.basic.userName + " %" + k) }">
                 ${k}
@@ -122,7 +122,7 @@ Promise.all(proms).then(function(resps) {
         `
     });
     html += `<tr><td style="text-align: center; padding-right: 10px"><h3>Groups</h3></td></tr><tr><td colspan="2"><div style='margin-left: 50px; width: 100%; display: block;'>`
-    user.groups.forEach(grp => {
+    user.extra.groups.forEach(grp => {
         html += `<span style='background-color: skyblue; padding: 2px 8px; cursor: pointer; border-radius: 5px; display: inline-block; margin-right: 2px' onclick='inodes.triggerSearch("#inodesapp #viewgroup !${grp}")'>${grp}</span>`
     })
     html += `</div></td></tr>`

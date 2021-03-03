@@ -10,15 +10,16 @@ import java.util.List;
 public class UserInfo {
 
     User basic;
-    Map<String, Long> postsCount;
-    List<String> groups;
+    Map<String, Object> extra;
+
 
     public UserInfo(User basic) {
         this.basic = basic;
-        this.postsCount = new HashMap<>();
+        this.extra = new HashMap<>();
     }
 
-    void addPostTypeCount(String key, Long cnt) {
-        this.postsCount.put(key, cnt);
+    public void addExtraInfo(String key, Object info) {
+        extra.put(key, info);
     }
+
 }

@@ -1,6 +1,8 @@
 package inodes.service;
 
 import inodes.Configuration;
+import inodes.service.api.NotificationPayLoad;
+import lombok.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +27,16 @@ public class EmailService {
 
     Session session = null;
 
+    @With
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Getter
+    public static class EmailObject implements NotificationPayLoad {
+        String subject;
+        String body;
+    }
+
     @PostConstruct
     public void init() {
         Properties prop = new Properties();
@@ -36,17 +48,17 @@ public class EmailService {
         session = Session.getInstance(prop);
     }
 
-    public void sendEmail(Set<String> to, String subject, String body) throws Exception {
+    public void send(String to, EmailObject eo) throws Exception {
 
-        System.out.println("to = " + to + ", subject = " + subject + ", body = " + body);
+        System.out.println("to = " + to + ", subject = " + eo.getSubject() + ", body = " + eo.getBody());
 
         Message message = new MimeMessage(session);
         message.setFrom(new InternetAddress(conf.getProperty("emailservice.sender.email.id")));
-        message.setRecipients(Message.RecipientType.BCC, InternetAddress.parse(to.stream().collect(Collectors.joining(","))));
-        message.setSubject(subject);
+        message.setRecipients(Message.RecipientType.BCC, InternetAddress.parse(to));
+        message.setSubject(eo.getSubject());
 
         MimeBodyPart mimeBodyPart = new MimeBodyPart();
-        mimeBodyPart.setContent(body, "text/html");
+        mimeBodyPart.setContent(eo.getBody(), "text/html");
 
         Multipart multipart = new MimeMultipart();
         multipart.addBodyPart(mimeBodyPart);

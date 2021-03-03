@@ -7,14 +7,28 @@ import java.util.Map;
 
 public class Observable {
 
-    Map<Object, List<Interceptor>> observers = new HashMap<>();
+    Map<Object, List<Interceptor>> preobservers = new HashMap<>();
+    Map<Object, List<Interceptor>> postobservers = new HashMap<>();
 
-    public void register(Object tag, Interceptor interceptor) {
-        observers.computeIfAbsent(tag, s -> new LinkedList<>());
-        observers.get(tag).add(interceptor);
+    public void registerPostEvent(Object tag, Interceptor interceptor) {
+        postobservers.computeIfAbsent(tag, s -> new LinkedList<>());
+        postobservers.get(tag).add(interceptor);
     }
 
-    public void notifyObservers(Object tag, Object o) {
+    public void registerPreEvent(Object tag, Interceptor interceptor) {
+        preobservers.computeIfAbsent(tag, s -> new LinkedList<>());
+        preobservers.get(tag).add(interceptor);
+    }
+
+    public void notifyPreEvent(Object tag, Object o) {
+        notify(tag, preobservers, o);
+    }
+
+    public void notifyPostEvent(Object tag, Object o) {
+        notify(tag, postobservers, o);
+    }
+
+    private void notify(Object tag, Map<Object, List<Interceptor>> observers, Object o) {
         if(observers.containsKey(tag)) {
             for (Interceptor interceptor : observers.get(tag)) {
                 try {

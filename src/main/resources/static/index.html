@@ -168,7 +168,7 @@
                         type: currentClass,
                         tags: g('tags-editor').value.split(/\s+/).concat(obj.getTags ? obj.getTags() : []),
                         visibility: g('private-post').value.split(/\s+/),
-                        savedVisibility: this.currentPost ? this.currentPost.savedVisibility : ['none'],
+                        savedVisibility: this.currentPost ? (this.currentPost.savedVisibility || ['none']) : ['none'],
                         id: this.currentPost ? this.currentPost.id : undefined
                     },
                     {
@@ -412,6 +412,14 @@
                                                         evnts: {
                                                             click: function (e) { window.location = `?q=@${obj.id}` }
                                                         }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        text: 'watch',
+                                                        classList: 'action',
+                                                        evnts: {
+                                                            click: function (e) { self.watchDoc(obj.id) }
+                                                        }
                                                     }
                                                 ]
                                             }
@@ -502,6 +510,16 @@
                     })
                 });
             }
+
+            watchDoc(id) {
+                post(
+                    `/subscribe?subscriberType=USER&subscriberId=${getCurrentUser()}&objTyp=DOC&objId=${id}&event=ALL`,
+                    "",
+                    {}
+                ).then(r => showSuccess('Subscribed'))
+                .catch(r => showError(r.message))
+            }
+
             getContextButtons(klass, obj) {
                 let self = this;
                 let getLockIcon = () => obj.visibility != 'public' ? [{ ele: 'span', text: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []

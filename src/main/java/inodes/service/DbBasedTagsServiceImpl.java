@@ -5,14 +5,11 @@ import inodes.models.Document;
 import inodes.models.Tag;
 import inodes.service.api.DataService;
 import inodes.service.api.TagsService;
-import inodes.service.api.UserGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.util.*;
 
 @Service
@@ -32,7 +29,7 @@ public class DbBasedTagsServiceImpl extends TagsService {
 
     @PostConstruct
     void init() throws Exception {
-        DS.register(DataService.ObservableEvents.SEARCH, o -> {
+        DS.registerPostEvent(DataService.ObservableEvents.SEARCH, o -> {
             Set<String> tags = new HashSet<>();
             for (Document doc : (List<Document>) o) {
                 if (doc.getTags() != null) {
@@ -48,7 +45,7 @@ public class DbBasedTagsServiceImpl extends TagsService {
                 tTags.offer(t);
             }
         });
-        DS.register(DataService.ObservableEvents.NEW, d -> {
+        DS.registerPostEvent(DataService.ObservableEvents.NEW, d -> {
             tDocs.add((Document) d);
         });
     }

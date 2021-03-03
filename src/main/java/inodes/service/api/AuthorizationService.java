@@ -1,6 +1,7 @@
 package inodes.service.api;
 
 import inodes.models.Document;
+import inodes.models.Subscription;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -94,5 +95,12 @@ public class AuthorizationService {
         if(!AS.isAdmin(user) && !GS.getGroup(group).getUsers().contains(user)) {
             throw new UnAuthorizedException("You are not allowed to delete users from this group");
         }
+    }
+
+    public void checkSubscribePermission(String user, Subscription.SubscriberType subscriberType, String subscriberId) throws Exception {
+        if((subscriberType == Subscription.SubscriberType.USER && user.equals(subscriberId)) ||
+            (subscriberType == Subscription.SubscriberType.USER && AS.getGroupsOf(user).contains(subscriberId)))
+                return;
+        throw new UnAuthorizedException("You can't subscribe on other user's behalf and you can't subscribe a group in which you are not a member of");
     }
 }
