@@ -99,7 +99,7 @@ public class AuthorizationService {
 
     public void checkSubscribePermission(String user, Subscription.SubscriberType subscriberType, String subscriberId) throws Exception {
         if((subscriberType == Subscription.SubscriberType.USER && user.equals(subscriberId)) ||
-            (subscriberType == Subscription.SubscriberType.USER && AS.getGroupsOf(user).contains(subscriberId)))
+            (subscriberType == Subscription.SubscriberType.GROUP && AS.getGroupsOf(user).contains(subscriberId)))
                 return;
         throw new UnAuthorizedException("You can't subscribe on other user's behalf and you can't subscribe a group in which you are not a member of");
     }

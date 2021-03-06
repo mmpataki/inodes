@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static inodes.util.TryCatchUtil.tc;
 
@@ -47,11 +48,9 @@ public abstract class DataService extends Observable {
     public SearchResponse search(String user, SearchQuery q) throws Exception {
         q.setVisibility(new HashSet<>());
         if (user != null && !user.isEmpty()) {
-            q.getVisibility().add(user);
+            q.getVisibility().add("u-" + user);
         }
-        q.getVisibility().add(UserGroupService.PUBLIC);
-        q.getVisibility().addAll(US.getGroupsOf(user));
-
+        q.getVisibility().addAll(US.getGroupsOf(user).stream().map(g -> "g-" + g).collect(Collectors.toList()));
         SearchResponse resp = _search(user, q);
         notifyPostEvent(ObservableEvents.SEARCH, resp.getResults());
         return resp;

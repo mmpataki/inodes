@@ -9,7 +9,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Data
-@Entity(name = "groups")
+@Entity(name = "GROUPS")
 public class Group implements Cloneable {
     @Id
     String groupName;

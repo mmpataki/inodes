@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>i-nodes</title>
     <link rel="stylesheet" href="./index.css">
-    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/picnic"> -->
-    <!-- <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script> -->
     <script src="/common.js"></script>
+    <script src="./tagify.min.js"></script>
+    <link rel="stylesheet" href="./tagify.css">
     <script>
         class INodes {
             constructor() {
@@ -167,7 +167,7 @@
                         content,
                         type: currentClass,
                         tags: g('tags-editor').value.split(/\s+/).concat(obj.getTags ? obj.getTags() : []),
-                        visibility: g('private-post').value.split(/\s+/),
+                        visibility: JSON.parse(g('visibility-editor').value).map(u => u.value),
                         savedVisibility: this.currentPost ? (this.currentPost.savedVisibility || ['none']) : ['none'],
                         id: this.currentPost ? this.currentPost.id : undefined
                     },
@@ -517,7 +517,7 @@
                     "",
                     {}
                 ).then(r => showSuccess('Subscribed'))
-                .catch(r => showError(r.message))
+                    .catch(r => showError(r.message))
             }
 
             getContextButtons(klass, obj) {
@@ -650,7 +650,7 @@
                 this.renderInput(obj ? obj.type : 'posts', obj, true)
                 g('editor-pane').style.display = 'block';
                 g('kclasses').disabled = obj ? true : false
-                g('private-post').value = obj ? (obj.needsApproval ? obj.savedVisibility : obj.visibility) : "";
+                g('visibility-editor').value = obj ? (obj.needsApproval ? obj.savedVisibility : obj.visibility) : "";
             }
             closeEditor() {
                 g('editor-pane').style.display = 'none';
@@ -713,7 +713,7 @@
                 pnode.appendChild(status);
 
                 let out;
-                if(pnode) {
+                if (pnode) {
                     out = document.createElement('pre');
                     out.style = "background-color: black; color: white; width: 100%; height: 200px; overflow: auto"
                     pnode.appendChild(out);
@@ -756,9 +756,9 @@
                                 event.target.close()
                                 return
                             }
-                            if(out)
+                            if (out)
                                 out.innerHTML += event.data + "<br/>"
-                            if(callBack)
+                            if (callBack)
                                 callBack(event.data)
                         }
                     })
@@ -811,6 +811,124 @@
         let inodes;
         window.addEventListener('load', () => {
             inodes = new INodes();
+
+            // users
+            var tagifyUsers = new Tagify(document.querySelector('#visibility-editor'), {
+                tagTextProp: 'name', // very important since a custom template is used with this property as text
+                enforceWhitelist: true,
+                skipInvalid: true,
+                dropdown: { closeOnSelect: true, enabled: 0, searchKeys: ['value'] },
+                templates: {
+                    tag: function (tagData) {
+                        return `
+                            <tag title="${tagData.type} ${tagData.name}"
+                                    contenteditable='false'
+                                    spellcheck='false'
+                                    tabIndex="-1"
+                                    class="${this.settings.classNames.tag} ${tagData.class ? tagData.class : ""}"
+                                    ${this.getAttributes(tagData)}>
+                                <x title='remove' class='tagify__tag__removeBtn' role='button' aria-label='remove tag'></x>
+                                <div>
+                                    ${tagData.type == 'user' ? '&#x1F464;' : '&#x1F465;'}
+                                    <span class='tagify__tag-text'>${tagData.name}</span>
+                                </div>
+                            </tag>
+                        `
+                    },
+                    dropdownItem: function (tagData) {
+                        if (tagData.type == 'user') {
+                            return `<div class='tagify__dropdown__item'>&#x1F464; ${tagData.name}</div>`;
+                        } else {
+                            return `<div class='tagify__dropdown__item'>&#x1F465; ${tagData.name}</div>`;
+                        }
+                    }
+                },
+                whitelist: [
+                    { name: 'public', id: 'g-public', value: 'g-public', type: 'group' }
+                ],
+                delimiter: ' '
+            })
+
+            var controller;
+
+            // listen to any keystrokes which modify tagify's input
+            tagifyUsers.on('input', onInput)
+
+            function onInput(e) {
+                var value = e.detail.value;
+                tagifyUsers.settings.whitelist.length = 0; // reset the whitelist
+
+                // https://developer.mozilla.org/en-US/docs/Web/API/AbortController/abort
+                controller && controller.abort();
+                controller = new AbortController();
+
+                // show loading animation and hide the suggestions dropdown
+                tagifyUsers.loading(true).dropdown.hide.call(tagifyUsers)
+
+                fetch(`${baseUrl}/auth/find-ug-like?term=${value}`, { signal: controller.signal })
+                    .then(RES => RES.json())
+                    .then(RES => RES.map(x => { return { ...x, value: x.id, type: x.id.startsWith('u') ? 'user' : 'group' } }))
+                    .then(function (whitelist) {
+                        // update inwhitelist Array in-place
+                        tagifyUsers.settings.whitelist.splice(0, whitelist.length, ...whitelist)
+                        tagifyUsers.loading(false).dropdown.show.call(tagifyUsers); // render the suggestions dropdown
+                    })
+            }
+
+            // Tags
+            var tagifyTags = new Tagify(document.querySelector('#tags-editor'), {
+                tagTextProp: 'name', // very important since a custom template is used with this property as text
+                enforceWhitelist: true,
+                skipInvalid: true,
+                dropdown: { closeOnSelect: true, enabled: 0, searchKeys: ['value'] },
+                templates: {
+                    tag: function (tagData) {
+                        return `
+                            <tag title="${tagData.name}"
+                                    contenteditable='false'
+                                    spellcheck='false'
+                                    tabIndex="-1"
+                                    class="${this.settings.classNames.tag}"
+                                    ${this.getAttributes(tagData)}>
+                                <x title='remove' class='tagify__tag__removeBtn' role='button' aria-label='remove tag'></x>
+                                <div>
+                                    <span class='tagify__tag-text'>${tagData.name}</span>
+                                </div>
+                            </tag>
+                        `
+                    },
+                    dropdownItem: function (tagData) {
+                        return `<div class='tagify__dropdown__item'>${tagData.name}</div>`;
+                    }
+                },
+                whitelist: [],
+                delimiter: ' '
+            })
+
+            var controller1;
+
+            // listen to any keystrokes which modify tagify's input
+            tagifyTags.on('input', onInputTags)
+
+            function onInputTags(e) {
+                var value = e.detail.value;
+                tagifyTags.settings.whitelist.length = 0;
+
+                controller1 && controller1.abort();
+                controller1 = new AbortController();
+
+                tagifyTags.loading(true).dropdown.hide.call(tagifyTags)
+
+                fetch(`${baseUrl}/find-tags-like?term=${value}`, { signal: controller1.signal })
+                    .then(RES => RES.json())
+                    .then(RES => RES.map(x => { return { ...x, value: x.name } }))
+                    .then(function (whitelist) {
+                        // update inwhitelist Array in-place
+                        tagifyTags.settings.whitelist.splice(0, whitelist.length, ...whitelist)
+                        tagifyTags.loading(false).dropdown.show.call(tagifyTags); // render the suggestions dropdown
+                    })
+            }
+
         });
     </script>
 
@@ -832,8 +950,8 @@
                 <div id="editor"></div><br />
                 <label for="tags-editor">Tags</label><br />
                 <input type="text" id="tags-editor"></input><br />
-                <label for="private-post">Visibility</label><br />
-                <input type="text" id="private-post" value="public" placeholder="a user or group name"></input>
+                <label for="visibility-editor">Visibility</label><br />
+                <input type="text" id="visibility-editor" value="public" placeholder="a user or group name"></input>
                 <br /><br />
                 <button onclick="inodes.post()">Post</button>
             </fieldset>

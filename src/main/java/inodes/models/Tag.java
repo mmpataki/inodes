@@ -1,18 +1,20 @@
 package inodes.models;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import javax.persistence.Entity;
 import javax.persistence.Id;
 
 @Entity(name = "TAGS")
-@Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Setter
+@Getter
 public class Tag {
     @Id
     String name;
-    String desc;
+    String description;
     long hits;
     long createdOn;
 }

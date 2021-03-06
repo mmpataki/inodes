@@ -56,6 +56,7 @@ public class UserGroupService extends Observable {
         tc(() -> _register(new User("admin", "Admin", "a@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT,ADMIN", "", "")));
 
         tc(() -> _createGroup(new Group(ADMIN, "admin group", "", "")));
+        tc(() -> _createGroup(new Group(PUBLIC, "everyone", "", "")));
         tc(() -> _createGroup(new Group(SECURITY, "security group to review content", "", "")));
 
         tc(() -> _addUserToGroup(ADMIN, "admin"));
@@ -162,6 +163,14 @@ public class UserGroupService extends Observable {
         UR.save(copyUser);
     }
 
+    public List<UserRepo.UserNameAndFullName> findUsersLike(String sQuery) {
+        return UR.findByUserNameContainingIgnoreCase(sQuery);
+    }
+
+    public List<String> findGroupsLike(String sQuery) {
+        return GR.findByGroupNameContainingIgnoreCase(sQuery).stream().map(g -> g.getGroupName()).collect(Collectors.toList());
+    }
+
     public static final String SECURITY = "security";
     public static final String ADMIN = "admin";
     public static final String PUBLIC = "public";
@@ -178,9 +187,11 @@ public class UserGroupService extends Observable {
 
     public List<String> getGroupsOf(String user) throws Exception {
         if (user == null) {
-            return Collections.EMPTY_LIST;
+            return Collections.singletonList(PUBLIC);
         }
-        return GR.findGroupNameByUsers(User.builder().userName(user).build()).stream().map(x -> x.getGroupName()).collect(Collectors.toList());
+        List<String> grps = GR.findGroupNameByUsers(User.builder().userName(user).build()).stream().map(x -> x.getGroupName()).collect(Collectors.toList());
+        grps.add(PUBLIC);
+        return grps;
     }
 
     public Group getGroup(String groupName) throws Exception {

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -29,12 +30,24 @@ public abstract class TagsService {
     @PostConstruct
     public void _init() {
         DS.registerPreEvent(DataService.ObservableEvents.NEW, o -> {
-
+            Document d = (Document) o;
+            List<Tag> newTags = new LinkedList<>();
+            d.getTags().forEach(tag -> {
+                if(TR.findOne(tag) == null) {
+                    newTags.add(Tag.builder().name(tag).description("").build());
+                }
+            });
+            System.out.println("saving these tags: " + newTags);
+            TR.save(newTags);
         });
     }
 
     public Tag getTag(String name) {
         return TR.findOne(name);
+    }
+
+    public List<Tag> findTagsLike(String sQuery) {
+        return TR.findByNameContainingIgnoreCase(sQuery);
     }
 
     public PageResponse<Tag> getTags(long start, int size) {
@@ -49,7 +62,6 @@ public abstract class TagsService {
                 .totalItems(page.getTotalElements())
                 .build();
     }
-
 
     public abstract List<Tag> getTopTags(int n);
 
