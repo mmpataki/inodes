@@ -9,6 +9,9 @@
     <script src="/common.js"></script>
     <script src="./tagify.min.js"></script>
     <link rel="stylesheet" href="./tagify.css">
+    <link href="./jquery-ui-1.12.1/jquery-ui.css" rel="stylesheet">
+    <script src="./jquery-ui-1.12.1/external/jquery/jquery.js"></script>
+    <script src="./jquery-ui-1.12.1/jquery-ui.js"></script>
     <script>
         class INodes {
             constructor() {
@@ -166,7 +169,7 @@
                     {
                         content,
                         type: currentClass,
-                        tags: g('tags-editor').value.split(/\s+/).concat(obj.getTags ? obj.getTags() : []),
+                        tags: JSON.parse(g('tags-editor').value).map(t => t.value).concat(obj.getTags ? obj.getTags() : []),
                         visibility: JSON.parse(g('visibility-editor').value).map(u => u.value),
                         savedVisibility: this.currentPost ? (this.currentPost.savedVisibility || ['none']) : ['none'],
                         id: this.currentPost ? this.currentPost.id : undefined
@@ -256,6 +259,13 @@
                     return showError('Login to post / update content')
                 }
                 g('tags-editor').value = obj.tags.join(' ')
+                let tags = obj.tags.map(t => {
+                    return { name: t, id: t, value: t, description: ""}
+                })
+                tagifyTags.settings.whitelist.splice(0, tags.length, ...tags);
+                tagifyTags.removeAllTags();
+                tagifyTags.addTags(tags);
+
                 g('kclasses').value = obj.type
                 this.openEditor(obj, true)
             }
@@ -522,7 +532,7 @@
 
             getContextButtons(klass, obj) {
                 let self = this;
-                let getLockIcon = () => obj.visibility != 'public' ? [{ ele: 'span', text: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []
+                let getLockIcon = () => obj.visibility != 'g-public' ? [{ ele: 'span', text: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []
                 return {
                     ele: 'div',
                     classList: 'context-btns',
@@ -650,7 +660,14 @@
                 this.renderInput(obj ? obj.type : 'posts', obj, true)
                 g('editor-pane').style.display = 'block';
                 g('kclasses').disabled = obj ? true : false
-                g('visibility-editor').value = obj ? (obj.needsApproval ? obj.savedVisibility : obj.visibility) : "";
+
+                let visibility = obj ? (obj.needsApproval ? obj.savedVisibility : obj.visibility) : ['g-public'];
+                visibility = visibility.map(v => {
+                        return { name: v.substring(2), id: v, value: v, type: v[0] == 'g' ? 'group' : 'user' }
+                    });
+                tagifyUsers.settings.whitelist.splice(0, visibility.length, ...visibility)
+                tagifyUsers.removeAllTags();
+                tagifyUsers.addTags(visibility)
             }
             closeEditor() {
                 g('editor-pane').style.display = 'none';
@@ -809,15 +826,19 @@
         }
 
         let inodes;
+        var tagifyTags, tagifyUsers;
+
         window.addEventListener('load', () => {
             inodes = new INodes();
 
             // users
-            var tagifyUsers = new Tagify(document.querySelector('#visibility-editor'), {
+            tagifyUsers = new Tagify(document.querySelector('#visibility-editor'), {
                 tagTextProp: 'name', // very important since a custom template is used with this property as text
                 enforceWhitelist: true,
                 skipInvalid: true,
                 dropdown: { closeOnSelect: true, enabled: 0, searchKeys: ['value'] },
+                autoComplete: {rightKey: true},
+                delimiters: ' ',
                 templates: {
                     tag: function (tagData) {
                         return `
@@ -843,9 +864,7 @@
                         }
                     }
                 },
-                whitelist: [
-                    { name: 'public', id: 'g-public', value: 'g-public', type: 'group' }
-                ],
+                whitelist: [],
                 delimiter: ' '
             })
 
@@ -876,11 +895,13 @@
             }
 
             // Tags
-            var tagifyTags = new Tagify(document.querySelector('#tags-editor'), {
+            tagifyTags = new Tagify(document.querySelector('#tags-editor'), {
                 tagTextProp: 'name', // very important since a custom template is used with this property as text
-                enforceWhitelist: true,
-                skipInvalid: true,
+                enforceWhitelist: false,
+                skipInvalid: false,
+                delimiters: ' ',
                 dropdown: { closeOnSelect: true, enabled: 0, searchKeys: ['value'] },
+                autoComplete: {rightKey: true},
                 templates: {
                     tag: function (tagData) {
                         return `
@@ -891,7 +912,7 @@
                                     class="${this.settings.classNames.tag}"
                                     ${this.getAttributes(tagData)}>
                                 <x title='remove' class='tagify__tag__removeBtn' role='button' aria-label='remove tag'></x>
-                                <div>
+                                <div description="${tagData.description}">
                                     <span class='tagify__tag-text'>${tagData.name}</span>
                                 </div>
                             </tag>
@@ -928,7 +949,6 @@
                         tagifyTags.loading(false).dropdown.show.call(tagifyTags); // render the suggestions dropdown
                     })
             }
-
         });
     </script>
 
@@ -946,12 +966,11 @@
                 <span onclick="inodes.closeEditor()" class="closebtn">x</span>
                 <label for="kclasses" class="">Post type: </label><br />
                 <select id="kclasses"></select><br /><br />
-                <label for="editor">Post editor</label><br />
                 <div id="editor"></div><br />
                 <label for="tags-editor">Tags</label><br />
-                <input type="text" id="tags-editor"></input><br />
+                <input type="text" id="tags-editor" placeholder="start typing a tag name. eg edc hack"></input><br />
                 <label for="visibility-editor">Visibility</label><br />
-                <input type="text" id="visibility-editor" value="public" placeholder="a user or group name"></input>
+                <input type="text" id="visibility-editor" placeholder="start typing a user or group name"></input>
                 <br /><br />
                 <button onclick="inodes.post()">Post</button>
             </fieldset>

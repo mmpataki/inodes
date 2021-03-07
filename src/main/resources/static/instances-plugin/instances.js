@@ -57,7 +57,8 @@ class instances {
                     {
                         ele: 'div',
                         iden: 'suggestions',
-                        classList: 'suggestions'
+                        classList: 'suggestions',
+                        text: 'Your dockers will appear here'
                     },
                     {
                         ele: 'h3',
@@ -65,6 +66,7 @@ class instances {
                     },
                     {
                         ele: "div",
+                        classList: 'manual-instance-entry',
                         children: [
                             {
                                 ele: "div",
@@ -141,7 +143,7 @@ class instances {
                                 classList: "add-url",
                                 evnts: {
                                     click: function (e) {
-                                        e.target.parentNode.insertBefore(render('apps', APP_URLS()), e.target);
+                                        e.target.parentNode.insertBefore(render('instances', APP_URLS()), e.target);
                                     }
                                 }
                             }
@@ -238,7 +240,7 @@ class instances {
             }
         }
 
-        let ret = render('apps', renderable(obj), (id, e) => { self.elems[id] = e })
+        let ret = render('instances', renderable(obj), (id, e) => { self.elems[id] = e })
 
         // get suggestions from dockers list
         post(

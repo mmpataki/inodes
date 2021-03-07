@@ -404,3 +404,20 @@ animation: fadeOut ease 8s;
 .comment-action-btn:hover {
     color:gray;
 }
+
+input {
+    padding: 5px;
+    margin: 2px;
+}
+
+button {
+    padding: 5px 10px;
+}
+
+select {
+    padding: 5px;
+}
+
+#kclasses {
+    width: 50%;
+}

@@ -9,6 +9,7 @@
          box-sizing: border-box;
     border: solid 1px gray;
     resize: none;
+    padding: 10px;
 }
 .posts-preview {
     width: auto;

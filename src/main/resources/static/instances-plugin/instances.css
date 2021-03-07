@@ -1,5 +1,9 @@
-.instances-ip-addr, .instances-urls-label, .instances-add-url, .instances-install-loc, .instances-app-tag, .instances-app-url, .instances-app-urls, .instances-app-user, .instances-app-password , .instances-box-user ,.instances-box-password {
-    margin: 5px;
+.instances-ip-addr, .instances-urls-label, .instances-add-url, .instances-install-loc, .instances-app-tag, .instances-app-url, .instances-app-user, .instances-app-password , .instances-box-user ,.instances-box-password {
+    margin: 3px;
+}
+
+.instances-manual-instance-entry, .instances-app-urls, .instances-add-url, .instances-suggestions {
+    margin-left: 20px;
 }
 
 .instances-urls-label {

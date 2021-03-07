@@ -15,12 +15,6 @@ public class SecurityService extends Observable {
     DataService DS;
 
     @Autowired
-    EventService ES;
-
-    @Autowired
-    UserGroupService UGS;
-
-    @Autowired
     KlassService KS;
 
     enum EventTypes {
@@ -37,7 +31,7 @@ public class SecurityService extends Observable {
             if (klass.isEditApprovalNeeded()) {
                 doc.setNeedsApproval(true);
                 doc.setSavedVisibility(doc.getVisibility());
-                doc.setVisibility(Arrays.asList(doc.getOwner(), UserGroupService.SECURITY));
+                doc.setVisibility(Arrays.asList(DataService.getUserTag(doc.getOwner()), DataService.getGroupTag(UserGroupService.SECURITY)));
                 notifyPostEvent(EventTypes.APPROVAL_NEEDED, doc);
             }
         });

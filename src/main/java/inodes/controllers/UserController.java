@@ -102,8 +102,8 @@ public class UserController extends AuthenticatedController {
     @GetMapping("/auth/find-ug-like")
     public List<AutoCompleteResult> getUserGroupSuggestions(@RequestParam("term") String sQuery) {
         List<AutoCompleteResult> ret = new LinkedList<>();
-        US.findUsersLike(stripQ(sQuery)).stream().map(u -> new AutoCompleteResult(u.getFullName(), "u-" + u.getUserName())).forEach(ret::add);
-        US.findGroupsLike(stripQ(sQuery)).stream().map(g -> new AutoCompleteResult(g, "g-" + g)).forEach(ret::add);
+        US.findUsersLike(stripQ(sQuery)).stream().map(u -> new AutoCompleteResult(u.getFullName(), DataService.getUserTag(u.getUserName()))).forEach(ret::add);
+        US.findGroupsLike(stripQ(sQuery)).stream().map(g -> new AutoCompleteResult(g, DataService.getGroupTag(g))).forEach(ret::add);
         return ret;
     }
 

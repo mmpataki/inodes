@@ -45,12 +45,20 @@ public abstract class DataService extends Observable {
         });
     }
 
+    public static String getUserTag(String userName) {
+        return "u-" + userName;
+    }
+
+    public static String getGroupTag(String groupName) {
+        return "g-" + groupName;
+    }
+
     public SearchResponse search(String user, SearchQuery q) throws Exception {
         q.setVisibility(new HashSet<>());
         if (user != null && !user.isEmpty()) {
-            q.getVisibility().add("u-" + user);
+            q.getVisibility().add(getUserTag(user));
         }
-        q.getVisibility().addAll(US.getGroupsOf(user).stream().map(g -> "g-" + g).collect(Collectors.toList()));
+        q.getVisibility().addAll(US.getGroupsOf(user).stream().map(DataService::getGroupTag).collect(Collectors.toList()));
         SearchResponse resp = _search(user, q);
         notifyPostEvent(ObservableEvents.SEARCH, resp.getResults());
         return resp;
