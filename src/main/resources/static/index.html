@@ -651,8 +651,7 @@
                         q = c('searchbox').value + " "
                     }
                     q += `${char}${tag}`
-                    c('searchbox').value = q.trim()
-                    self.doSearch(q)
+                    self.triggerSearch(q)
                 })
                 return t;
             }
@@ -698,8 +697,7 @@
                     .catch(m => showError(`registration failed. reason: ${m}`))
             }
             triggerSearch(q) {
-                c('searchbox').value = q;
-                this.doSearch(q)
+                window.location = `/?q=${encodeURIComponent(q)}`
             }
             openAccount() {
                 let u = getCurrentUser();
@@ -851,14 +849,14 @@
                                 <x title='remove' class='tagify__tag__removeBtn' role='button' aria-label='remove tag'></x>
                                 <div>
                                     ${tagData.type == 'user' ? '&#x1F464;' : '&#x1F465;'}
-                                    <span class='tagify__tag-text'>${tagData.name}</span>
+                                    <span class='tagify__tag-text'>${tagData.name || tagData.id}</span>
                                 </div>
                             </tag>
                         `
                     },
                     dropdownItem: function (tagData) {
                         if (tagData.type == 'user') {
-                            return `<div class='tagify__dropdown__item'>&#x1F464; ${tagData.name}</div>`;
+                            return `<div class='tagify__dropdown__item'>&#x1F464; ${tagData.name || tagData.id}</div>`;
                         } else {
                             return `<div class='tagify__dropdown__item'>&#x1F465; ${tagData.name}</div>`;
                         }
