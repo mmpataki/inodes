@@ -849,14 +849,14 @@
                                 <x title='remove' class='tagify__tag__removeBtn' role='button' aria-label='remove tag'></x>
                                 <div>
                                     ${tagData.type == 'user' ? '&#x1F464;' : '&#x1F465;'}
-                                    <span class='tagify__tag-text'>${tagData.name || tagData.id}</span>
+                                    <span class='tagify__tag-text'>${tagData.name}</span>
                                 </div>
                             </tag>
                         `
                     },
                     dropdownItem: function (tagData) {
                         if (tagData.type == 'user') {
-                            return `<div class='tagify__dropdown__item'>&#x1F464; ${tagData.name || tagData.id}</div>`;
+                            return `<div class='tagify__dropdown__item'>&#x1F464; ${tagData.name}</div>`;
                         } else {
                             return `<div class='tagify__dropdown__item'>&#x1F465; ${tagData.name}</div>`;
                         }
@@ -884,7 +884,7 @@
 
                 fetch(`${baseUrl}/auth/find-ug-like?term=${value}`, { signal: controller.signal })
                     .then(RES => RES.json())
-                    .then(RES => RES.map(x => { return { ...x, value: x.id, type: x.id.startsWith('u') ? 'user' : 'group' } }))
+                    .then(RES => RES.map(x => { return { ...x, value: x.id, type: x.id.startsWith('u') ? 'user' : 'group', name: ((!x.name || x.name == 'null') ? x.id.substring(2) : x.name) } }))
                     .then(function (whitelist) {
                         // update inwhitelist Array in-place
                         tagifyUsers.settings.whitelist.splice(0, whitelist.length, ...whitelist)
