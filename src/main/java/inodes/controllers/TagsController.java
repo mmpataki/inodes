@@ -2,6 +2,7 @@ package inodes.controllers;
 
 import inodes.models.PageResponse;
 import inodes.models.Tag;
+import inodes.models.TagInfo;
 import inodes.service.api.TagsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +16,7 @@ public class TagsController {
     TagsService TS;
 
     @GetMapping("/tags/{name}")
-    public Tag getTag(@PathVariable String name) {
+    public TagInfo getTag(@PathVariable String name) {
         return TS.getTag(name);
     }
 

@@ -3,6 +3,7 @@ package inodes.service.api;
 import inodes.models.Document;
 import inodes.models.PageResponse;
 import inodes.models.Tag;
+import inodes.models.TagInfo;
 import inodes.repository.TagsRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -10,13 +11,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
-public abstract class TagsService {
+public abstract class TagsService extends Observable {
 
     @Autowired
     AuthorizationService AS;
@@ -27,8 +25,14 @@ public abstract class TagsService {
     @Autowired
     DataService DS;
 
+    public enum Events {
+        SEARCH
+    }
+
     @PostConstruct
     public void _init() {
+
+        /* save the tags when there are new ones */
         DS.registerPreEvent(DataService.ObservableEvents.NEW, o -> {
             Document d = (Document) o;
             List<Tag> newTags = new LinkedList<>();
@@ -37,13 +41,29 @@ public abstract class TagsService {
                     newTags.add(Tag.builder().name(tag).description("").build());
                 }
             });
-            System.out.println("saving these tags: " + newTags);
             TR.save(newTags);
+        });
+
+        /* add the hits for tags */
+        registerPostEvent(Events.SEARCH, o -> {
+            TagInfo tag = (TagInfo) o;
+            DataService.SearchResponse resp = DS.search(
+                    UserGroupService.PUBLIC,
+                    DataService.SearchQuery.builder()
+                            .q("#" + ((TagInfo) o).getBasic().getName())
+                            .pageSize(0)
+                            .offset(0)
+                            .fq(Arrays.asList("type"))
+                            .build()
+            );
+            tag.addMoreInfo("docCount", resp.getFacetResults().get("type"));
         });
     }
 
-    public Tag getTag(String name) {
-        return TR.findOne(name);
+    public TagInfo getTag(String name) {
+        TagInfo tagInfo = TagInfo.builder().basic(TR.findOne(name)).build();
+        notifyPostEvent(Events.SEARCH, tagInfo);
+        return tagInfo;
     }
 
     public List<Tag> findTagsLike(String sQuery) {

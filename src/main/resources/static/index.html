@@ -653,6 +653,10 @@
                     q += `${char}${tag}`
                     self.triggerSearch(q)
                 })
+                t.addEventListener('dblclick', e => {
+                    if(char == '#')
+                        self.triggerSearch(`#inodesapp #viewtag !${tag}`)
+                })
                 return t;
             }
             openEditor(obj, force) {
