@@ -164,7 +164,7 @@ public class UserGroupService extends Observable {
     }
 
     public List<UserRepo.UserNameAndFullName> findUsersLike(String sQuery) {
-        return UR.findByUserNameContainingIgnoreCase(sQuery);
+        return UR.findByUserNameContainingIgnoreCaseFullNameContainingIgnoreCase(sQuery);
     }
 
     public List<String> findGroupsLike(String sQuery) {

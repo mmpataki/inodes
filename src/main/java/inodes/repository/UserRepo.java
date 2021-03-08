@@ -11,7 +11,7 @@ import java.util.List;
 @Repository
 public interface UserRepo extends CrudRepository<User, String> {
 
-    public List<UserNameAndFullName> findByUserNameContainingIgnoreCase(@Param("keyword") String keyword);
+    public List<UserNameAndFullName> findByUserNameContainingIgnoreCaseFullNameContainingIgnoreCase(@Param("keyword") String keyword);
 
     interface UserNameAndFullName {
         String getUserName();
