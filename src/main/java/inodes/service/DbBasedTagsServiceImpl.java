@@ -4,6 +4,7 @@ import inodes.Configuration;
 import inodes.models.Document;
 import inodes.models.Tag;
 import inodes.service.api.DataService;
+import inodes.service.api.Interceptor;
 import inodes.service.api.TagsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -45,9 +46,12 @@ public class DbBasedTagsServiceImpl extends TagsService {
                 tTags.offer(t);
             }
         });
-        DS.registerPostEvent(DataService.ObservableEvents.NEW, d -> {
+
+        Interceptor newTagsCapturer = d -> {
             tDocs.add((Document) d);
-        });
+        };
+        DS.registerPostEvent(DataService.ObservableEvents.NEW, newTagsCapturer);
+        DS.registerPostEvent(DataService.ObservableEvents.UPDATE, newTagsCapturer);
     }
 
     @Override

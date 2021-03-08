@@ -24,7 +24,7 @@ public class SecurityService extends Observable {
     @PostConstruct
     public void init() {
 
-        DS.registerPreEvent(DataService.ObservableEvents.NEW, o -> {
+        Interceptor interceptor = o -> {
             Document doc = (Document) o;
 
             Klass klass = KS.getKlass(doc.getType());
@@ -34,7 +34,9 @@ public class SecurityService extends Observable {
                 doc.setVisibility(Arrays.asList(DataService.getUserTag(doc.getOwner()), DataService.getGroupTag(UserGroupService.SECURITY)));
                 notifyPostEvent(EventTypes.APPROVAL_NEEDED, doc);
             }
-        });
+        };
+        DS.registerPreEvent(DataService.ObservableEvents.NEW, interceptor);
+        DS.registerPreEvent(DataService.ObservableEvents.UPDATE, interceptor);
     }
 
 }

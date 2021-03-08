@@ -20,7 +20,8 @@ public abstract class DataService extends Observable {
     public enum ObservableEvents {
         SEARCH,
         NEW,
-        APPROVAL_NEEDED
+        APPROVAL_NEEDED,
+        UPDATE;
     }
 
     @Data
@@ -96,15 +97,18 @@ public abstract class DataService extends Observable {
             doc.setComments(oldDoc.getComments());
             doc.setPostTime(oldDoc.getPostTime());
             doc.setType(oldDoc.getType());
+            notifyPreEvent(ObservableEvents.UPDATE, doc);
+            _putData(doc);
+            notifyPostEvent(ObservableEvents.UPDATE, doc);
         } else {
             AS.checkCreatePermission(user, doc);
             doc.setId(UUID.randomUUID().toString());
             doc.setPostTime(System.currentTimeMillis());
             doc.setOwner(user);
+            notifyPreEvent(ObservableEvents.NEW, doc);
+            _putData(doc);
+            notifyPostEvent(ObservableEvents.NEW, doc);
         }
-        notifyPreEvent(ObservableEvents.NEW, doc);
-        _putData(doc);
-        notifyPostEvent(ObservableEvents.NEW, doc);
     }
 
     public void approve(String userId, String docId) throws Exception {

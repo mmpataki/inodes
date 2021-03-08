@@ -33,16 +33,18 @@ public abstract class TagsService extends Observable {
     public void _init() {
 
         /* save the tags when there are new ones */
-        DS.registerPreEvent(DataService.ObservableEvents.NEW, o -> {
+        Interceptor interceptor = o -> {
             Document d = (Document) o;
             List<Tag> newTags = new LinkedList<>();
             d.getTags().forEach(tag -> {
-                if(TR.findOne(tag) == null) {
+                if (TR.findOne(tag) == null) {
                     newTags.add(Tag.builder().name(tag).description("").build());
                 }
             });
             TR.save(newTags);
-        });
+        };
+        DS.registerPreEvent(DataService.ObservableEvents.NEW, interceptor);
+        DS.registerPreEvent(DataService.ObservableEvents.UPDATE, interceptor);
 
         /* add the hits for tags */
         registerPostEvent(Events.SEARCH, o -> {
