@@ -697,7 +697,8 @@
                     .catch(m => showError(`registration failed. reason: ${m}`))
             }
             triggerSearch(q) {
-                window.location = `/?q=${encodeURIComponent(q)}`
+                c('searchbox').value = q;
+                this.doSearch(q)
             }
             openAccount() {
                 let u = getCurrentUser();
