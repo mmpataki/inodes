@@ -834,7 +834,7 @@
                 tagTextProp: 'name', // very important since a custom template is used with this property as text
                 enforceWhitelist: true,
                 skipInvalid: true,
-                dropdown: { closeOnSelect: true, enabled: 0, searchKeys: ['value'] },
+                dropdown: { closeOnSelect: true, enabled: 0, searchKeys: ['value', 'name'] },
                 autoComplete: {rightKey: true},
                 delimiters: ' ',
                 templates: {
@@ -856,7 +856,7 @@
                     },
                     dropdownItem: function (tagData) {
                         if (tagData.type == 'user') {
-                            return `<div class='tagify__dropdown__item'>&#x1F464; ${tagData.name}</div>`;
+                            return `<div class='tagify__dropdown__item'>&#x1F464; ${tagData.name} (${tagData.id.substring(2)})</div>`;
                         } else {
                             return `<div class='tagify__dropdown__item'>&#x1F465; ${tagData.name}</div>`;
                         }
