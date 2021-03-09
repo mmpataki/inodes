@@ -1,11 +1,16 @@
 package inodes.service.api;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 public class Observable {
+
+    Logger LOG = LoggerFactory.getLogger(Observable.class);
 
     Map<Object, List<Interceptor>> preobservers = new HashMap<>();
     Map<Object, List<Interceptor>> postobservers = new HashMap<>();
@@ -34,7 +39,7 @@ public class Observable {
                 try {
                     interceptor.intercept(o);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LOG.error("Failed to notify interceptor: " + interceptor.getClass().getName(), e);
                 }
             }
         }
