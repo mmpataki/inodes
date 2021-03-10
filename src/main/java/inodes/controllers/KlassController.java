@@ -16,17 +16,17 @@ public class KlassController extends AuthenticatedController {
     @Autowired
     KlassService KS;
 
-    @RequestMapping(value = "/klass/{id}", method = RequestMethod.GET)
+    @GetMapping("/klass/{id}")
     public Klass get(@PathVariable String id) throws Exception {
         return KS.getKlass(id);
     }
 
-    @RequestMapping(value = "/klass", method = RequestMethod.POST)
+    @PostMapping("/klass")
     public void register(@RequestBody Klass klass, @ModelAttribute("loggedinuser") String user) throws Exception {
         KS.putKlass(user, klass);
     }
 
-    @RequestMapping(value = "/klasses", method = RequestMethod.GET)
+    @GetMapping(value = "/klasses")
     public List<String> getRegisteredKlasses() throws Exception {
         return KS.getRegisteredKlasses();
     }

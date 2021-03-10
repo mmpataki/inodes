@@ -16,6 +16,7 @@ public abstract class KlassService {
 
     public void putKlass(String user, Klass klass) throws Exception {
         AS.checkKlassCreatePermission(user);
+        _putKlass(klass);
     }
 
     public abstract void _putKlass(Klass klass) throws Exception;
