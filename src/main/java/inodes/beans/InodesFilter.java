@@ -74,6 +74,7 @@ public class InodesFilter implements Filter {
         HttpServletResponse resp = ((HttpServletResponse) servletResponse);
         String url = req.getServletPath();
         String method = req.getMethod();
+        String ip = req.getRemoteAddr();
 
         resp.setHeader("Access-Control-Allow-Credentials", "true");
         resp.setHeader("Access-Control-Allow-Origin", req.getHeader("Origin"));
@@ -100,7 +101,7 @@ public class InodesFilter implements Filter {
         filterChain.doFilter(servletRequest, servletResponse);
 
         Object user = req.getAttribute("loggedinuser");
-        LOG.info("[{}] - {} {} - {}", user == null ? "--" : user.toString(), method, url, resp.getStatus());
+        LOG.info("[{}] - ({}) - {} {} - {}", user == null ? "--" : user.toString(), ip, method, url, resp.getStatus());
     }
 
     private boolean isLoggedIn(HttpServletRequest req, HttpServletResponse resp) {
