@@ -1,6 +1,9 @@
 const USER_KEY = "user", TOK_KEY = "tok";
-let baseUrl = window.location.port == 5001 ? "http://localhost:8080/" : ""
+let baseUrl = window.location.port == 5001 ? "http://localhost:8080" : ""
 let rejectCodeList = [400, 401, 500, 403];
+function getBaseUrl() {
+    return baseUrl;
+}
 function ajax(method, url, data, hdrs) {
     if (getCurrentUser()) {
         if (!hdrs) hdrs = {}
@@ -43,6 +46,9 @@ function get(url) {
 }
 function post(url, data, hdrs) {
     return ajax('POST', url, JSON.stringify(data), hdrs);
+}
+function postFile(url, data, hdrs) {
+    return ajax('POST', url, data, hdrs);
 }
 function delet(url) {
     return ajax('DELETE', url);
