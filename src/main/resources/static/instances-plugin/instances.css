@@ -27,6 +27,17 @@
 
 }
 
+.instances-urlstatus-refresher {
+    padding: 3px;
+    border-radius: 50%;
+    color: lightgray;
+    cursor: pointer;
+}
+
+.instances-urltag:hover .instances-urlstatus-refresher {
+    color: black;
+}
+
 .instances-card-boxcreds, .instances-card-appcreds {
     margin: 5px;
     margin-right: 10px;

@@ -1,4 +1,7 @@
 class instances {
+
+    currentUrls = {}
+
     constructor() {
         this.elems = {}
     }
@@ -292,7 +295,9 @@ class instances {
     }
 
     getCard(obj) {
+        let objIden = obj.id
         obj = JSON.parse(obj.content)
+        let self = this;
         let CARD_META_URL = function (k, v, elem) {
             return {
                 ele: "tr",
@@ -321,15 +326,34 @@ class instances {
                 ]
             }
         }
-        let card_url_template = function (k, v) {
+        let card_url_template = function (k, v, id) {
             return {
                 ele: 'span',
                 classList: 'urltag',
+                iden: self.makeUrlId(id, k),
                 children: [
                     {
                         ele: 'a',
                         text: k,
-                        attribs: { href: v, target: "_blank" },
+                        attribs: { href: v, target: "_blank" }
+                    },
+                    {
+                        ele: 'span',
+                        classList: 'urlstatus-refresher',
+                        attribs: {
+                            title: 'force refresh status',
+                            innerHTML: '&#x21BB;',
+                            urlStatusReqData : {
+                                extra: self.makeUrlId(id, k),
+                                url: v,
+                                force: true
+                            }
+                        },
+                        evnts: {
+                            click: function() {
+                                self.fetchStatus([this.urlStatusReqData])
+                            }
+                        }
                     }
                 ]
             }
@@ -474,14 +498,18 @@ class instances {
         }
         let start = 6;
         obj.urls.forEach(u => {
-            card.children[0].children[start].children.push(card_url_template(u.tag, u.url))
+            card.children[0].children[start].children.push(card_url_template(u.tag, u.url, objIden))
         })
         if (obj.meta) {
             obj.meta.forEach(u => {
                 card.children[0].children[start - 1].children.push(CARD_META_URL(u.key, u.value, 'span'))
             })
         }
-        return render('instances', card, e => 0);
+        return render('instances', card, (id, ele) => {
+            if (id.startsWith('url:')) {
+                this.currentUrls[id] = ele
+            }
+        });
     }
 
     getTags() {
@@ -491,5 +519,46 @@ class instances {
             return t;
         }
         return [];
+    }
+    makeUrlId(id, tag) {
+        return `url:${id}:${tag}`
+    }
+
+    fetchStatus(postItems) {
+        let self = this;
+        post(
+            '/nocors',
+            {
+                method: 'POST',
+                url: 'http://inedctst01:4123/testconn',
+                data: JSON.stringify({ items: postItems }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            },
+            {
+                'Content-Type': 'application/json'
+            }
+        ).then(x => {
+            let resp = JSON.parse(x.response)
+            Object.keys(resp).forEach(key => {
+                let val = resp[key]
+                self.currentUrls[val.extra].style.backgroundColor = val.message == 'up' ? "#e3ffe5" : "#ffe3e6"
+                self.currentUrls[val.extra].title = val.message
+            })
+        })
+    }
+
+    postDisplay(items) {
+        let postItems = [];
+        items.forEach(item => {
+            JSON.parse(item.content).urls.forEach(u => {
+                postItems.push({
+                    url: u.url,
+                    extra: this.makeUrlId(item.id, u.tag)
+                })
+            })
+        })
+        this.fetchStatus(postItems)
     }
 }

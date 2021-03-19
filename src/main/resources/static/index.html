@@ -197,13 +197,28 @@
                 d.innerHTML = ''
                 let self = this
                 let proms = []
+                let itemsByClass = {};
                 this.results.results.forEach(r => {
+                    if (!itemsByClass[r.type]) {
+                        itemsByClass[r.type] = []
+                    }
+                    itemsByClass[r.type].push(r)
                     proms.push(self.showCard(d, r));
                 })
                 Promise.all(proms).then(() => {
                     if (this.results.results.length < this.results.totalResults) {
                         d.appendChild(this.getPaginationItem(this.results));
                     }
+                    // call the post display hook
+                    Object.keys(itemsByClass).forEach(key => {
+                        self.loadKlass(key).then(klassMeta => {
+                            self.loadKlassScripts(klassMeta).then(klass => {
+                                if(klass.postDisplay) {
+                                    klass.postDisplay(itemsByClass[key])
+                                }
+                            })
+                        })
+                    })
                 });
             }
             getSearchQuery() {
@@ -257,7 +272,7 @@
                 }
                 g('tags-editor').value = obj.tags.join(' ')
                 let tags = obj.tags.map(t => {
-                    return { name: t, id: t, value: t, description: ""}
+                    return { name: t, id: t, value: t, description: "" }
                 })
                 tagifyTags.settings.whitelist.splice(0, tags.length, ...tags);
                 tagifyTags.removeAllTags();
@@ -651,7 +666,7 @@
                     self.triggerSearch(q)
                 })
                 t.addEventListener('dblclick', e => {
-                    if(char == '#')
+                    if (char == '#')
                         self.triggerSearch(`#inodesapp #viewtag !${tag}`)
                 })
                 return t;
@@ -663,8 +678,8 @@
 
                 let visibility = obj ? (obj.needsApproval ? obj.savedVisibility : obj.visibility) : ['g-public'];
                 visibility = visibility.map(v => {
-                        return { name: v.substring(2), id: v, value: v, type: v[0] == 'g' ? 'group' : 'user' }
-                    });
+                    return { name: v.substring(2), id: v, value: v, type: v[0] == 'g' ? 'group' : 'user' }
+                });
                 tagifyUsers.settings.whitelist.splice(0, visibility.length, ...visibility)
                 tagifyUsers.removeAllTags();
                 tagifyUsers.addTags(visibility)
@@ -837,7 +852,7 @@
                 enforceWhitelist: true,
                 skipInvalid: true,
                 dropdown: { closeOnSelect: true, enabled: 0, searchKeys: ['value', 'name'] },
-                autoComplete: {rightKey: true},
+                autoComplete: { rightKey: true },
                 delimiters: ' ',
                 templates: {
                     tag: function (tagData) {
@@ -901,7 +916,7 @@
                 skipInvalid: false,
                 delimiters: ' ',
                 dropdown: { closeOnSelect: true, enabled: 0, searchKeys: ['value'] },
-                autoComplete: {rightKey: true},
+                autoComplete: { rightKey: true },
                 templates: {
                     tag: function (tagData) {
                         return `
