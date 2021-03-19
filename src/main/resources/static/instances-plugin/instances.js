@@ -331,6 +331,17 @@ class instances {
                 ele: 'span',
                 classList: 'urltag',
                 iden: self.makeUrlId(id, k),
+                attribs: {
+                    title: 'fetching the status...'
+                },
+                evnts : {
+                    mouseover: function() {
+                        if(this.data) {
+                            let val = this.data;
+                            this.title = `${val.message} (refreshed ${Math.max(0, Math.round((Date.now() - val.lastChkTime * 1000) / 1000))}s ago)`
+                        }
+                    }
+                },
                 children: [
                     {
                         ele: 'a',
@@ -346,7 +357,7 @@ class instances {
                             urlStatusReqData : {
                                 extra: self.makeUrlId(id, k),
                                 url: v,
-                                force: true
+                                force: 'true'
                             }
                         },
                         evnts: {
@@ -541,24 +552,24 @@ class instances {
             }
         ).then(x => {
             let resp = JSON.parse(x.response)
-            Object.keys(resp).forEach(key => {
-                let val = resp[key]
-                self.currentUrls[val.extra].style.backgroundColor = val.message == 'up' ? "#e3ffe5" : "#ffe3e6"
-                self.currentUrls[val.extra].title = val.message
+            resp.items.forEach(val => {
+                self.currentUrls[val.extra].style.backgroundColor = val.message == 'up' ? "#E8FFE0" : "#FFE8E0"
+                self.currentUrls[val.extra].style.color = val.message == 'up' ? "green" : "red"
+                self.currentUrls[val.extra].data = val
             })
         })
     }
 
     postDisplay(items) {
-        let postItems = [];
         items.forEach(item => {
+            let postItems = [];
             JSON.parse(item.content).urls.forEach(u => {
                 postItems.push({
                     url: u.url,
                     extra: this.makeUrlId(item.id, u.tag)
                 })
             })
+            this.fetchStatus(postItems)
         })
-        this.fetchStatus(postItems)
     }
 }
