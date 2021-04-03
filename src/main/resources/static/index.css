@@ -93,8 +93,8 @@ body {
     top: 100%;
     left: 50%;
     margin-left: -60px;
-    max-width: 200px;
-    min-width: 200px;
+    max-width: 300px;
+    min-width: 300px;
 }
 
 .tag-tooltip::after {

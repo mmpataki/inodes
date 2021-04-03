@@ -687,6 +687,7 @@
                         dprom = new Promise((res, rej) => {
                             res({
                                 ele: 'span',
+                                classList: 'desc',
                                 text: char == '%' ? `Content created by ${tag}` : `Content of type ${tag}`
                             })
                         })
@@ -703,14 +704,14 @@
                                         ele: 'div',
                                         children: [
                                             {
+                                                ele: 'div',
+                                                classList: 'doccount',
+                                                text: `${Object.values(r.extra.docCount).reduce((x, z) => x + z, 0)} doc(s)`
+                                            },
+                                            {
                                                 ele: 'span',
                                                 classList: 'desc',
                                                 text: r.basic.description || "No description avaialable. Edit and add a description"
-                                            },
-                                            {
-                                                ele: 'div',
-                                                classList: 'doccount',
-                                                text: `${Object.values(r.extra.docCount).reduce((x, z) => x + z, 0)} docs`
                                             }
                                         ]
                                     }
@@ -747,7 +748,7 @@
                                         },
                                         ...(char == '#' ? [] : [
                                             {
-                                                ele: 'span', text: ' (pseudo tag)'
+                                                ele: 'span', text: ' (pseudo tag)', attribs: { style: 'font-size: 0.8em;' }
                                             }
                                         ]),
                                     ]
