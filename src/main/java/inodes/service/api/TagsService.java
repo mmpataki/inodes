@@ -50,7 +50,7 @@ public abstract class TagsService extends Observable {
         registerPostEvent(Events.SEARCH, o -> {
             TagInfo tag = (TagInfo) o;
             DataService.SearchResponse resp = DS.search(
-                    UserGroupService.PUBLIC,
+                    UserGroupService.ADMIN,
                     DataService.SearchQuery.builder()
                             .q("#" + ((TagInfo) o).getBasic().getName())
                             .pageSize(0)

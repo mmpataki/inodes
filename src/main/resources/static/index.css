@@ -10,6 +10,12 @@
 }
 body {
     margin: 0px;
+    font-size: 1.2em;
+}
+
+.tag-hits {
+    color: gray; 
+    font-size: 0.8em
 }
 
 #toptags {
@@ -43,7 +49,7 @@ body {
     right: 10px;
 }
 
-.tag {
+.tag-container {
     font-weight: bolder;
     color: black;
     font-size: .9em;
@@ -54,6 +60,65 @@ body {
     border: solid 1px #e4e4e4;
     border-radius: 3px;
     display: inline-block;
+}
+
+.tag-has-tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tag-tt-btn {
+    cursor: pointer;
+    font-size: 0.8em;
+    color: darkblue;
+    margin-right: 6px;
+    font-weight: bold;
+}
+
+.tag-tt-title-container {
+    white-space: nowrap;
+}
+
+.tag-tooltip {
+    visibility: hidden;
+    background-color: #f5f5f5;
+    border-radius: 6px;
+    padding: 5px 10px;
+    display: block;
+    border: solid 1px gray;
+
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 1;
+    top: 100%;
+    left: 50%;
+    margin-left: -60px;
+    max-width: 200px;
+    min-width: 200px;
+}
+
+.tag-tooltip::after {
+    content: " ";
+    position: absolute;
+    bottom: 100%;  /* At the top of the tooltip */
+    left: 30%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: transparent transparent gray transparent;
+}
+
+.tag-tt-title {
+    display: block;
+}
+
+.tag-ttc-desc {
+    font-size: 0.8em;
+}
+
+.tag-ttc-doccount {
+    font-size: 0.8em;
+    font-weight: bold;
 }
 
 .posts-trending {
@@ -235,7 +300,7 @@ body {
 }
 
 .maxwidth {
-    max-width: 950px;
+    max-width: 1200px;
 }
 
 .content {

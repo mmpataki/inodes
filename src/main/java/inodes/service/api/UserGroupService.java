@@ -109,6 +109,7 @@ public class UserGroupService extends Observable {
     }
 
     public boolean isAdmin(String userId) throws Exception {
+        if(userId == null) return false;
         return getUser(userId).getRoles().contains("ADMIN");
     }
 

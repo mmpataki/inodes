@@ -4,13 +4,19 @@ let rejectCodeList = [400, 401, 500, 403];
 function getBaseUrl() {
     return baseUrl;
 }
-function ajax(method, url, data, hdrs) {
+function ajax(method, url, data, hdrs, cancelToken) {
     if (getCurrentUser()) {
         if (!hdrs) hdrs = {}
         hdrs['AuthInfo'] = `${getCurrentUser()}:${getCookie(TOK_KEY)}`
     }
     return new Promise((resolve, reject) => {
         var xhttp = new XMLHttpRequest();
+        if(cancelToken) {
+            cancelToken.cancel = function() {
+                xhttp.abort();
+                reject(new Error("Cancelled"));
+            };
+        }
         xhttp.onreadystatechange = function () {
             if (this.readyState == 4 && this.status == 200) {
                 resolve({
@@ -41,9 +47,23 @@ function makeHMap(headers) {
     });
     return headerMap;
 }
-function get(url) {
-    return ajax("GET", url, undefined);
+
+function get(url, token) {
+    return ajax("GET", url, undefined, {}, token);
 }
+
+function last(fn) {
+    var lastToken = { cancel: function(){} }; // start with no op
+    return function() {
+        lastToken.cancel();
+        var args = Array.prototype.slice.call(arguments);
+        args.push(lastToken);
+        return fn.apply(this, args);
+    };
+}
+
+let getLast = last(get);
+
 function post(url, data, hdrs) {
     return ajax('POST', url, JSON.stringify(data), hdrs);
 }

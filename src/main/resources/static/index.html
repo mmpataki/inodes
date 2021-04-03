@@ -190,7 +190,7 @@
             search(str, offset = 0, pageSize = 10) {
                 str = str ? str : ""
                 str = str.replace(/\!\w+/, "")
-                return get(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}&fq=tags&fq=type&fq=owner`)
+                return getLast(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}&fq=tags&fq=type&fq=owner`)
             }
             showResults() {
                 let d = g('posts');
@@ -213,7 +213,7 @@
                     Object.keys(itemsByClass).forEach(key => {
                         self.loadKlass(key).then(klassMeta => {
                             self.loadKlassScripts(klassMeta).then(klass => {
-                                if(klass.postDisplay) {
+                                if (klass.postDisplay) {
                                     klass.postDisplay(itemsByClass[key])
                                 }
                             })
@@ -403,22 +403,22 @@
                                                             click: function (e) { self.downvoteInode(obj.id) }
                                                         }
                                                     },
-                                                    {
+                                                    ...(!getCurrentUser() ? [] : [{
                                                         ele: 'span',
                                                         text: 'edit',
                                                         classList: 'action',
                                                         evnts: {
                                                             click: function (e) { self.editInode(obj) }
                                                         }
-                                                    },
-                                                    {
+                                                    }]),
+                                                    ...(!getCurrentUser() ? [] : [{
                                                         ele: 'span',
                                                         text: 'delete',
                                                         classList: 'action',
                                                         evnts: {
                                                             click: function (e) { self.deleteInode(obj.id) }
                                                         }
-                                                    },
+                                                    }]),
                                                     {
                                                         ele: 'span',
                                                         text: 'comment(s)',
@@ -435,29 +435,36 @@
                                                             click: function (e) { window.location = `?q=@${obj.id}` }
                                                         }
                                                     },
-                                                    {
+                                                    ...(!getCurrentUser() ? [] : [{
                                                         ele: 'span',
                                                         text: 'watch',
                                                         classList: 'action',
                                                         evnts: {
                                                             click: function (e) { self.watchDoc(obj.id) }
                                                         }
-                                                    }
+                                                    }])
                                                 ]
-                                            }
-                                            ,
+                                            },
                                             {
                                                 ele: 'div',
                                                 classList: 'actions',
                                                 styles: { float: 'right' },
                                                 children: [
-                                                    {
+                                                    ...(!getCurrentUser() ? [] : [{
                                                         ele: 'span',
                                                         classList: 'action',
                                                         text: 'flag',
                                                         evnts: { click: () => self.flagInode(obj.id) }
-                                                    },
-                                                    ...getApproveIcon()
+                                                    }]),
+                                                    ...getApproveIcon(),
+                                                    ...(getCurrentUser() != 'admin' ? [] : [{
+                                                        ele: 'span',
+                                                        text: 'trust',
+                                                        classList: 'action',
+                                                        evnts: {
+                                                            click: function (e) { self.trustInode(obj.id); }
+                                                        }
+                                                    }])
                                                 ]
                                             }
                                         ]
@@ -542,6 +549,12 @@
                     .catch(r => showError(r.message))
             }
 
+            trustInode(id) {
+                post(`/trust/${id}`)
+                    .then(r => showSuccess('Trusted'))
+                    .catch(r => showError(r.message))
+            }
+
             getContextButtons(klass, obj) {
                 let self = this;
                 let getLockIcon = () => obj.visibility != 'g-public' ? [{ ele: 'span', text: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []
@@ -598,6 +611,7 @@
             searchUser(user) {
                 this.triggerSearch(`#user !${user}`)
             }
+
             commentInode(obj) {
                 let self = this;
                 g(`comment-pane-${obj.id}`).style.display = "block";
@@ -610,6 +624,7 @@
                     })
                 })
             }
+
             addCommentToList(parentId, comment) {
                 let container = g(parentId);
                 let c = document.createElement('div')
@@ -617,19 +632,23 @@
                 c.innerHTML = `${JSON.parse(comment.txt).replaceAll(/@([0-9A-Za-z]+)/g, '<a href="/?q=%23user !$1" target="_blank" >$1</a>')} - <a href="/?q=%23user !${comment.userid}">${comment.userid}</a> ${this.getCommentContextButtons(comment)}`
                 container.appendChild(c)
             }
+
             getCommentContextButtons(c) {
                 if (c.userid == getCurrentUser()) {
                     return `<span onclick='inodes.deleteComment("${c.postid}/${c.userid}/${c.itime}", this.parentElement)' class='comment-action-btn'>delete</span>`
                 }
                 return ''
             }
+
             deleteComment(id, parEle) {
                 delet(`/posts/comment/${id}`).then(parEle.remove())
             }
+
             getLocalDateTime(ep) {
                 var d = new Date(ep);
                 return `${d.toLocaleDateString()}`
             }
+
             randColor() {
                 var letters = '0123456789ABCDEF';
                 var color = '#';
@@ -638,6 +657,7 @@
                 }
                 return color;
             }
+
             getTagsElement(tags, user, type) {
                 let x = document.createElement('div')
                 x.classList = "tags-container"
@@ -650,27 +670,155 @@
                 type && x.appendChild(this.createTagElement(type, '%'))
                 return x;
             }
+
+            getTagDetails(tag) {
+                get(`/tags/${tag}`)
+                    .then(x => console.log(x.response))
+            }
+
+            getTagToolTip(tag, char, hits) {
+                if (!this._tagCache) {
+                    this._tagCache = {};
+                }
+                let tagCache = this._tagCache;
+                return new Promise((resolve, reject) => {
+                    let dprom;
+                    if (char != '#') {
+                        dprom = new Promise((res, rej) => {
+                            res({
+                                ele: 'span',
+                                text: char == '%' ? `Content created by ${tag}` : `Content of type ${tag}`
+                            })
+                        })
+                    } else {
+                        dprom = new Promise((res, rej) => {
+                            if (tagCache[tag]) {
+                                res(tagCache[tag])
+                                return;
+                            }
+                            get(`/tags/${tag}`)
+                                .then(r => JSON.parse(r.response))
+                                .then(r => {
+                                    tagCache[tag] = {
+                                        ele: 'div',
+                                        children: [
+                                            {
+                                                ele: 'span',
+                                                classList: 'desc',
+                                                text: r.basic.description || "No description avaialable. Edit and add a description"
+                                            },
+                                            {
+                                                ele: 'div',
+                                                classList: 'doccount',
+                                                text: `${Object.values(r.extra.docCount).reduce((x, z) => x + z, 0)} docs`
+                                            }
+                                        ]
+                                    }
+                                    res(tagCache[tag])
+                                })
+                        })
+                    }
+                    dprom.then(x => {
+                        resolve(render('tag-ttc', x))
+                    })
+                })
+            }
+
             createTagElement(tag, char, hits) {
                 let self = this;
-                let t = document.createElement('span');
-                t.innerHTML = `<span class='tag'>${hits ? "" : char}${tag}</span>`
-                if (hits) {
-                    t.innerHTML += `<span style="color: gray; font-size: 0.8em"> x ${hits}</span>`
-                }
-                t.addEventListener('click', e => {
-                    let q = ""
-                    if (e.ctrlKey) {
-                        q = c('searchbox').value + " "
+                return render('tag', {
+                    ele: 'span',
+                    classList: 'has-tooltip',
+                    children: [
+                        { ele: 'span', classList: 'container', text: (hits ? "" : char) + tag },
+                        ...(hits ? [{ ele: 'span', classList: 'hits', text: ` x ${hits}` }] : []),
+                        {
+                            ele: 'div',
+                            classList: 'tooltip',
+                            children: [
+                                {
+                                    ele: 'div',
+                                    classList: 'tt-title-container',
+                                    children: [
+                                        {
+                                            ele: 'b',
+                                            classList: 'tt-title',
+                                            text: tag
+                                        },
+                                        ...(char == '#' ? [] : [
+                                            {
+                                                ele: 'span', text: ' (pseudo tag)'
+                                            }
+                                        ]),
+                                    ]
+                                },
+                                {
+                                    ele: 'div',
+                                    classList: 'desc'
+                                },
+                                ...(char == '#' ? [{
+                                    ele: 'div',
+                                    children: [
+                                        ...(getCurrentUser() ? [{
+                                            ele: 'span',
+                                            text: 'watch',
+                                            classList: 'tt-btn',
+                                            evnts: {
+                                                click: function () {
+                                                    post(`/subscribe?subscriberType=USER&subscriberId=${getCurrentUser()}&objTyp=TAG&objId=${tag}&event=ALL`)
+                                                        .then(e => showSuccess(`You have subscribed to tag: ${tag}`))
+                                                        .catch(e => showError(e.message))
+                                                }
+                                            }
+                                        }] : []
+                                        ),
+                                        {
+                                            ele: 'span',
+                                            text: 'view',
+                                            classList: 'tt-btn',
+                                            evnts: {
+                                                click: function () {
+                                                    self.triggerSearch(`#inodesapp #viewtag !${tag}`)
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }] : []
+                                )
+                            ],
+                            evnts: {
+                                click: e => e.stopPropagation()
+                            }
+                        }
+                    ],
+                    evnts: {
+                        click: function (e) {
+                            let q = ""
+                            if (e.ctrlKey) {
+                                q = c('searchbox').value + " "
+                            }
+                            q += `${char}${tag}`
+                            self.triggerSearch(q)
+                        },
+                        mouseenter: function (e) {
+                            let ttc = this.querySelector('.tag-tooltip');
+                            let tt = this.querySelector('.tag-desc');
+                            if (!tt.getAttribute('desc-resolved')) {
+                                self.getTagToolTip(tag, char)
+                                    .then(x => {
+                                        tt.appendChild(x);
+                                        tt.setAttribute('desc-resolved', true)
+                                    })
+                            }
+                            ttc.style.visibility = 'visible'
+                        },
+                        mouseleave: function (e) {
+                            this.querySelector('.tag-tooltip').style.visibility = 'hidden'
+                        }
                     }
-                    q += `${char}${tag}`
-                    self.triggerSearch(q)
                 })
-                t.addEventListener('dblclick', e => {
-                    if (char == '#')
-                        self.triggerSearch(`#inodesapp #viewtag !${tag}`)
-                })
-                return t;
             }
+
             openEditor(obj, force) {
                 this.renderInput(obj ? obj.type : 'posts', obj, true)
                 g('editor-pane').style.display = 'block';
@@ -826,7 +974,6 @@
                 e = spec.ele;
             }
             if (container) {
-                container.appendChild(e)
                 if (spec.label) {
                     let rgid = "id_" + Math.random();
                     e.id = rgid
@@ -835,6 +982,7 @@
                     lbl.for = rgid
                     container.appendChild(lbl)
                 }
+                container.appendChild(e)
                 return container;
             }
             return e;
