@@ -688,7 +688,7 @@
                             res({
                                 ele: 'span',
                                 classList: 'desc',
-                                text: char == '%' ? `Content created by ${tag}` : `Content of type ${tag}`
+                                text: char != '%' ? `Content created by ${tag}` : `Content of type ${tag}`
                             })
                         })
                     } else {
