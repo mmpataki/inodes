@@ -687,6 +687,7 @@
                         dprom = new Promise((res, rej) => {
                             res({
                                 ele: 'span',
+                                classList: 'desc',
                                 text: char == '%' ? `Content created by ${tag}` : `Content of type ${tag}`
                             })
                         })
@@ -703,14 +704,14 @@
                                         ele: 'div',
                                         children: [
                                             {
+                                                ele: 'div',
+                                                classList: 'doccount',
+                                                text: `${Object.values(r.extra.docCount).reduce((x, z) => x + z, 0)} doc(s)`
+                                            },
+                                            {
                                                 ele: 'span',
                                                 classList: 'desc',
                                                 text: r.basic.description || "No description avaialable. Edit and add a description"
-                                            },
-                                            {
-                                                ele: 'div',
-                                                classList: 'doccount',
-                                                text: `${Object.values(r.extra.docCount).reduce((x, z) => x + z, 0)} docs`
                                             }
                                         ]
                                     }
@@ -747,7 +748,7 @@
                                         },
                                         ...(char == '#' ? [] : [
                                             {
-                                                ele: 'span', text: ' (pseudo tag)'
+                                                ele: 'span', text: ' (pseudo tag)', attribs: { style: 'font-size: 0.8em;' }
                                             }
                                         ]),
                                     ]
@@ -801,19 +802,28 @@
                             self.triggerSearch(q)
                         },
                         mouseenter: function (e) {
-                            let ttc = this.querySelector('.tag-tooltip');
-                            let tt = this.querySelector('.tag-desc');
-                            if (!tt.getAttribute('desc-resolved')) {
-                                self.getTagToolTip(tag, char)
-                                    .then(x => {
-                                        tt.appendChild(x);
-                                        tt.setAttribute('desc-resolved', true)
-                                    })
-                            }
-                            ttc.style.visibility = 'visible'
+                            this.setAttribute('data-intime', + new Date());
+                            let ltim = setTimeout(() => {
+                                let lt = this.getAttribute('data-intime');
+                                if (!lt) return;
+                                lt = +lt;
+                                let ttc = this.querySelector('.tag-tooltip');
+                                let tt = this.querySelector('.tag-desc');
+                                if (!tt.getAttribute('desc-resolved')) {
+                                    self.getTagToolTip(tag, char)
+                                        .then(x => {
+                                            tt.appendChild(x);
+                                            tt.setAttribute('desc-resolved', true)
+                                        })
+                                }
+                                ttc.style.visibility = 'visible';
+                            }, 1000)
+                            this.setAttribute('ltimer', ltim)
                         },
                         mouseleave: function (e) {
                             this.querySelector('.tag-tooltip').style.visibility = 'hidden'
+                            this.setAttribute('data-intime', undefined);
+                            clearTimeout(this.getAttribute('ltimer'))
                         }
                     }
                 })
