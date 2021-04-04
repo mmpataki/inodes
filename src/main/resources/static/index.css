@@ -136,6 +136,7 @@ body {
 .inode-actions-list {
     width: 100%;
     float: left;
+    font-weight: 200;
 }
 
 .inode-action-upvote {
@@ -164,6 +165,21 @@ body {
 }
 
 #editor {}
+
+#changenoteeditor {
+    margin-top: 10px;
+}
+
+#changenote-editor {
+    width: 100%;
+    margin-bottom: 10px;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    border: solid 1px gray;
+    resize: none;
+    padding: 10px;
+}
 
 .posts-and-tags {
     display: flex;
@@ -270,11 +286,6 @@ body {
 #login,
 #signup {
     display: none;
-}
-
-#user {
-    background-color: lightgreen;
-    padding: 5px;
 }
 
 .posts-container {

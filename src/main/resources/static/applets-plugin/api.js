@@ -22,8 +22,29 @@ class UApi {
     }
 
     makeA(attribs, parent) {
-        return this.makeEle('p', attribs, parent)
+        return this.makeEle('a', attribs, parent)
     }
+
+    makeLi(attribs, parent) {
+        return this.makeEle('li', attribs, parent)
+    }
+
+    makeUl(attribs, parent) {
+        return this.makeEle('ul', attribs, parent)
+    }
+
+    makeB(attribs, parent) {
+        return this.makeEle('b', attribs, parent)
+    }
+
+    makeI(attribs, parent) {
+        return this.makeEle('i', attribs, parent)
+    }
+
+    makeU(attribs, parent) {
+        return this.makeEle('u', attribs, parent)
+    }
+
 
     makeP(attribs, parent) {
         return this.makeEle('p', attribs, parent)

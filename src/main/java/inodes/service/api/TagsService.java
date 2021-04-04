@@ -34,7 +34,7 @@ public abstract class TagsService extends Observable {
 
         /* save the tags when there are new ones */
         Interceptor interceptor = o -> {
-            Document d = (Document) o;
+            Document d = (Document) ((List)o).get(1);
             List<Tag> newTags = new LinkedList<>();
             d.getTags().forEach(tag -> {
                 if (TR.findOne(tag) == null) {

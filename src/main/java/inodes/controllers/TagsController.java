@@ -1,8 +1,6 @@
 package inodes.controllers;
 
-import inodes.models.PageResponse;
-import inodes.models.Tag;
-import inodes.models.TagInfo;
+import inodes.models.*;
 import inodes.service.api.TagsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;

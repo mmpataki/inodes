@@ -78,7 +78,7 @@ public abstract class DataService extends Observable {
         }
     }
 
-    public void putData(String user, Document doc) throws Exception {
+    public void putData(String user, Document doc, String changeNote) throws Exception {
         assert
                 Objects.nonNull(doc) &&
                         Objects.nonNull(doc.getContent()) &&
@@ -90,6 +90,9 @@ public abstract class DataService extends Observable {
             doc.getTags().remove("inodesapp");
 
         if (doc.getId() != null && !doc.getId().isEmpty()) {
+            if(changeNote == null || changeNote.isEmpty()) {
+                throw new Exception("change note is required to edit this item");
+            }
             Document oldDoc = get(user, doc.getId());
             AS.checkEditPermission(user, oldDoc);
             doc.setOwner(oldDoc.getOwner());
@@ -97,26 +100,26 @@ public abstract class DataService extends Observable {
             doc.setComments(oldDoc.getComments());
             doc.setPostTime(oldDoc.getPostTime());
             doc.setType(oldDoc.getType());
-            updateContent(doc);
+            updateContent(user, doc, changeNote);
         } else {
             AS.checkCreatePermission(user, doc);
             doc.setId(UUID.randomUUID().toString());
             doc.setPostTime(System.currentTimeMillis());
             doc.setOwner(user);
-            createContent(doc);
+            createContent(user, doc, changeNote);
         }
     }
 
-    public void updateContent(Document doc) throws IOException {
-        notifyPreEvent(ObservableEvents.UPDATE, doc);
+    public void updateContent(String user, Document doc, String changeNote) throws IOException {
+        notifyPreEvent(ObservableEvents.UPDATE, Arrays.asList(user, doc, changeNote));
         _putData(doc);
-        notifyPostEvent(ObservableEvents.UPDATE, doc);
+        notifyPostEvent(ObservableEvents.UPDATE, Arrays.asList(user, doc, changeNote));
     }
 
-    public void createContent(Document doc) throws IOException {
-        notifyPreEvent(ObservableEvents.NEW, doc);
+    public void createContent(String user, Document doc, String changeNote) throws IOException {
+        notifyPreEvent(ObservableEvents.NEW, Arrays.asList(user, doc, changeNote));
         _putData(doc);
-        notifyPostEvent(ObservableEvents.NEW, doc);
+        notifyPostEvent(ObservableEvents.NEW, Arrays.asList(user, doc, changeNote));
     }
 
     public void approve(String userId, String docId) throws Exception {

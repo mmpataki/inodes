@@ -331,7 +331,7 @@ public class EventService {
 
         es = this;
 
-        DS.registerPostEvent(DataService.ObservableEvents.NEW, o -> post(Type.NEW_DOC, o));
+        DS.registerPostEvent(DataService.ObservableEvents.NEW, o -> post(Type.NEW_DOC, ((List)o).get(1)));
         SS.registerPostEvent(SecurityService.EventTypes.APPROVAL_NEEDED, o -> post(Type.APPROVAL_NEEDED, o));
         US.registerPostEvent(UserGroupService.Events.USER_ADDED_TO_GROUP, o -> post(EventService.Type.USER_ADD_TO_GROUP, o));
         CS.registerPostEvent(CollabService.EventType.NEW_COMMENT, o -> post(Type.NEW_COMMENT, o));

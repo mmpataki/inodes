@@ -38,8 +38,8 @@ public class DataController extends AuthenticatedController {
     }
 
     @RequestMapping(value = "/data", method = RequestMethod.POST)
-    public void put(@RequestBody Document doc, @ModelAttribute("loggedinuser") String user) throws Exception {
-        DS.putData(user, doc);
+    public void put(@RequestBody Document doc, @RequestParam String changeNote, @ModelAttribute("loggedinuser") String user) throws Exception {
+        DS.putData(user, doc, changeNote);
     }
 
     @RequestMapping(value = "/data/{docId}/approve", method = RequestMethod.POST)

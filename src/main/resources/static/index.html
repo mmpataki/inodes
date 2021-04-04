@@ -123,6 +123,7 @@
                             klassObj.inodes_editor = klassObj.getEditor(obj)
                         }
                         e.appendChild(klassObj.inodes_editor)
+                        g('changenoteeditor').style.display = obj ? 'block' : 'none'
                     });
             }
             loggedIn() {
@@ -161,8 +162,9 @@
                     showError(err);
                     return
                 }
+                let changeNote = this.currentPost ? g('changenote-editor').value : "initial version";
                 post(
-                    '/data',
+                    `/data?changeNote=${encodeURIComponent(changeNote)}`,
                     {
                         content,
                         type: currentClass,
@@ -175,8 +177,8 @@
                         "Content-Type": "application/json"
                     }
                 )
-                    .then(e => showSuccess('Posted successfully'))
-                    .catch(msg => showError(msg))
+                    .then(e => { showSuccess('Posted successfully'); self.closeEditor(); })
+                    .catch(e => showError(e.message))
             }
             doSearch(str, offset = 0, pageSize = 10) {
                 this.search(str, offset, pageSize).then(d => {
@@ -189,7 +191,7 @@
             }
             search(str, offset = 0, pageSize = 10) {
                 str = str ? str : ""
-                str = str.replace(/\!\w+/, "")
+                str = str.replace(/\![-\w]+/, "")
                 return getLast(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}&fq=tags&fq=type&fq=owner`)
             }
             showResults() {
@@ -450,6 +452,12 @@
                                                 classList: 'actions',
                                                 styles: { float: 'right' },
                                                 children: [
+                                                    {
+                                                        ele: 'span',
+                                                        classList: 'action',
+                                                        text: 'history',
+                                                        evnts: { click: () => self.triggerSearch(`#inodesapp #history !${obj.id}`) }
+                                                    },
                                                     ...(!getCurrentUser() ? [] : [{
                                                         ele: 'span',
                                                         classList: 'action',
@@ -1144,7 +1152,11 @@
                 <input type="text" id="tags-editor" placeholder="start typing a tag name. eg edc hack"></input><br />
                 <label for="visibility-editor">Visibility</label><br />
                 <input type="text" id="visibility-editor" placeholder="start typing a user or group name"></input>
-                <br /><br />
+                <div id="changenoteeditor">
+                    <label for="changenote-editor">What changed?</label><br />
+                    <input id="changenote-editor" placeholder="describe what changed in this version"></input><br />
+                </div>
+                <br />
                 <button onclick="inodes.post()">Post</button>
             </fieldset>
         </div>

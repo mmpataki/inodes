@@ -48,7 +48,7 @@ public class DbBasedTagsServiceImpl extends TagsService {
         });
 
         Interceptor newTagsCapturer = d -> {
-            tDocs.add((Document) d);
+            tDocs.add((Document) ((List)d).get(1));
         };
         DS.registerPostEvent(DataService.ObservableEvents.NEW, newTagsCapturer);
         DS.registerPostEvent(DataService.ObservableEvents.UPDATE, newTagsCapturer);

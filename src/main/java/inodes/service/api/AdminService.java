@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -55,7 +56,7 @@ public class AdminService {
         Gson g = new Gson();
         for (File file : dir.listFiles()) {
             Document d = g.fromJson(new FileReader(file), Document.class);
-            DS.createContent(d);
+            DS.createContent(d.getOwner(), d, "restored version : " + new Date());
             DS.approve(UserGroupService.ADMIN, d.getId());
         }
     }
@@ -90,7 +91,7 @@ public class AdminService {
         Gson g = new Gson();
         for (File file : dir.listFiles()) {
             Document d = g.fromJson(new FileReader(file), Document.class);
-            DS.createContent(d);
+            DS.createContent(d.getOwner(), d, "restored version : " + new Date());
         }
     }
 }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.util.Arrays;
+import java.util.List;
 
 @Service
 public class SecurityService extends Observable {
@@ -25,7 +26,7 @@ public class SecurityService extends Observable {
     public void init() {
 
         Interceptor interceptor = o -> {
-            Document doc = (Document) o;
+            Document doc = (Document) ((List)o).get(1);
 
             Klass klass = KS.getKlass(doc.getType());
             if (klass.isEditApprovalNeeded()) {
