@@ -60,6 +60,8 @@ public abstract class DataService extends Observable {
             q.getVisibility().add(getUserTag(user));
         }
         q.getVisibility().addAll(US.getGroupsOf(user).stream().map(DataService::getGroupTag).collect(Collectors.toList()));
+        if(US.isAdmin(user))
+            q.getVisibility().add("*");
         SearchResponse resp = _search(user, q);
         notifyPostEvent(ObservableEvents.SEARCH, resp.getResults());
         return resp;
