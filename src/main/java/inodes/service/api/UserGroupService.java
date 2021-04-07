@@ -1,10 +1,12 @@
 package inodes.service.api;
 
+import inodes.models.Credential;
 import inodes.models.Group;
 import inodes.models.User;
 import inodes.models.UserInfo;
 import inodes.repository.GroupRepo;
 import inodes.repository.UserRepo;
+import inodes.util.Hasher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,10 +65,10 @@ public class UserGroupService extends Observable {
         tc(() -> _addUserToGroup(SECURITY, "admin"));
     }
 
-    public boolean authenticate(User cred) throws Exception {
+    public boolean authenticate(Credential cred) throws Exception {
         User c = getUser(cred.getUserName());
         if (c != null) {
-            return c.isVerified() && c.getPassword().equals(cred.getPassword());
+            return c.isVerified() && c.getPassword().equals(Hasher.hash(cred.getPassword()));
         }
         return false;
     }
@@ -84,9 +86,13 @@ public class UserGroupService extends Observable {
         if (getUser(user.getUserName()) != null) {
             throw new UserExistsException(user.getUserName() + " already exists");
         }
+
         user.setRoles("UPVOTE,DOWNVOTE,COMMENT");
         user.setVerified(false);
         user.setRegTok(R.nextDouble() + "-" + R.nextInt());
+        user.setPassword(Hasher.hash(user.getPassword()));
+
+        notifyPreEvent(Events.USER_REGISTERED, user);
         _register(user);
         notifyPostEvent(Events.USER_REGISTERED, user);
     }

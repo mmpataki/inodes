@@ -1,5 +1,6 @@
 package inodes.beans;
 
+import inodes.models.Credential;
 import inodes.models.User;
 import inodes.service.api.UserGroupService;
 import org.slf4j.Logger;
@@ -133,7 +134,7 @@ public class InodesFilter implements Filter {
     private boolean doLogin(HttpServletRequest req, HttpServletResponse resp, boolean makeSess) {
         String authHdr = req.getHeader("Authorization");
         if (authHdr != null) {
-            User cred = makeCredential(authHdr);
+            Credential cred = makeCredential(authHdr);
             try {
                 if (AS.authenticate(cred)) {
                     if (makeSess) {
@@ -151,9 +152,9 @@ public class InodesFilter implements Filter {
         return false;
     }
 
-    private User makeCredential(String authHdr) {
+    private Credential makeCredential(String authHdr) {
         String chunks[] = new String(Base64.getDecoder().decode(authHdr.split(" ")[1].getBytes())).split(":");
-        return new User(chunks[0], chunks[1]);
+        return Credential.builder().userName(chunks[0]).password(chunks[1]).build();
     }
 
     private void sendNoAuth(HttpServletRequest req, HttpServletResponse r) throws IOException {
