@@ -86,8 +86,7 @@ public class UserGroupService extends Observable {
         if (getUser(user.getUserName()) != null) {
             throw new UserExistsException(user.getUserName() + " already exists");
         }
-
-        user.setRoles("UPVOTE,DOWNVOTE,COMMENT");
+        user.setRoles("CREATE,UPVOTE,DOWNVOTE,COMMENT");
         user.setVerified(false);
         user.setRegTok(R.nextDouble() + "-" + R.nextInt());
         user.setPassword(Hasher.hash(user.getPassword()));
