@@ -57,7 +57,15 @@ class UApi {
     makeButton(attribs, parent) {
         return this.makeEle('button', attribs, parent)
     }
+    
+    makeSelect(attribs, parent) {
+        return this.makeEle('select', attribs, parent)
+    }
 
+    makeOption(attribs, parent) {
+        return this.makeEle('option', attribs, parent)
+    }
+    
     makeDiv(attribs, parent) {
         return this.makeEle('div', attribs, parent)
     }
