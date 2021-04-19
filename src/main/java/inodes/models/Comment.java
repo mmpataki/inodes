@@ -25,7 +25,7 @@ public class Comment {
     public static class CID implements Serializable {
         String postid;
         String userid;
-        long itime;
+        Long itime;
     }
 
     @Id
@@ -33,7 +33,7 @@ public class Comment {
     @Id
     String userid;
     @Id
-    long itime;
+    Long itime;
 
     public String txt;
 
