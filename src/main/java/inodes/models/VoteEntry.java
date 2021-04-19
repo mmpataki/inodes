@@ -12,6 +12,6 @@ public class VoteEntry {
     @Id
     String id;
 
-    long votes;
+    Long votes;
 
 }
