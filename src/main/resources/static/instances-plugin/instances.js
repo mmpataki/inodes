@@ -156,6 +156,87 @@ class instances {
             }
         }
 
+        let parseDockerApiOutputV1 = function (resp) {
+            let O = {};
+            Object.keys(resp).forEach(k => {
+                O[k] = {}
+                resp[k].forEach(elem => {
+                    O[k][Object.keys(elem)[0]] = elem[Object.keys(elem)[0]]
+                })
+            })
+            console.log(O)
+            let urls = [];
+            let meta = [];
+
+            Object.keys(O['URL details']).forEach(k => {
+                if (k.toLowerCase().includes('url')) {
+                    urls.push({ tag: k, url: O['URL details'][k] })
+                } else {
+                    meta.push({ key: k, value: O['URL details'][k] })
+                }
+            })
+
+            return {
+                appusername: O['URL details']['Username'],
+                apppassword: O['URL details']['Username'],
+                boxusername: O['Docker Host and credentials']['User'],
+                boxpassword: O['Docker Host and credentials']['Password'],
+                ipaddr: O['Docker Host and credentials']['Host name'],
+                installloc: O['URL details']['EDC installation'],
+                urls: urls,
+                meta: meta,
+                importedTags: [
+                    O['Docker Host and credentials']['Cloud'].toLowerCase(),
+                    O['Docker Host and credentials']['Template'].toLowerCase(),
+                ]
+            }
+        }
+
+        let parseDockerApiOutputV2 = function (resp) {
+            let O = resp;
+
+            let urls = [];
+            let meta = [];
+
+            let metArr = O["Docker Port Mappings"][0]["Application Port"]
+            metArr.forEach(kvp => {
+                let k = kvp['Container Port'].toLowerCase(), v = kvp['Host Port'];
+                if (k.includes('url')) {
+                    urls.push({ tag: k, url: v })
+                } else {
+                    meta.push({ key: k, value: v })
+                }
+            })
+
+            let vmap = {}, uvmap = {}
+            
+            O['Docker Host and credentials'].forEach(kvp => {
+                Object.keys(kvp).forEach(k => {
+                    vmap[k] = kvp[k]
+                })
+            });
+
+            O['Docker Port Mappings'][0]['Application Port'].forEach(kvp => {
+                Object.keys(kvp).forEach(k => {
+                    uvmap[kvp['Container Port']] = kvp['Host Port']
+                })
+            });
+
+            return {
+                appusername: uvmap['Username'],
+                apppassword: uvmap['Password'],
+                boxusername: vmap['Username'],
+                boxpassword: vmap['Password'],
+                ipaddr: vmap['Host name'],
+                installloc: uvmap['EDC installation'],
+                urls: urls,
+                meta: meta,
+                importedTags: [
+                    vmap['Template'].toLowerCase()
+                ]
+            }
+        }
+
         let docker_instance = function (inst) {
             return {
                 ele: 'div',
@@ -198,43 +279,23 @@ class instances {
                                     { 'Content-Type': 'application/json' }
                                 ).then(resp => {
                                     resp = JSON.parse(JSON.parse(resp.response).data[0].META_DATA)
-                                    let O = {};
-                                    Object.keys(resp).forEach(k => {
-                                        O[k] = {}
-                                        resp[k].forEach(elem => {
-                                            O[k][Object.keys(elem)[0]] = elem[Object.keys(elem)[0]]
-                                        })
-                                    })
-                                    console.log(O)
-                                    let urls = [];
-                                    let meta = [];
+                                    let parseFunctions = [parseDockerApiOutputV1, parseDockerApiOutputV2]
 
-                                    Object.keys(O['URL details']).forEach(k => {
-                                        if (k.toLowerCase().includes('url')) {
-                                            urls.push({ tag: k, url: O['URL details'][k] })
-                                        } else {
-                                            meta.push({ key: k, value: O['URL details'][k] })
+                                    parseFunctions.forEach(f => {
+                                        try {
+                                            self.importedContent = f(resp);
+                                        } catch (error) {
+                                            console.error(error)
+                                            console.log(`failed to parse using : ${f}`)
                                         }
                                     })
 
-                                    self.importedContent = {
-                                        appusername: O['URL details']['Username'],
-                                        apppassword: O['URL details']['Username'],
-                                        boxusername: O['Docker Host and credentials']['User'],
-                                        boxpassword: O['Docker Host and credentials']['Password'],
-                                        ipaddr: O['Docker Host and credentials']['Host name'],
-                                        installloc: O['URL details']['EDC installation'],
-                                        urls: urls,
-                                        meta: meta
-                                    }
-
-                                    self.importedTags = [
-                                        O['Docker Host and credentials']['Cloud'].toLowerCase(),
-                                        O['Docker Host and credentials']['Template'].toLowerCase(),
-                                    ];
                                     console.log(self.importedContent)
-
-                                    inodes.post()
+                                    if (self.importedContent) {
+                                        inodes.post()
+                                    } else {
+                                        showError('Cannot parse the docker API response. Connect to admin to fix this, Till then use the manual entry')
+                                    }
                                 })
                             }
                         }
@@ -334,9 +395,9 @@ class instances {
                 attribs: {
                     title: 'fetching the status...'
                 },
-                evnts : {
-                    mouseover: function() {
-                        if(this.data) {
+                evnts: {
+                    mouseover: function () {
+                        if (this.data) {
                             let val = this.data;
                             this.title = `${val.message} (refreshed ${Math.max(0, Math.round((Date.now() - val.lastChkTime * 1000) / 1000))}s ago)`
                         }
@@ -354,14 +415,14 @@ class instances {
                         attribs: {
                             title: 'force refresh status',
                             innerHTML: '&#x21BB;',
-                            urlStatusReqData : {
+                            urlStatusReqData: {
                                 extra: self.makeUrlId(id, k),
                                 url: v,
                                 force: 'true'
                             }
                         },
                         evnts: {
-                            click: function() {
+                            click: function () {
                                 self.fetchStatus([this.urlStatusReqData])
                             }
                         }
@@ -572,4 +633,5 @@ class instances {
             this.fetchStatus(postItems)
         })
     }
+
 }
