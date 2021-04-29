@@ -59,8 +59,8 @@ public class FileSystemStorageService extends WebMvcConfigurerAdapter implements
             if(!Files.exists(userDir))
                 Files.createDirectories(userDir);
 
-            Path destinationFile = userDir.resolve(Paths.get(file.getOriginalFilename()))
-                    .normalize().toAbsolutePath();
+            String fModPath = file.getOriginalFilename().replaceAll("[^0-9A-Za-z_.-]+", "_");
+            Path destinationFile = userDir.resolve(Paths.get(fModPath)).normalize().toAbsolutePath();
             if (!destinationFile.getParent().equals(userDir.toAbsolutePath())) {
                 throw new Exception("Cannot store file outside current directory.");
             }
