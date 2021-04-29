@@ -208,10 +208,12 @@ function filePicker(selectedFiles) {
                                         text: 'delete',
                                         evnts: {
                                             click: function () {
-                                                delet(`/files?file=${encodeURIComponent(file.name)}`)
-                                                    .then(x => this.parentNode.parentNode.remove())
-                                                    .then(x => showSuccess('Deleted successfully'))
-                                                    .catch(x => showError(x.message))
+                                                if(confirm(`Sure you want to delete ${file.name}?`)) {
+                                                    delet(`/files?file=${encodeURIComponent(file.name)}`)
+                                                        .then(x => this.parentNode.parentNode.remove())
+                                                        .then(x => showSuccess('Deleted successfully'))
+                                                        .catch(x => showError(x.message))
+                                                }
                                             }
                                         }
                                     }
