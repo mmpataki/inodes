@@ -40,6 +40,7 @@ class posts {
         let self = this;
         let renderable = function (obj) {
             obj = obj ? JSON.parse(obj.content) : obj
+            self.attachments = obj ? (obj.attachments || []) : []
             return {
                 ele: "div",
                 attribs: { classList: "pane" },

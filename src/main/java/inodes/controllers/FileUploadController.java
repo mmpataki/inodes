@@ -1,5 +1,6 @@
 package inodes.controllers;
 
+import inodes.models.FileDetail;
 import inodes.service.api.StorageService;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,29 +20,16 @@ public class FileUploadController extends AuthenticatedController {
     @Autowired
     StorageService storageService;
 
-    @Data
-    @AllArgsConstructor
-    public class FileDetail {
-        String name;
-        Long mtime;
-        Long size;
-    }
-
     @GetMapping("/allmyfiles")
     public List<FileDetail> listUploadedFiles(@ModelAttribute("loggedinuser") String user) throws Exception {
         if (user == null || user.isEmpty())
             return Collections.emptyList();
-        return storageService
-                .loadAll(user)
-                .map(path -> path.toFile())
-                .map(f -> new FileDetail(f.getName(), f.lastModified(), f.length()))
-                .collect(Collectors.toList());
+        return storageService.loadAll(user);
     }
 
-    @GetMapping("/files")
-    public ResponseEntity<Resource> serveFile(@RequestParam("file") String filename) throws Exception {
-        Resource file = storageService.loadAsResource(filename);
-        return ResponseEntity.ok().body(file);
+    @DeleteMapping("/files")
+    public void deleteFile(@ModelAttribute("loggedinuser") String user, @RequestParam String file) throws Exception {
+        storageService.delete(user, file);
     }
 
     @PostMapping("/files")

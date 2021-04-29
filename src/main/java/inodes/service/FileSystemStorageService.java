@@ -1,6 +1,7 @@
 package inodes.service;
 
 import inodes.Configuration;
+import inodes.models.FileDetail;
 import inodes.service.api.StorageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -12,11 +13,16 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 import javax.annotation.PostConstruct;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.nio.file.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -68,10 +74,16 @@ public class FileSystemStorageService extends WebMvcConfigurerAdapter implements
     }
 
     @Override
-    public Stream<Path> loadAll(String user) throws Exception {
-        return Files.walk(this.rootLocation.resolve(user), 1)
-                .filter(path -> !path.equals(this.rootLocation))
-                .map(this.rootLocation::relativize);
+    public List<FileDetail> loadAll(String user) throws Exception {
+        return Arrays.stream(new File(this.rootLocation + File.separator + user).listFiles())
+                .map(f -> FileDetail.builder()
+                            .name(f.getName())
+                            .mtime(f.lastModified())
+                            .size(f.length())
+                            .path(String.format("/u/files/%s/%s", user, f.getName()))
+                            .build()
+                )
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -92,6 +104,13 @@ public class FileSystemStorageService extends WebMvcConfigurerAdapter implements
         } catch (MalformedURLException | FileNotFoundException e) {
             throw new Exception("Could not read file: " + filename, e);
         }
+    }
+
+    @Override
+    public void delete(String user, String fileName) {
+        System.out.println("fileName = " + fileName);
+        System.out.println(rootLocation.resolve(user).resolve(fileName).toFile().getAbsolutePath());
+        rootLocation.resolve(user).resolve(fileName).toFile().delete();
     }
 
     @Override

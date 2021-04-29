@@ -151,6 +151,7 @@ function filePicker(selectedFiles) {
                                 { ele: 'th', text: 'Name' },
                                 { ele: 'th', text: 'Last Modified Time' },
                                 { ele: 'th', text: 'Size' },
+                                { ele: 'th', text: 'Preview' },
                                 { ele: 'th', text: 'Actions' }
                             ]
                         }
@@ -159,7 +160,6 @@ function filePicker(selectedFiles) {
                 self.userFiles.innerHTML = ''
                 self.userFiles.appendChild(tab)
                 files.slice(1, files.length).forEach(file => {
-                    let path = `/u/files/${files[0].name}/${file.name}`
                     render('user-file', {
                         ele: 'tr',
                         classList: 'row',
@@ -170,10 +170,10 @@ function filePicker(selectedFiles) {
                                     {
                                         ele: 'input',
                                         classList: 'select-box',
-                                        attribs : {
+                                        attribs: {
                                             type: 'checkbox',
-                                            value: path,
-                                            checked: selectedFiles ? selectedFiles.includes(path) : false
+                                            value: file.path,
+                                            checked: selectedFiles ? selectedFiles.includes(file.path) : false
                                         }
                                     }
                                 ]
@@ -182,21 +182,43 @@ function filePicker(selectedFiles) {
                             { ele: 'td', text: new Date(file.mtime).toLocaleString() },
                             { ele: 'td', text: "" + file.size },
                             {
-                                ele: 'a', 
-                                text: 'Preview',
-                                attribs: { href: '#' }, 
-                                evnts : {
-                                    click: function () {
-                                        let img = document.createElement('img')
-                                        img.style = 'max-width: 100px; max-height: 100px'
-                                        img.src = `/u/files/${files[0].name}/${file.name}`
-                                        this.parentNode.appendChild(img)
-                                        this.remove()
+                                ele: 'td',
+                                children: [
+                                    {
+                                        ele: 'a',
+                                        text: 'Preview',
+                                        attribs: { href: '#' },
+                                        evnts: {
+                                            click: function () {
+                                                let img = document.createElement('img')
+                                                img.style = 'max-width: 200px; max-height: 200px'
+                                                img.src = file.path
+                                                this.parentNode.appendChild(img)
+                                                this.remove()
+                                            }
+                                        }
                                     }
-                                }
-                            }
+                                ]
+                            },
+                            {
+                                ele: 'td',
+                                children: [
+                                    {
+                                        ele: 'button',
+                                        text: 'delete',
+                                        evnts: {
+                                            click: function () {
+                                                delet(`/files?file=${encodeURIComponent(file.name)}`)
+                                                    .then(x => this.parentNode.parentNode.remove())
+                                                    .then(x => showSuccess('Deleted successfully'))
+                                                    .catch(x => showError(x.message))
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
                         ],
-                        evnts : {
+                        evnts: {
                             click: function () {
                                 this.querySelector('input[type=checkbox]').checked = !this.querySelector('input[type=checkbox]').checked
                             }
@@ -211,7 +233,7 @@ function filePicker(selectedFiles) {
             classList: 'container',
             children: [
                 { ele: 'iframe', attribs: { name: 'hehe', style: 'display: none' } }, // to stop browser redirect after a post
-                {ele: 'h4', text: 'Upload files'},
+                { ele: 'h4', text: 'Upload files' },
                 {
                     ele: 'form',
                     classList: 'upload-form',
@@ -242,7 +264,7 @@ function filePicker(selectedFiles) {
                         }
                     ]
                 },
-                {ele: 'h4', text: 'Your files'},
+                { ele: 'h4', text: 'Your files' },
                 {
                     ele: 'div',
                     iden: 'userFiles',
@@ -256,11 +278,11 @@ function filePicker(selectedFiles) {
                             ele: 'button',
                             classList: 'btn',
                             text: 'Select',
-                            evnts : {
+                            evnts: {
                                 click: function () {
                                     let f = [], cbs = self.userFiles.getElementsByClassName('user-file-select-box');
                                     for (let i = 0; i < cbs.length; i++) {
-                                        if(cbs[i].checked)
+                                        if (cbs[i].checked)
                                             f.push(cbs[i].value)
                                     }
                                     fp.remove()
@@ -272,7 +294,7 @@ function filePicker(selectedFiles) {
                             ele: 'button',
                             classList: 'btn',
                             text: 'Cancel',
-                            evnts : {
+                            evnts: {
                                 click: function () {
                                     fp.remove()
                                     reject("cancelled")
