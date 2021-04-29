@@ -8,6 +8,8 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 import javax.annotation.PostConstruct;
 import java.io.FileNotFoundException;
@@ -18,12 +20,17 @@ import java.nio.file.*;
 import java.util.stream.Stream;
 
 @Service
-public class FileSystemStorageService implements StorageService {
+public class FileSystemStorageService extends WebMvcConfigurerAdapter implements StorageService {
 
     private Path rootLocation;
 
     @Autowired
     Configuration conf;
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/u/**").addResourceLocations("file:" + conf.getProperty("storageservice.root.dir"));
+    }
 
     @PostConstruct
     public void xinit() throws Exception {

@@ -7,6 +7,7 @@ class posts {
             regex: new RegExp(`<([A-Za-z]+)>`, 'g'),
             replace: `<$1 class="shdn-$1">`
         }]
+        this.attachments = []
     }
 
     getCard(obj) {
@@ -19,6 +20,8 @@ class posts {
         converter.setFlavor('github');
         try {
             obj = JSON.parse(obj.content)
+            obj.attachments = obj.attachments || []
+            obj.content += "\n\n" + obj.attachments.map(file => `<a href='${file}'><img src='/posts-plugin/attach.png'> ${file.replace(/^.*[\\\/]/, '')}</a>`).join('\n')
             pre.innerHTML = this.getTitle(obj.title) + converter.makeHtml(obj.content);
             pre.querySelectorAll('pre code').forEach((block) => {
                 hljs.highlightBlock(block);
@@ -86,6 +89,38 @@ class posts {
                                 ele: "div",
                                 classList: "preview",
                                 evnts: {}
+                            },
+                            {
+                                ele: 'div',
+                                classList: 'attach-actions',
+                                children: [
+                                    {
+                                        ele: 'button',
+                                        text: 'Attach files',
+                                        evnts: {
+                                            click: function () {
+                                                filePicker(self.attachments)
+                                                    .then(fileNames => {
+                                                        self.attachments = fileNames
+                                                        self.showPreview()
+                                                    })
+                                            }
+                                        }
+                                    },
+                                    {
+                                        ele: 'button',
+                                        text: 'Add image',
+                                        evnts: {
+                                            click: function () {
+                                                filePicker(self.attachments)
+                                                    .then(fileNames => {
+                                                        self.insertImgLinks(fileNames)
+                                                        self.showPreview()
+                                                    })
+                                            }
+                                        }
+                                    }
+                                ]
                             }
                         ]
                     }
@@ -99,10 +134,37 @@ class posts {
         return ele;
     }
 
+    insertImgLinks(urls) {
+        function insertAtCursor(myField, myValue) {
+            //IE support
+            if (document.selection) {
+                myField.focus();
+                sel = document.selection.createRange();
+                sel.text = myValue;
+            }
+            //MOZILLA and others
+            else if (myField.selectionStart || myField.selectionStart == '0') {
+                var startPos = myField.selectionStart;
+                var endPos = myField.selectionEnd;
+                myField.value = myField.value.substring(0, startPos)
+                    + myValue
+                    + myField.value.substring(endPos, myField.value.length);
+            } else {
+                myField.value += myValue;
+            }
+        }
+
+        urls.forEach(url => {
+            insertAtCursor(this.editor, `\n![${url}](${url})\n`)
+        })
+
+    }
+
     getContent() {
         return {
             title: this.title.value,
-            content: this.editor.value
+            content: this.editor.value,
+            attachments: this.attachments
         };
     }
 
@@ -110,7 +172,8 @@ class posts {
     showPreview() {
         showdown.setFlavor('github');
         var converter = new showdown.Converter()
-        this.preview.innerHTML = this.getTitle(this.title.value) + converter.makeHtml(this.editor.value);
+        let attach = "\n\n" + this.attachments.map(file => `<a href='${file}'><img src='/posts-plugin/attach.png'> ${file.replace(/^.*[\\\/]/, '')}</a>`).join('\n')
+        this.preview.innerHTML = this.getTitle(this.title.value) + converter.makeHtml(this.editor.value + attach);
         this.preview.querySelectorAll('pre code').forEach((block) => {
             hljs.highlightBlock(block);
         });

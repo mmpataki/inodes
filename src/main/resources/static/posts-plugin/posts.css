@@ -39,3 +39,11 @@
     padding: 1px 10px;
     background-color: #f1f1f1;
 }
+
+.posts-attach-actions {
+    margin-top: 10px;
+}
+
+.posts-attach-actions > button {
+    margin-right: 5px;
+}

@@ -1,6 +1,8 @@
 package inodes.controllers;
 
 import inodes.service.api.StorageService;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
@@ -17,13 +19,22 @@ public class FileUploadController extends AuthenticatedController {
     @Autowired
     StorageService storageService;
 
+    @Data
+    @AllArgsConstructor
+    public class FileDetail {
+        String name;
+        Long mtime;
+        Long size;
+    }
+
     @GetMapping("/allmyfiles")
-    public List<String> listUploadedFiles(@ModelAttribute("loggedinuser") String user) throws Exception {
-        if(user == null || user.isEmpty())
+    public List<FileDetail> listUploadedFiles(@ModelAttribute("loggedinuser") String user) throws Exception {
+        if (user == null || user.isEmpty())
             return Collections.emptyList();
         return storageService
                 .loadAll(user)
-                .map(path -> path.toFile().getName())
+                .map(path -> path.toFile())
+                .map(f -> new FileDetail(f.getName(), f.lastModified(), f.length()))
                 .collect(Collectors.toList());
     }
 
