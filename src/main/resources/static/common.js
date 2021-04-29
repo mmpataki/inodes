@@ -159,7 +159,7 @@ function filePicker(selectedFiles) {
                 })
                 self.userFiles.innerHTML = ''
                 self.userFiles.appendChild(tab)
-                files.slice(1, files.length).forEach(file => {
+                files.forEach(file => {
                     render('user-file', {
                         ele: 'tr',
                         classList: 'row',
