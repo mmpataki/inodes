@@ -161,11 +161,13 @@ class posts {
     }
 
     getContent() {
-        return {
+        let ret = {
             title: this.title.value,
             content: this.editor.value,
             attachments: this.attachments
         };
+        this.attachments = []
+        return ret
     }
 
     // private

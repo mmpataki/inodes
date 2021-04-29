@@ -838,7 +838,7 @@
             }
 
             openEditor(obj, force) {
-                this.renderInput(obj ? obj.type : 'posts', obj, true)
+                this.renderInput(obj ? obj.type : g('kclasses').value, obj, true)
                 g('editor-pane').style.display = 'block';
                 g('kclasses').disabled = obj ? true : false
 

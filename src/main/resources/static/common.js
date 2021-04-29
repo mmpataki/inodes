@@ -151,7 +151,6 @@ function filePicker(selectedFiles) {
                                 { ele: 'th', text: 'Name' },
                                 { ele: 'th', text: 'Last Modified Time' },
                                 { ele: 'th', text: 'Size' },
-                                { ele: 'th', text: 'Path' },
                                 { ele: 'th', text: 'Actions' }
                             ]
                         }
@@ -182,7 +181,6 @@ function filePicker(selectedFiles) {
                             { ele: 'td', text: file.name },
                             { ele: 'td', text: new Date(file.mtime).toLocaleString() },
                             { ele: 'td', text: "" + file.size },
-                            { ele: 'td', text: path },
                             {
                                 ele: 'a', 
                                 text: 'Preview',
@@ -237,6 +235,7 @@ function filePicker(selectedFiles) {
                                     postFile(`/files`, fd, {})
                                         .then(e => { self.file = e.response })
                                         .then(e => showSuccess('Uploaded !'))
+                                        .then(e => refreshUserFileList())
                                         .catch(e => showError(e.message))
                                 }
                             }
