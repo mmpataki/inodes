@@ -67,7 +67,9 @@ class posts {
                             },
                             {
                                 ele: 'span',
-                                text: 'Content (Markdown + HTML supported)'
+                                attribs: {
+                                    innerHTML: `Content (<a href='https://guides.github.com/features/mastering-markdown/'>Markdown</a> + HTML supported)`
+                                }
                             },
                             {
                                 ele: "textarea",
