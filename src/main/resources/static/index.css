@@ -515,6 +515,7 @@ select {
 .inodes-file-picker-user-files {
     margin: 20px 0px;
     overflow: auto;
+    max-height: 65%;
 }
 
 .user-file-tab-le {
@@ -524,6 +525,7 @@ select {
 
 .user-file-row>td {
     padding: 10px;
+    word-break: break-all;
 }
 
 .user-file-row:hover {
