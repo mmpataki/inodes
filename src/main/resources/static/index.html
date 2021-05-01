@@ -181,13 +181,21 @@
                     .catch(e => showError(e.message))
             }
             doSearch(str, offset = 0, pageSize = 10) {
-                this.search(str, offset, pageSize).then(d => {
-                    this.results = JSON.parse(d.response)
-                    this.showResults();
-                    this.populateFacets(this.results.facetResults['tags'], 'toptags', '#');
-                    this.populateFacets(this.results.facetResults['type'], 'posttypes', '%');
-                    this.populateFacets(this.results.facetResults['owner'], 'topcontributors', '~');
-                })
+                callWithWaitUI(c('posts-container'), (done) => {
+                    this.search(str, offset, pageSize)
+                        .then(d => {
+                            this.results = JSON.parse(d.response)
+                            if(this.results.results.length < 1) {
+                                g('posts').innerHTML = '<div class="no-post-found">No posts found</div>'
+                                done();
+                                return
+                            }
+                            this.showResults().finally(() => done())
+                            this.populateFacets(this.results.facetResults['tags'], 'toptags', '#');
+                            this.populateFacets(this.results.facetResults['type'], 'posttypes', '%');
+                            this.populateFacets(this.results.facetResults['owner'], 'topcontributors', '~');
+                        }).catch(s => done())
+                });
             }
             search(str, offset = 0, pageSize = 10) {
                 str = str ? str : ""
@@ -207,20 +215,26 @@
                     itemsByClass[r.type].push(r)
                     proms.push(self.showCard(d, r));
                 })
-                Promise.all(proms).then(() => {
-                    if (this.results.results.length < this.results.totalResults) {
-                        d.appendChild(this.getPaginationItem(this.results));
-                    }
-                    // call the post display hook
-                    Object.keys(itemsByClass).forEach(key => {
-                        self.loadKlass(key).then(klassMeta => {
-                            self.loadKlassScripts(klassMeta).then(klass => {
-                                if (klass.postDisplay) {
-                                    klass.postDisplay(itemsByClass[key])
-                                }
+                return new Promise(resolve => {
+                    Promise.all(proms)
+                        .then(() => {
+                            if (this.results.results.length < this.results.totalResults) {
+                                d.appendChild(this.getPaginationItem(this.results));
+                            }
+                            // call the post display hook
+                            Object.keys(itemsByClass).forEach(key => {
+                                self.loadKlass(key).then(klassMeta => {
+                                    self.loadKlassScripts(klassMeta).then(klass => {
+                                        if (klass.postDisplay) {
+                                            klass.postDisplay(itemsByClass[key])
+                                        }
+                                    })
+                                })
                             })
                         })
-                    })
+                        .then(() => {
+                            resolve();
+                        });
                 });
             }
             getSearchQuery() {
@@ -962,48 +976,6 @@
                     })
                 });
             }
-        }
-
-        function render(name, spec, elemCreated, container) {
-            let e;
-            if (!spec.preBuilt) {
-                e = document.createElement(spec.ele);
-                spec.iden && elemCreated(spec.iden, e)
-                if (spec.text) e.innerHTML = spec.text;
-                if (spec.classList) {
-                    e.classList = `${name}-` + spec.classList.split(/\s+/).join(` ${name}-`)
-                }
-                spec.attribs && Object.keys(spec.attribs).forEach(key => {
-                    e[key] = spec.attribs[key]
-                })
-                spec.styles && Object.keys(spec.styles).forEach(key => {
-                    e.style[key] = spec.styles[key]
-                })
-                spec.evnts && Object.keys(spec.evnts).forEach(key => {
-                    e.addEventListener(key, spec.evnts[key])
-                })
-                if (spec.children) {
-                    if (spec.children instanceof Function) {
-                        spec.children().map(x => e.appendChild(x))
-                    }
-                    else spec.children.forEach(child => render(name, child, elemCreated, e))
-                }
-            } else {
-                e = spec.ele;
-            }
-            if (container) {
-                if (spec.label) {
-                    let rgid = "id_" + Math.random();
-                    e.id = rgid
-                    let lbl = document.createElement('label')
-                    lbl.innerHTML = spec.label
-                    lbl.for = rgid
-                    container.appendChild(lbl)
-                }
-                container.appendChild(e)
-                return container;
-            }
-            return e;
         }
 
         let inodes;

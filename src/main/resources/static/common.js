@@ -133,134 +133,268 @@ function showMessage(x, col) {
     setTimeout(() => d.remove(), 8000)
 }
 
+function render(name, spec, elemCreated, container) {
+    let e;
+    if (!spec.preBuilt) {
+        e = document.createElement(spec.ele);
+        spec.iden && elemCreated(spec.iden, e)
+        if (spec.text) e.innerHTML = spec.text;
+        if (spec.classList) {
+            e.classList = `${name}-` + spec.classList.split(/\s+/).join(` ${name}-`)
+        }
+        spec.attribs && Object.keys(spec.attribs).forEach(key => {
+            e[key] = spec.attribs[key]
+        })
+        spec.styles && Object.keys(spec.styles).forEach(key => {
+            e.style[key] = spec.styles[key]
+        })
+        spec.evnts && Object.keys(spec.evnts).forEach(key => {
+            e.addEventListener(key, spec.evnts[key])
+        })
+        if (spec.children) {
+            if (spec.children instanceof Function) {
+                spec.children().map(x => e.appendChild(x))
+            }
+            else spec.children.forEach(child => render(name, child, elemCreated, e))
+        }
+    } else {
+        e = spec.ele;
+    }
+    if (container) {
+        if (spec.label) {
+            let rgid = "id_" + Math.random();
+            e.id = rgid
+            let lbl = document.createElement('label')
+            lbl.innerHTML = spec.label
+            lbl.for = rgid
+            container.appendChild(lbl)
+        }
+        container.appendChild(e)
+        return container;
+    }
+    return e;
+}
+
+function callWithWaitUI(element, func) {
+    let overlay = render('loader', {
+        ele: 'div',
+        attribs: {
+            style: 'position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: white; opacity: 0.5'
+        },
+        children: [
+            {
+                ele: 'img',
+                attribs: {
+                    src: '/wait.gif',
+                    style: `position: absolute; height: 20px; width: 20px; top: ${element.clientHeight / 2 - 10}px; left: ${element.clientWidth / 2 - 10}px`
+                }
+            }
+        ]
+    }, () => 0);
+    element.appendChild(overlay);
+    let done = () => overlay.remove();
+    func(done);
+}
+
 function filePicker(selectedFiles) {
     let self = this;
+    function updateThumbnail(file, renameFile) {
+        let thumbnailElement = self.thumbnail;
+        helperLabel.style.display = 'none'
+        thumbnailElement.dataset.label = file.name;
+        if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                thumbnailElement.style.backgroundImage = `url('${reader.result}')`;
+            };
+        } else {
+            thumbnailElement.style.backgroundImage = null;
+        }
+        let fName = renameFile ? `${+(new Date())}_${file.name}` : file.name;
+        let fd = new FormData();
+        fd.append("file", file, fName);
+        callWithWaitUI(self.fileUploadContainer, (done) => {
+            postFile(`/files`, fd, {})
+                .then(e => { self.file = e.response })
+                .then(e => showSuccess('Uploaded !'))
+                .then(e => refreshUserFileList())
+                .catch(e => showError(e.message))
+                .finally(e => done())
+        })
+    }
     function refreshUserFileList() {
-        get('/allmyfiles')
-            .then(resp => JSON.parse(resp.response))
-            .then(files => {
-                console.log(files)
-                let tab = render('user-file-tab', {
-                    ele: 'table',
-                    classList: 'le',
-                    children: [
-                        {
-                            ele: 'tr',
-                            children: [
-                                { ele: 'th', text: 'Choosen' },
-                                { ele: 'th', text: 'Name' },
-                                { ele: 'th', text: 'Last Modified Time' },
-                                { ele: 'th', text: 'Size' },
-                                { ele: 'th', text: 'Preview' },
-                                { ele: 'th', text: 'Actions' }
-                            ]
-                        }
-                    ]
-                })
-                self.userFiles.innerHTML = ''
-                self.userFiles.appendChild(tab)
-                files.forEach(file => {
-                    render('user-file', {
-                        ele: 'tr',
-                        classList: 'row',
+        callWithWaitUI(self.fp, (done) => {
+            get('/allmyfiles')
+                .then(resp => JSON.parse(resp.response))
+                .then(files => {
+                    console.log(files)
+                    let tab = render('user-file-tab', {
+                        ele: 'table',
+                        classList: 'le',
                         children: [
                             {
-                                ele: 'td',
+                                ele: 'tr',
                                 children: [
-                                    {
-                                        ele: 'input',
-                                        classList: 'select-box',
-                                        attribs: {
-                                            type: 'checkbox',
-                                            value: file.path,
-                                            checked: selectedFiles ? selectedFiles.includes(file.path) : false
-                                        }
-                                    }
+                                    { ele: 'th', text: 'Choosen' },
+                                    { ele: 'th', text: 'Name' },
+                                    { ele: 'th', text: 'Last Modified Time' },
+                                    { ele: 'th', text: 'Size' },
+                                    { ele: 'th', text: 'Preview' },
+                                    { ele: 'th', text: 'Actions' }
                                 ]
-                            },
-                            { ele: 'td', text: file.name },
-                            { ele: 'td', text: new Date(file.mtime).toLocaleString() },
-                            { ele: 'td', text: "" + file.size },
-                            {
-                                ele: 'td',
-                                children: [
-                                    {
-                                        ele: 'a',
-                                        text: 'Preview',
-                                        attribs: { href: '#' },
-                                        evnts: {
-                                            click: function () {
-                                                let img = document.createElement('img')
-                                                img.style = 'max-width: 200px; max-height: 200px'
-                                                img.src = file.path
-                                                this.parentNode.appendChild(img)
-                                                this.remove()
+                            }
+                        ]
+                    })
+                    self.userFiles.innerHTML = ''
+                    self.userFiles.appendChild(tab)
+                    files.forEach(file => {
+                        render('user-file', {
+                            ele: 'tr',
+                            classList: 'row',
+                            children: [
+                                {
+                                    ele: 'td',
+                                    children: [
+                                        {
+                                            ele: 'input',
+                                            classList: 'select-box',
+                                            attribs: {
+                                                type: 'checkbox',
+                                                value: file.path,
+                                                checked: selectedFiles ? selectedFiles.includes(file.path) : false
                                             }
                                         }
-                                    }
-                                ]
-                            },
-                            {
-                                ele: 'td',
-                                children: [
-                                    {
-                                        ele: 'button',
-                                        text: 'delete',
-                                        evnts: {
-                                            click: function () {
-                                                if(confirm(`Sure you want to delete ${file.name}?`)) {
-                                                    delet(`/files?file=${encodeURIComponent(file.name)}`)
-                                                        .then(x => this.parentNode.parentNode.remove())
-                                                        .then(x => showSuccess('Deleted successfully'))
-                                                        .catch(x => showError(x.message))
+                                    ]
+                                },
+                                { ele: 'td', text: file.name },
+                                { ele: 'td', text: new Date(file.mtime).toLocaleString() },
+                                { ele: 'td', text: "" + file.size },
+                                {
+                                    ele: 'td',
+                                    children: [
+                                        {
+                                            ele: 'a',
+                                            text: 'Preview',
+                                            attribs: { href: '#' },
+                                            evnts: {
+                                                click: function () {
+                                                    let img = document.createElement('img')
+                                                    img.style = 'max-width: 200px; max-height: 200px'
+                                                    img.src = file.path
+                                                    this.parentNode.appendChild(img)
+                                                    this.remove()
                                                 }
                                             }
                                         }
-                                    }
-                                ]
-                            },
-                        ],
-                        evnts: {
-                            click: function () {
-                                this.querySelector('input[type=checkbox]').checked = !this.querySelector('input[type=checkbox]').checked
+                                    ]
+                                },
+                                {
+                                    ele: 'td',
+                                    children: [
+                                        {
+                                            ele: 'a',
+                                            attribs: { href: '#' },
+                                            text: 'delete',
+                                            evnts: {
+                                                click: function () {
+                                                    if (confirm(`Sure you want to delete ${file.name}?`)) {
+                                                        delet(`/files?file=${encodeURIComponent(file.name)}`)
+                                                            .then(x => this.parentNode.parentNode.remove())
+                                                            .then(x => showSuccess('Deleted successfully'))
+                                                            .catch(x => showError(x.message))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                },
+                            ],
+                            evnts: {
+                                click: function () {
+                                    this.querySelector('input[type=checkbox]').checked = !this.querySelector('input[type=checkbox]').checked
+                                }
                             }
-                        }
-                    }, () => 0, tab)
+                        }, () => 0, tab)
+                    })
                 })
-            })
+                .then(e => done())
+        })
     }
     return new Promise((resolve, reject) => {
-        let fp = render('inodes-file-picker', {
+        let fp;
+        self.fp = fp = render('inodes-file-picker', {
             ele: 'div',
             classList: 'container',
             children: [
-                { ele: 'iframe', attribs: { name: 'hehe', style: 'display: none' } }, // to stop browser redirect after a post
                 { ele: 'h4', text: 'Upload files' },
                 {
-                    ele: 'form',
-                    classList: 'upload-form',
-                    attribs: {
-                        target: 'hehe'
-                    },
+                    ele: 'div',
+                    classList: 'fileupload-container',
                     children: [
                         {
-                            ele: "input",
-                            attribs: {
-                                type: "file",
-                                name: "file"
+                            ele: 'div',
+                            classList: 'fileupload-zone',
+                            iden: 'fileUploadContainer',
+                            children: [
+                                {
+                                    ele: 'div',
+                                    iden: 'thumbnail',
+                                    classList: 'preview'
+                                },
+                                {
+                                    ele: 'span',
+                                    iden: 'helperLabel',
+                                    children: [
+                                        { ele: 'span', text: 'Drag / Paste / ' },
+                                        { ele: 'a', attribs: { href: '#' }, text: 'Browse', evnts: { click: () => self.fileInput.click() } },
+                                        { ele: 'span', text: ' the files.' }
+                                    ],
+                                    classList: 'helper-label'
+                                }
+                            ],
+                            evnts: {
+                                dragover: function (e) {
+                                    e.preventDefault();
+                                    this.classList.add("drop-zone--over");
+                                },
+                                dragleave: () => { this.classList.remove("drop-zone--over") },
+                                dragend: () => { this.classList.remove("drop-zone--over") },
+                                drag: (e) => {
+                                    e.preventDefault();
+                                    if (e.dataTransfer.files.length) {
+                                        self.fileInput.files = e.dataTransfer.files;
+                                        updateThumbnail(e.dataTransfer.files[0]);
+                                    }
+                                    this.classList.remove("drop-zone--over");
+                                },
+                                drop: (e) => {
+                                    e.preventDefault();
+                                    if (e.dataTransfer.files.length) {
+                                        fileInput.files = e.dataTransfer.files;
+                                        updateThumbnail(e.dataTransfer.files[0]);
+                                    }
+                                    this.classList.remove("drop-zone--over");
+                                },
+                                paste: (e) => {
+                                    updateThumbnail(e.clipboardData.files[0], true)
+                                }
                             }
                         },
+                        { ele: 'iframe', attribs: { name: 'hehe', style: 'display: none' } }, // to stop browser redirect after a post
                         {
-                            ele: "button",
-                            text: "upload",
+                            ele: "input",
+                            iden: 'fileInput',
+                            attribs: {
+                                type: "file",
+                                name: "file",
+                                style: "display: none"
+                            },
                             evnts: {
-                                click: function () {
-                                    let fd = new FormData(this.parentNode);
-                                    postFile(`/files`, fd, {})
-                                        .then(e => { self.file = e.response })
-                                        .then(e => showSuccess('Uploaded !'))
-                                        .then(e => refreshUserFileList())
-                                        .catch(e => showError(e.message))
+                                change: function () {
+                                    if (this.files.length) {
+                                        updateThumbnail(this.files[0]);
+                                    }
                                 }
                             }
                         }
