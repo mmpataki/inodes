@@ -196,10 +196,6 @@ function callWithWaitUI(element, func) {
     func(done);
 }
 
-function filePicker(selectedFiles) {
-    return new _filePicker(selectedFiles);
-}
-
 function tabulate(arr, ele, spec) {
     return new _tabulate(arr, ele, spec)
 }
@@ -209,7 +205,7 @@ function _tabulate(arr, ele, spec) {
     if (arr.length < 1) return null;
 
     let sortConf = {}, currSortKey = spec.defaultSortKey
-    let attribs = { classList : 'tabulate-cell' };
+    let attribs = { classList: 'tabulate-cell' };
 
     Object.keys(arr[0]).forEach(key => sortConf[key] = 'asc')
 
@@ -252,7 +248,7 @@ function _tabulate(arr, ele, spec) {
     let getSortbtn = (key) => {
         if (!spec.keys[key].sortable) return ''
         if (key == currSortKey) {
-            return (sortConf[key] == 'asc' ? '&#x25B2;' : '&#x25BC;');
+            return (sortConf[key] == 'asc' ? '<span title="Sorted ascending">&#x25B2;</span>' : '<span title="Sorted descending">&#x25BC;</span>');
         } else {
             return `<span style='position: absolute; top: 6px'>&#x25BE;</span><span style='position: absolute; top: 0px'>&#x25B4;</span>`
         }
@@ -293,12 +289,17 @@ function _tabulate(arr, ele, spec) {
     return this.tab
 }
 
-function _filePicker(selectedFiles) {
+function filePicker(selectedFiles, title) {
+    return new _filePicker(selectedFiles, title);
+}
+
+function _filePicker(selectedFiles, title) {
     let self = this;
+    title = title ? title : 'Pick a file'
     function updateThumbnail(file, renameFile) {
         let thumbnailElement = self.thumbnail;
         self.helperLabel.style.display = 'none'
-        thumbnailElement.dataset.label = file.name;
+        let fName = renameFile ? `${+(new Date())}_${file.name}` : file.name;
         if (file.type.startsWith("image/")) {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -307,8 +308,8 @@ function _filePicker(selectedFiles) {
             };
         } else {
             thumbnailElement.style.backgroundImage = null;
+            thumbnailElement.innerHTML = fName;
         }
-        let fName = renameFile ? `${+(new Date())}_${file.name}` : file.name;
         let fd = new FormData();
         fd.append("file", file, fName);
         callWithWaitUI(self.fileUploadContainer, (done) => {
@@ -341,10 +342,17 @@ function _filePicker(selectedFiles) {
                 },
                 'Name': { keyId: 'name', sortable: true },
                 'Last Modified Time': {
-                    vFunc: (file) => new Date(file.mtime).toLocaleString(), sortable: true,
+                    vFunc: (file) => new Date(file.mtime).toLocaleString(),
+                    sortable: true,
                     keyId: 'mtime'
                 },
-                'Size': { keyId: 'size', sortable: true },
+                'Size': {
+                    keyId: 'size', sortable: true,
+                    vFunc: (file) => {
+                        let pow = Math.floor(Math.floor(Math.log2(file.size)) / 10);
+                        return { ele: 'span', text: `${Math.round(file.size / (Math.pow(2, pow * 10)))} ${{0:'Bytes',1:'KB',2:'MB',3:'GB'}[pow]}`, attribs: {title: `${file.size} bytes`}}
+                    }
+                },
                 'Preview': {
                     vFunc: (file) => {
                         return {
@@ -405,6 +413,7 @@ function _filePicker(selectedFiles) {
             ele: 'div',
             classList: 'container',
             children: [
+                { ele: 'h3', text: title, attribs : { style: 'position: absolute; top: 0px; left: 10px'} },
                 { ele: 'h4', text: 'Upload files' },
                 {
                     ele: 'div',
@@ -449,7 +458,7 @@ function _filePicker(selectedFiles) {
                                 drop: (e) => {
                                     e.preventDefault();
                                     if (e.dataTransfer.files.length) {
-                                        fileInput.files = e.dataTransfer.files;
+                                        self.fileInput.files = e.dataTransfer.files;
                                         updateThumbnail(e.dataTransfer.files[0]);
                                     }
                                     this.classList.remove("drop-zone--over");

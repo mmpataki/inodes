@@ -67,7 +67,9 @@ class posts {
                             },
                             {
                                 ele: 'span',
-                                text: 'Content (Markdown + HTML supported)'
+                                attribs: {
+                                    innerHTML: `Content (<a href='https://guides.github.com/features/mastering-markdown/'>Markdown</a> + HTML supported)`
+                                }
                             },
                             {
                                 ele: "textarea",
@@ -100,7 +102,7 @@ class posts {
                                         text: 'Attach files',
                                         evnts: {
                                             click: function () {
-                                                filePicker(self.attachments)
+                                                filePicker(self.attachments, 'Pick a file')
                                                     .then(fileNames => {
                                                         self.attachments = fileNames
                                                         self.showPreview()
@@ -113,7 +115,7 @@ class posts {
                                         text: 'Add image',
                                         evnts: {
                                             click: function () {
-                                                filePicker(self.attachments)
+                                                filePicker(self.attachments, 'Pick an image')
                                                     .then(fileNames => {
                                                         self.insertImgLinks(fileNames)
                                                         self.showPreview()
