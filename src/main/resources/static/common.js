@@ -197,10 +197,107 @@ function callWithWaitUI(element, func) {
 }
 
 function filePicker(selectedFiles) {
+    return new _filePicker(selectedFiles);
+}
+
+function tabulate(arr, ele, spec) {
+    return new _tabulate(arr, ele, spec)
+}
+
+function _tabulate(arr, ele, spec) {
+
+    if (arr.length < 1) return null;
+
+    let sortConf = {}, currSortKey = spec.defaultSortKey
+    let attribs = { classList : 'tabulate-cell' };
+
+    Object.keys(arr[0]).forEach(key => sortConf[key] = 'asc')
+
+    let getTr = (row) => {
+        return {
+            ele: 'tr',
+            classList: `row`,
+            children: Object.keys(spec.keys).map(key => {
+                let kObj = spec.keys[key];
+                let props = {}
+                if (kObj.vFunc) {
+                    let val = kObj.vFunc(row)
+                    props = (typeof (val) == 'string') ? { text: val } : { children: [val] }
+                } else if (kObj.keyId) {
+                    props = { text: "" + row[kObj.keyId] }
+                }
+                return { ele: 'td', classList: `cell cell-${key.toLowerCase().replaceAll(/([^A-Za-z0-9])+/ig, '-')}`, attribs, ...props }
+            }),
+            evnts: spec.rowEvents
+        }
+    }
+
+    let sortFunc = (a, b) => {
+        let k = spec.keys[currSortKey].keyId
+        if (typeof (a[k]) == 'string') {
+            return (sortConf[currSortKey] == 'asc') ? a[k].localeCompare(b[k]) : b[k].localeCompare(a[k]);
+        }
+        return (sortConf[currSortKey] == 'asc') ? a[k] - b[k] : b[k] - a[k];
+    }
+
+    let sortBy = (key) => {
+        if (!spec.keys[key].sortable)
+            return;
+        currSortKey = key;
+        sortConf[key] = sortConf[key] == 'asc' ? 'dsc' : 'asc';
+        this.tab.remove()
+        renderTab();
+    }
+
+    let getSortbtn = (key) => {
+        if (!spec.keys[key].sortable) return ''
+        if (key == currSortKey) {
+            return (sortConf[key] == 'asc' ? '&#x25B2;' : '&#x25BC;');
+        } else {
+            return `<span style='position: absolute; top: 6px'>&#x25BE;</span><span style='position: absolute; top: 0px'>&#x25B4;</span>`
+        }
+    }
+
+    let renderTab = () => {
+        arr.sort(sortFunc)
+        this.tab = render(spec.classPrefix, {
+            ele: 'table',
+            classList: 'table',
+            children: [
+                {
+                    ele: 'tr',
+                    children: Object.keys(spec.keys).map(key => {
+                        return {
+                            ele: 'th',
+                            attribs,
+                            children: [
+                                { ele: 'span', text: key },
+                                {
+                                    ele: 'span',
+                                    attribs: {
+                                        style: 'position: relative; cursor: pointer',
+                                        innerHTML: getSortbtn(key)
+                                    },
+                                    evnts: { click: () => sortBy(key) }
+                                }
+                            ]
+                        }
+                    })
+                },
+                ...(arr.map(row => getTr(row)))
+            ]
+        }, () => 0)
+        ele.appendChild(this.tab)
+    }
+    renderTab()
+    return this.tab
+}
+
+function _filePicker(selectedFiles) {
     let self = this;
     function updateThumbnail(file, renameFile) {
         let thumbnailElement = self.thumbnail;
-        helperLabel.style.display = 'none'
+        self.helperLabel.style.display = 'none'
         thumbnailElement.dataset.label = file.name;
         if (file.type.startsWith("image/")) {
             const reader = new FileReader();
@@ -223,101 +320,82 @@ function filePicker(selectedFiles) {
                 .finally(e => done())
         })
     }
+    function showFiles(files) {
+        self.userFiles.innerHTML = ''
+        let spec = {
+            defaultSortKey: 'Last Modified Time',
+            classPrefix: 'user-file',
+            keys: {
+                'Choosen': {
+                    vFunc: (file) => {
+                        return {
+                            ele: 'input',
+                            classList: 'select-box',
+                            attribs: {
+                                type: 'checkbox',
+                                value: file.path,
+                                checked: selectedFiles ? selectedFiles.includes(file.path) : false
+                            }
+                        }
+                    }
+                },
+                'Name': { keyId: 'name', sortable: true },
+                'Last Modified Time': {
+                    vFunc: (file) => new Date(file.mtime).toLocaleString(), sortable: true,
+                    keyId: 'mtime'
+                },
+                'Size': { keyId: 'size', sortable: true },
+                'Preview': {
+                    vFunc: (file) => {
+                        return {
+                            ele: 'a',
+                            text: 'Preview',
+                            attribs: { href: '#' },
+                            evnts: {
+                                click: function () {
+                                    let img = document.createElement('img')
+                                    img.style = 'max-width: 200px; max-height: 200px'
+                                    img.src = file.path
+                                    this.parentNode.appendChild(img)
+                                    this.remove()
+                                }
+                            }
+                        }
+                    }
+                },
+                'Actions': {
+                    vFunc: (file) => {
+                        return {
+                            ele: 'a',
+                            attribs: { href: '#' },
+                            text: 'delete',
+                            evnts: {
+                                click: function () {
+                                    if (confirm(`Sure you want to delete ${file.name}?`)) {
+                                        delet(`/files?file=${encodeURIComponent(file.name)}`)
+                                            .then(x => this.parentNode.parentNode.remove())
+                                            .then(x => showSuccess('Deleted successfully'))
+                                            .catch(x => showError(x.message))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+            },
+            rowEvents: {
+                click: function () {
+                    this.querySelector('input[type=checkbox]').checked = !this.querySelector('input[type=checkbox]').checked
+                }
+            }
+        }
+        tabulate(files, self.userFiles, spec)
+    }
     function refreshUserFileList() {
         callWithWaitUI(self.fp, (done) => {
             get('/allmyfiles')
                 .then(resp => JSON.parse(resp.response))
-                .then(files => {
-                    console.log(files)
-                    let tab = render('user-file-tab', {
-                        ele: 'table',
-                        classList: 'le',
-                        children: [
-                            {
-                                ele: 'tr',
-                                children: [
-                                    { ele: 'th', text: 'Choosen' },
-                                    { ele: 'th', text: 'Name' },
-                                    { ele: 'th', text: 'Last Modified Time' },
-                                    { ele: 'th', text: 'Size' },
-                                    { ele: 'th', text: 'Preview' },
-                                    { ele: 'th', text: 'Actions' }
-                                ]
-                            }
-                        ]
-                    })
-                    self.userFiles.innerHTML = ''
-                    self.userFiles.appendChild(tab)
-                    files.forEach(file => {
-                        render('user-file', {
-                            ele: 'tr',
-                            classList: 'row',
-                            children: [
-                                {
-                                    ele: 'td',
-                                    children: [
-                                        {
-                                            ele: 'input',
-                                            classList: 'select-box',
-                                            attribs: {
-                                                type: 'checkbox',
-                                                value: file.path,
-                                                checked: selectedFiles ? selectedFiles.includes(file.path) : false
-                                            }
-                                        }
-                                    ]
-                                },
-                                { ele: 'td', text: file.name },
-                                { ele: 'td', text: new Date(file.mtime).toLocaleString() },
-                                { ele: 'td', text: "" + file.size },
-                                {
-                                    ele: 'td',
-                                    children: [
-                                        {
-                                            ele: 'a',
-                                            text: 'Preview',
-                                            attribs: { href: '#' },
-                                            evnts: {
-                                                click: function () {
-                                                    let img = document.createElement('img')
-                                                    img.style = 'max-width: 200px; max-height: 200px'
-                                                    img.src = file.path
-                                                    this.parentNode.appendChild(img)
-                                                    this.remove()
-                                                }
-                                            }
-                                        }
-                                    ]
-                                },
-                                {
-                                    ele: 'td',
-                                    children: [
-                                        {
-                                            ele: 'a',
-                                            attribs: { href: '#' },
-                                            text: 'delete',
-                                            evnts: {
-                                                click: function () {
-                                                    if (confirm(`Sure you want to delete ${file.name}?`)) {
-                                                        delet(`/files?file=${encodeURIComponent(file.name)}`)
-                                                            .then(x => this.parentNode.parentNode.remove())
-                                                            .then(x => showSuccess('Deleted successfully'))
-                                                            .catch(x => showError(x.message))
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    ]
-                                },
-                            ],
-                            evnts: {
-                                click: function () {
-                                    this.querySelector('input[type=checkbox]').checked = !this.querySelector('input[type=checkbox]').checked
-                                }
-                            }
-                        }, () => 0, tab)
-                    })
-                })
+                .then(files => showFiles(files))
                 .then(e => done())
         })
     }
@@ -444,4 +522,109 @@ function filePicker(selectedFiles) {
         document.body.appendChild(fp)
         refreshUserFileList()
     })
+}
+
+let tagifySpecs = {
+    user: {
+        idKey: 'value',
+        tagTemplate: (ug, t) => {
+            return `
+                <tag title="${ug.type} ${ug.name}" contenteditable='false' spellcheck='false' tabIndex="-1"
+                    class="${t.settings.classNames.tag} ${ug.class ? ug.class : ""}" ${t.getAttributes(ug)}>
+                    <x title='remove' class='tagify__tag__removeBtn' role='button' aria-label='remove tag'></x>
+                    <div>
+                        ${ug.type == 'user' ? '&#x1F464;' : '&#x1F465;'}
+                        <span class='tagify__tag-text'>${ug.name}</span>
+                    </div>
+                </tag>
+                `
+        },
+        dropdownTemplate: ug => {
+            if (ug.type == 'user') {
+                return `<div class='tagify__dropdown__item'>&#x1F464; ${ug.name} (${ug.id.substring(2)})</div>`;
+            } else {
+                return `<div class='tagify__dropdown__item'>&#x1F465; ${ug.name}</div>`;
+            }
+        },
+        searchKeys: ['value', 'name'],
+        url: function (term) {
+            return `${baseUrl}/auth/find-ug-like?term=${term}`
+        },
+        responseHandler: function (resp) {
+            return resp.map(x => {
+                return {
+                    ...x, value: x.id, type: x.id.startsWith('u') ? 'user' : 'group', name: ((!x.name
+                        || x.name == 'null') ? x.id.substring(2) : x.name)
+                }
+            })
+        },
+        whiteList: true
+    },
+    tag: {
+        idKey: 'name',
+        tagTemplate: function (tagData, t) {
+            return `
+                <tag title="${tagData.name}" contenteditable='false' spellcheck='false' tabIndex="-1"
+                    class="${t.settings.classNames.tag}" ${t.getAttributes(tagData)}>
+                    <x title='remove' class='tagify__tag__removeBtn' role='button' aria-label='remove tag'></x>
+                    <div description="${tagData.description}">
+                        <span class='tagify__tag-text'>${tagData.name}</span>
+                    </div>
+                </tag>
+                `
+        },
+        dropdownTemplate: function (tagData) {
+            return `<div class='tagify__dropdown__item'>${tagData.name}</div>`;
+        },
+        searchKeys: ['value'],
+        url: function (term) {
+            return `${baseUrl}/find-tags-like?term=${term}`;
+        },
+        responseHandler: function (resp) {
+            return resp.map(x => { return { ...x, value: x.name } })
+        },
+        whiteList: false
+    }
+}
+
+function tagify(inputElement, specKey) {
+    let spec = tagifySpecs[specKey];
+    let tagifyThings = new Tagify(inputElement, {
+        tagTextProp: spec.idKey,
+        enforceWhitelist: spec.whiteList,
+        skipInvalid: spec.whiteList,
+        dropdown: { closeOnSelect: true, enabled: 0, searchKeys: spec.searchKeys },
+        autoComplete: { rightKey: true },
+        delimiters: ' ',
+        templates: {
+            tag: function (d) {
+                return spec.tagTemplate(d, this)
+            },
+            dropdownItem: function (d) {
+                return spec.dropdownTemplate(d, this)
+            }
+        },
+        whitelist: [],
+        delimiter: ' '
+    })
+    let controller;
+    tagifyThings.on('input', function onInputTags(e) {
+        var value = e.detail.value;
+        if (spec.inputHandler) {
+            value = spec.inputHandler(specKey, value)
+            if (!value) return;
+        }
+        tagifyThings.settings.whitelist.length = 0;
+        controller && controller.abort();
+        controller = new AbortController();
+        tagifyThings.loading(true).dropdown.hide.call(tagifyThings)
+        fetch(spec.url(value), { signal: controller.signal })
+            .then(RES => RES.json())
+            .then(RES => spec.responseHandler(RES))
+            .then(function (whitelist) {
+                tagifyThings.settings.whitelist.splice(0, whitelist.length, ...whitelist)
+                tagifyThings.loading(false).dropdown.show.call(tagifyThings);
+            })
+    })
+    return tagifyThings
 }
