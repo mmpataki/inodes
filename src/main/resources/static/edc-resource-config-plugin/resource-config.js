@@ -285,6 +285,8 @@ class ResourceConfigStory {
                     for (let i = 0; i < scannerIdElems.length; i++) {
                         scannerIds.push(scannerIdElems[i].data)
                     }
+                    scannerIds.push("enrichment")
+                    scannerIds.push("args.resourceName")
                     if(scannerIds.length < 1){ resolve(); done(); return };
                     this.toggleBtn.style.display = "block"
                     updateText('Backing up the xdocs')
