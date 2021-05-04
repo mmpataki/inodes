@@ -398,7 +398,7 @@ class ResourceConfigStory {
 class ManualConfigStory {
     constructor(args) {
 
-        this.title = () => 'Enter the resource coordinates'
+        this.title = () => 'Enter the resource coordinates..'
 
         this.tell = function () {
             return render('instance-selection-story', {

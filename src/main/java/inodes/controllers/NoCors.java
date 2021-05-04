@@ -60,7 +60,7 @@ public class NoCors {
         // All hosts will be valid
         HttpsURLConnection.setDefaultHostnameVerifier(validHosts);
     }
-    
+
     @RequestMapping(value = "/nocors", method = RequestMethod.POST)
     public void noCors(@RequestBody NoCorsRequest req, HttpServletResponse resp) throws IOException {
 
