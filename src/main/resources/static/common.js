@@ -1,5 +1,5 @@
 const USER_KEY = "user", TOK_KEY = "tok";
-let baseUrl = window.location.port == 5001 ? "http://localhost:8080" : ""
+let baseUrl = window.location.port == 5001 ? "http://inedctst01:8080" : ""
 let rejectCodeList = [400, 401, 500, 403];
 function getBaseUrl() {
     return baseUrl;
@@ -114,6 +114,7 @@ let __colors = {
 
 function showError(x) {
     showMessage(x, __colors.ERR)
+    console.error(x)
 }
 
 function showSuccess(x) {
@@ -178,6 +179,10 @@ function render(name, spec, elemCreated, container) {
 }
 
 function callWithWaitUI(element, func) {
+    return new _callWithWaitUI(element, func);
+}
+function _callWithWaitUI(element, func) {
+    element.style.position = "relative";
     let overlay = render('loader', {
         ele: 'div',
         attribs: {
@@ -185,18 +190,20 @@ function callWithWaitUI(element, func) {
         },
         children: [
             {
-                ele: 'img',
-                attribs: {
-                    src: '/wait.gif',
-                    style: `position: absolute; height: 20px; width: 20px; top: ${element.clientHeight / 2 - 10}px; left: ${element.clientWidth / 2 - 10}px`
-                }
+                ele: 'span',
+                attribs: { style: `position: absolute; top: ${element.clientHeight / 2 - 10}px; left: ${element.clientWidth / 2 - 50}px` },
+                children: [
+                    { ele: 'img', attribs: { src: '/wait.gif', style: `height: 20px; width: 20px` } },
+                    { ele: 'span', iden: 'loadTxt', attribs: { style: 'margin-left: 10px' }, text: 'Loading' }
+                ]
             }
         ]
-    }, () => 0);
+    }, (id, ele) => this[id] = ele);
     element.appendChild(overlay);
     let done = () => overlay.remove();
+    let updateText = (txt) => this.loadTxt.innerText = txt;
     try {
-        func(done);
+        func(done, updateText);
     } catch {
         done();
     }
@@ -671,15 +678,18 @@ function StoryTeller(storyBoardElement) {
         let story = { story: new storyClass(args) }
         stack.push(story);
         this.tell(story)
+        this.nextbtn.disabled = false
     }
 
     this.back = () => {
         stack.pop();
         if (stack.length > 0)
             this.tell(stack[stack.length - 1])
+        this.nextbtn.disabled = false
     }
 
     this.next = () => {
+        this.nextbtn.disabled = true
         let storyPack = stack[stack.length - 1]
         if (!storyPack.story.isCompleted()) {
             this.errmsg.innerHTML = storyPack.story.getErrMsg();

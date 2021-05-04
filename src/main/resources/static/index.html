@@ -185,7 +185,7 @@
                     this.search(str, offset, pageSize)
                         .then(d => {
                             this.results = JSON.parse(d.response)
-                            if(this.results.results.length < 1) {
+                            if (this.results.results.length < 1) {
                                 g('posts').innerHTML = '<div class="no-post-found">No posts found</div>'
                                 done();
                                 return
@@ -913,21 +913,17 @@
             openRegisterPage() {
                 this.triggerSearch('#register #inodesapp')
             }
-            runCommand(scriptText, pnode, callBack) {
+            runCommand(scriptText, pnode, callBack, finishCallback) {
 
                 if (!pnode) {
                     pnode = document.createElement('div');
                 }
                 pnode.innerHTML = ''
 
-                let status = document.createElement('status')
-                status.style = "display: block"
-                pnode.appendChild(status);
-
                 let out;
                 if (pnode) {
                     out = document.createElement('pre');
-                    out.style = "background-color: black; color: white; width: 100%; height: 200px; overflow: auto"
+                    out.style = "background-color: #f5f5f5; padding: 10px; color: black; width: 100%; height: 200px; overflow: auto"
                     pnode.appendChild(out);
                 }
 
@@ -959,13 +955,12 @@
                     ).then(d => {
                         d = d.response
                         resolve(d)
-                        status.innerHTML = `<b style="color:blue">Starting</b>`
                         var source = new EventSource(`http://inedctst01:5000/poll?rid=${d}`);
                         source.onmessage = function (event) {
-                            status.innerHTML = `<b style="color:orange">Running</b>`
                             if (event.data == 'MPATAKI-STOP_EVENT-SOURCE') {
-                                status.innerHTML = `<b style="color:green">Done</b>`
                                 event.target.close()
+                                if (finishCallback)
+                                    finishCallback()
                                 return
                             }
                             if (out)

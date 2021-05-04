@@ -23,8 +23,13 @@ class edcresconfig {
         if (story && story.constructor.name == 'SummaryStory') {
             return story.moral()
         }
+        throw new Error('Please provide all inputs')
     }
 
+    getTags() {
+        let obj = this.getContent()
+        return [obj.version, obj.resourceName, obj.resourceType]
+    }
 }
 
 function EDCResTypeSelectionStory(args) {
@@ -156,7 +161,7 @@ class InstanceSelectionStory {
                     { ele: 'br' },
 
                     { ele: 'span', text: 'url', classList: 'key' },
-                    { ele: 'a', text: url, classList: 'value', attribs: { href: url } },
+                    { ele: 'a', text: url, classList: 'value', attribs: { href: url, target: "_blank" } },
                     { ele: 'br' },
 
                     {
@@ -208,7 +213,7 @@ class ResourceSelectionStory {
 
         this.nextStoryClass = () => ResourceConfigStory
 
-        this.moral = () => ({ ...args, resourceName: this.resourceName, resourceType: this.resourceType, version: this.version })
+        this.moral = () => ({ ...args, resourceName: this.resourceName, resourceType: this.resourceType, version: this.version, description: this.description})
 
         this.isCompleted = () => (this.resourceName && 1)
 
@@ -230,7 +235,7 @@ class ResourceSelectionStory {
                             classPrefix: 'res-search-result',
                             defaultSortKey: 'Name',
                             keys: {
-                                "Select": { vFunc: (r) => { return { ele: 'input', attribs: { type: 'radio', name: `resource-${uniqId}`, resourceName: r.resourceName, resourceType: r.resourceTypeName }, evnts: { change: (e) => e.stopPropagation() } } } },
+                                "Select": { vFunc: (r) => { return { ele: 'input', attribs: { type: 'radio', name: `resource-${uniqId}`, resourceName: r.resourceName, resourceType: r.resourceTypeName, description: r.description }, evnts: { change: (e) => e.stopPropagation() } } } },
                                 "Name": { sortable: true, keyId: "resourceName" },
                                 "Type": { sortable: true, keyId: "resourceTypeName" },
                                 "Created By": { keyId: "createdBy" },
@@ -241,6 +246,7 @@ class ResourceSelectionStory {
                                     let chkbox = this.querySelector('input[type=radio]')
                                     self.resourceName = chkbox.resourceName
                                     self.resourceType = chkbox.resourceType
+                                    self.description = chkbox.description
                                     self.version = version
                                     chkbox.checked = !chkbox.checked
                                 }
@@ -262,7 +268,7 @@ class ResourceConfigStory {
 
         this.nextStoryClass = () => SummaryStory
 
-        this.moral = () => ({ ...args, resourceConfig: this.resourceConfig, xdocs: this.xdocFiles })
+        this.moral = () => ({ ...args, resourceConfig: this.resourceConfig, providerIds: this.providerIds })
 
         this.isCompleted = () => true
 
@@ -271,34 +277,39 @@ class ResourceConfigStory {
         this.preDestroy = () => {
             if (this.saveResourceConfig.checked)
                 this.resourceConfig = resourceConfig
-            this.xdocFiles = []
+            this.providerIds = []
             return new Promise((resolve) => {
-                callWithWaitUI(this.ele, (done) => {
-                    let scannerIds = this.scannerIds.querySelectorAll('input[type=checkbox]:checked')
-                    let proms = [], c = args.connDetail
-                    for (let i = 0; i < scannerIds.length; i++) {
-                        const scannerId = scannerIds[i].data
-                        let url = `${c.url}/access/1/catalog/data/downloadXdocs?resourceName=${args.resourceName}&providerId=${scannerId}`
-                        let x = post(
-                            `/files/download`,
-                            { method: 'GET', url: url, fileName: `${args.resourceName}_${scannerId}_${+(new Date())}.json`, headers: { 'Content-Type': 'application/octet-stream', Authorization: "Basic " + btoa(`${c.username}:${c.password}`) } },
-                            { 'Content-Type': 'application/json' }
-                        )
-                        x.then(resp => this.xdocFiles.push({ providerId: scannerId, resourceName: args.resourceName, file: resp.response }))
-                        proms.push(x)
+                callWithWaitUI(this.resconfig, (done, updateText) => {
+                    let scannerIdElems = this.scannerIds.querySelectorAll('input[type=checkbox]:checked')
+                    let c = args.connDetail, scannerIds = this.providerIds
+                    for (let i = 0; i < scannerIdElems.length; i++) {
+                        scannerIds.push(scannerIdElems[i].data)
                     }
-                    Promise.allSettled(proms)
-                        .then(() => resolve())
-                        .finally(() => done())
+                    if(scannerIds.length < 1){ resolve(); done(); return };
+                    this.toggleBtn.style.display = "block"
+                    updateText('Backing up the xdocs')
+                    inodes.runCommand(
+                        `bash $BIN_DIR/edc/resbackuprestore.sh backup "${c.url}" "${c.username}" "${c.password}" "${args.version}" "${args.resourceName}" "$ATTACH_DIR/${getCurrentUser()}/" ${scannerIds.map(sc => "\"" + sc + "\"").join(" ")}`,
+                        this.runcmdout,
+                        (s) => 0,  // data callback
+                        () => { resolve(); done(); }
+                    ).catch(() => done());
                 })
             })
         }
 
         this.tell = () => {
-            this.ele = render('resource-config', { ele: 'div' })
-            this.loadResourceConfig(this.ele)
+            this.ele = render('resource-config', {
+                ele: 'div', children: [
+                    { ele: 'div', iden: 'resconfig' },
+                    { ele: 'u', text: 'toggle console logs', iden: 'toggleBtn', attribs: { style: 'cursor:pointer; display:none; margin-top:20px' }, evnts: { click: function () { let t = this.nextSibling.style; t.display = t.display == 'none' ? 'block' : 'none' } } },
+                    { ele: 'div', iden: 'runcmdout', attribs: { style: 'display: none' } }
+                ]
+            }, (id, ele) => this[id] = ele)
+            this.loadResourceConfig(this.resconfig)
             return this.ele
         }
+
         this.loadResourceConfig = (ele) => {
             let c = args.connDetail
             post(
@@ -477,9 +488,11 @@ class SummaryStory {
             console.log(arg)
             return render('summary-story', {
                 ele: 'div',
+                attribs: { style: 'margin: 10px 0px;' },
                 children: [
                     ...(!arg.resourceName ? [] : [{ ele: 'span', classList: 'kvp', attribs: { innerHTML: `<i>Resource name</i>: <b>${arg.resourceName}</b>` } }]),
                     ...(!arg.resourceType ? [] : [{ ele: 'span', classList: 'kvp', attribs: { innerHTML: `<i>Resource type</i>: <b>${arg.resourceType}</b>` } }]),
+                    ...(!arg.description ? [] : [{ ele: 'span', classList: 'kvp', attribs: { innerHTML: `<i>Description</i>: <b>${arg.description}</b>` } }]),
                     ...(!arg.version ? [] : [{ ele: 'span', attribs: { innerHTML: `<i>EDC version</i>: <b>${arg.version}</b>` } }]),
                     ...(!arg.xdocs ? [] : [{
                         ele: 'div',
