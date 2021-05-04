@@ -161,15 +161,17 @@ function render(name, spec, elemCreated, container) {
         e = spec.ele;
     }
     if (container) {
-        if (spec.label) {
+        let lbl;
+        if (spec.label || spec.postlabel) {
             let rgid = "id_" + Math.random();
             e.id = rgid
-            let lbl = document.createElement('label')
-            lbl.innerHTML = spec.label
-            lbl.for = rgid
-            container.appendChild(lbl)
+            lbl = document.createElement('label')
+            lbl.innerHTML = spec.label || spec.postlabel
+            lbl.setAttribute('for', rgid)
         }
+        if (spec.label) container.appendChild(lbl)
         container.appendChild(e)
+        if (spec.postlabel) container.appendChild(lbl)
         return container;
     }
     return e;
@@ -193,7 +195,11 @@ function callWithWaitUI(element, func) {
     }, () => 0);
     element.appendChild(overlay);
     let done = () => overlay.remove();
-    func(done);
+    try {
+        func(done);
+    } catch {
+        done();
+    }
 }
 
 function tabulate(arr, ele, spec) {
@@ -350,7 +356,7 @@ function _filePicker(selectedFiles, title) {
                     keyId: 'size', sortable: true,
                     vFunc: (file) => {
                         let pow = Math.floor(Math.floor(Math.log2(file.size)) / 10);
-                        return { ele: 'span', text: `${Math.round(file.size / (Math.pow(2, pow * 10)))} ${{0:'Bytes',1:'KB',2:'MB',3:'GB'}[pow]}`, attribs: {title: `${file.size} bytes`}}
+                        return { ele: 'span', text: `${Math.round(file.size / (Math.pow(2, pow * 10)))} ${{ 0: 'Bytes', 1: 'KB', 2: 'MB', 3: 'GB' }[pow]}`, attribs: { title: `${file.size} bytes` } }
                     }
                 },
                 'Preview': {
@@ -413,7 +419,7 @@ function _filePicker(selectedFiles, title) {
             ele: 'div',
             classList: 'container',
             children: [
-                { ele: 'h3', text: title, attribs : { style: 'position: absolute; top: 0px; left: 10px'} },
+                { ele: 'h3', text: title, attribs: { style: 'position: absolute; top: 0px; left: 10px' } },
                 { ele: 'h4', text: 'Upload files' },
                 {
                     ele: 'div',
@@ -636,4 +642,74 @@ function tagify(inputElement, specKey) {
             })
     })
     return tagifyThings
+}
+
+
+function StoryTeller(storyBoardElement) {
+
+    let stack = [];
+    render('storyboard', {
+        ele: 'div',
+        children: [
+            {
+                ele: 'div', classList: 'titlebar', children: [
+                    { ele: 'span', classList: 'button', iden: 'backbtn', attribs: { title: 'Back', innerHTML: '&larr;' }, evnts: { click: () => this.back() } },
+                    { ele: 'span', classList: 'title', text: '', iden: 'title' }
+                ]
+            },
+            { ele: 'div', classList: 'errmsg', iden: 'errmsg' },
+            { ele: 'div', classList: 'content', iden: 'storyBoard' },
+            {
+                ele: 'div', classList: 'bottombar', children: [
+                    { ele: 'button', text: 'Next', iden: 'nextbtn', evnts: { click: () => this.next() } }
+                ]
+            }
+        ]
+    }, (id, ele) => this[id] = ele, storyBoardElement);
+
+    this.openStory = (storyClass, args) => {
+        let story = { story: new storyClass(args) }
+        stack.push(story);
+        this.tell(story)
+    }
+
+    this.back = () => {
+        stack.pop();
+        if (stack.length > 0)
+            this.tell(stack[stack.length - 1])
+    }
+
+    this.next = () => {
+        let storyPack = stack[stack.length - 1]
+        if (!storyPack.story.isCompleted()) {
+            this.errmsg.innerHTML = storyPack.story.getErrMsg();
+            this.errmsg.style.display = 'block'
+            return;
+        }
+        let preDestroy = storyPack.story.preDestroy || (() => new Promise((resolve) => resolve()))
+        preDestroy()
+            .then(() => {
+                let next = { storyClass: storyPack.story.nextStoryClass(), args: storyPack.story.moral() }
+                if (!next) return;
+                this.openStory(next.storyClass, next.args)
+            })
+    }
+
+    this.tell = (storyPack) => {
+        let story = storyPack.story
+        if (!storyPack.ele)
+            storyPack.ele = story.tell();
+        this.storyBoard.innerHTML = ""
+        this.errmsg.style.display = 'none'
+        this.nextbtn.style.display = (!story.nextStoryClass) ? "none" : 'block';
+        this.backbtn.style.display = stack.length < 2 ? 'none' : 'inline-block';
+        this.title.innerHTML = storyPack.story.title();
+        this.storyBoard.appendChild(storyPack.ele)
+    }
+
+    this.currentStory = () => {
+        if (stack.length > 0)
+            return stack[stack.length - 1].story;
+    }
+
 }

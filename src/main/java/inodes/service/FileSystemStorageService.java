@@ -54,23 +54,24 @@ public class FileSystemStorageService extends WebMvcConfigurerAdapter implements
             if (file.isEmpty()) {
                 throw new Exception("Failed to store empty file.");
             }
-
-            Path userDir = rootLocation.resolve(user);
-            if(!Files.exists(userDir))
-                Files.createDirectories(userDir);
-
-            String fModPath = file.getOriginalFilename().replaceAll("[^0-9A-Za-z_.-]+", "_");
-            Path destinationFile = userDir.resolve(Paths.get(fModPath)).normalize().toAbsolutePath();
-            if (!destinationFile.getParent().equals(userDir.toAbsolutePath())) {
-                throw new Exception("Cannot store file outside current directory.");
-            }
-            try (InputStream inputStream = file.getInputStream()) {
-                Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
-            }
-            return String.format("%s/%s", user, file.getOriginalFilename());
+            return store(user, file.getOriginalFilename(), file.getInputStream());
         } catch (Exception e) {
             throw new Exception("Failed to store file.", e);
         }
+    }
+
+    @Override
+    public String store(String user, String fileName, InputStream inputStream) throws Exception {
+        Path userDir = rootLocation.resolve(user);
+        if(!Files.exists(userDir))
+            Files.createDirectories(userDir);
+        String fModPath = fileName.replaceAll("[^0-9A-Za-z_.-]+", "_");
+        Path destinationFile = userDir.resolve(Paths.get(fModPath)).normalize().toAbsolutePath();
+        if (!destinationFile.getParent().equals(userDir.toAbsolutePath())) {
+            throw new Exception("Cannot store file outside current directory.");
+        }
+        Files.copy(inputStream, destinationFile, StandardCopyOption.REPLACE_EXISTING);
+        return String.format("%s/%s", user, fModPath);
     }
 
     @Override

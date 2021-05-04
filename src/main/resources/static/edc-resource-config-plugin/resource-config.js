@@ -2,226 +2,516 @@ class edcresconfig {
     constructor() {
         this.elems = {}
     }
-    getCard(obj) {
-        obj = JSON.parse(obj.content).value
-        let getScannerConfig = function(sc) {
-            let out = {
-                ele: 'table',
-                classList: 'tree-item',
-                children: []
-            }
-            sc.configOptions.forEach(c => {
-                out.children.push({
-                    ele: 'tr',
-                    children: [
-                        { ele: 'td', children: [{ ele: 'i', text: c.optionId}]},
-                        { ele: 'td', children: [{ ele: 'b', text: c.optionValues.join(',')}]}
-                    ]
-                })
-            })
-            return out;
+    getCard(obj1) {
+        let obj = JSON.parse(obj1.content)
+        let ele = render('edcresconfig', { ele: 'div' })
+        ele.appendChild(new SummaryStory(obj).tell())
+        ele.appendChild(render('', { ele: 'button', text: 'Deploy', evnts: { click: () => inodes.triggerSearch(`#edc #resourcedeployer !${obj1.id}`) } }))
+        return ele;
+    }
+
+    getEditor(obj) {
+        let ele = render('edcresconfig', { ele: 'div' });
+        this.storyTeller = new StoryTeller(ele);
+        let storyClass = obj ? SummaryStory : EDCResTypeSelectionStory;
+        this.storyTeller.openStory(storyClass, obj ? JSON.parse(obj.content) : undefined)
+        return ele;
+    }
+
+    getContent() {
+        let story = this.storyTeller.currentStory();
+        if (story && story.constructor.name == 'SummaryStory') {
+            return story.moral()
         }
-        let getScannerConfigs = function(confs) {
-            let out = [];
-            confs.forEach(x => out.push({
+    }
+
+}
+
+function EDCResTypeSelectionStory(args) {
+
+    this.title = () => 'Pick a input type'
+
+    this.tell = function () {
+        this.ele = render('inp-type-select', {
+            ele: 'div',
+            children: [
+                {
+                    ele: 'input',
+                    classList: 'input-full-bkp',
+                    postlabel: 'Import from a instance',
+                    lblClass: 'label-full-bkp',
+                    attribs: {
+                        type: 'radio',
+                        name: 'backup-type',
+                        value: 'from-instance',
+                        checked: true
+                    }
+                },
+                { ele: 'br' },
+                {
+                    ele: 'input',
+                    classList: 'input-res-config',
+                    postlabel: 'Manually enter the resource location',
+                    lblClass: 'label-res-config',
+                    attribs: {
+                        type: 'radio',
+                        name: 'backup-type',
+                        value: 'manual-config'
+                    }
+                },
+                { ele: 'br' },
+                {
+                    ele: 'input',
+                    classList: 'input-upload-xdoc',
+                    postlabel: 'Upload Xdocs',
+                    lblClass: 'label-upload-xdocs',
+                    attribs: {
+                        type: 'radio',
+                        name: 'backup-type',
+                        value: 'upload-xdocs'
+                    }
+                }
+            ]
+        })
+        return this.ele;
+    }
+
+    this.nextStoryClass = function () {
+        let funcs = { 'from-instance': InstanceSelectionStory, 'manual-config': ManualConfigStory, 'upload-xdocs': UploadXdocStory }
+        return funcs[this.ele.querySelector("input[type='radio']:checked").value]
+    }
+
+    this.moral = () => ({ option: this.ele.querySelector("input[type='radio']:checked").value })
+
+    this.isCompleted = function () {
+        return true
+    }
+}
+
+class InstanceSelectionStory {
+    constructor(args) {
+
+        this.uniqid = Math.random()
+
+        this.title = () => 'Pick an instance'
+
+        this.tell = () => {
+            let self = this
+            return render('instance-selection-story', {
                 ele: 'div',
-                classList : `${x.enabled ? "scanner-enabled" : "scanner-disabled"}`,
+                classList: 'inputs-full-bkp',
                 children: [
                     {
-                        ele: 'div',
-                        classList: 'tree-item',
-                        children: [
-                            {
-                                ele: 'b',
-                                text: `${x.scanner.providerTypeName} (${x.scanner.providerTypeId})`
+                        ele: 'input',
+                        label: 'search for instances',
+                        classList: 'input',
+                        evnts: {
+                            input: function (e) {
+                                self.listInstances(this.value, this.nextSibling)
                             }
-                        ]
+                        }
                     },
                     {
                         ele: 'div',
-                        classList: 'tree-item',
-                        children: [
-                            getScannerConfig(x)
-                        ]
+                        classList: 'results',
+                        iden: 'results'
                     }
                 ]
-            }));
-            return out;
+            }, (id, ele) => this[id] = ele)
         }
-        let template = function(res) {
-            console.log(res)
+
+        this.isCompleted = () => {
+            return this.connDetail && 1
+        }
+
+        this.getErrMsg = () => {
+            return 'Select a instance'
+        }
+
+        this.nextStoryClass = () => ResourceSelectionStory
+
+        this.moral = () => ({ ...args, connDetail: this.connDetail })
+
+        this.inst_template = (item) => {
+            let self = this
+            let inst = JSON.parse(item.content)
+            let u = new URL(inst.urls.filter(url => url.tag.toLowerCase().includes("ldm") || url.tag.toLowerCase().includes("catalog"))[0].url)
+            let url = u.protocol + "//" + u.host
             return {
                 ele: 'div',
                 classList: 'container',
                 children: [
+                    { ele: 'input', iden: 'chkbox', attribs: { type: 'radio', name: `instance-${this.uniqid}` } },
+
+                    { ele: 'span', text: 'Owner', classList: 'key' },
+                    { ele: 'span', text: item.owner, classList: 'value' },
+                    { ele: 'br' },
+
+                    { ele: 'span', text: 'IP address', classList: 'key' },
+                    { ele: 'span', text: inst.ipaddr, classList: 'value' },
+                    { ele: 'br' },
+
+                    { ele: 'span', text: 'Installation location', classList: 'key' },
+                    { ele: 'span', text: inst.installloc, classList: 'value' },
+                    { ele: 'br' },
+
+                    { ele: 'span', text: 'url', classList: 'key' },
+                    { ele: 'a', text: url, classList: 'value', attribs: { href: url } },
+                    { ele: 'br' },
+
                     {
                         ele: 'div',
-                        classList: 'res-identifier',
-                        children: [
-                            {
-                                ele: 'div',
-                                styles: { float: "left", fontWeight: "bold", fontSize: "1.2em"},
-                                text: `${res.resourceIdentifier.resourceName}`
-                            },
-                            {
-                                ele: 'div',
-                                styles: { float: "right"},
-                                text: `${res.resourceIdentifier.resourceTypeName} (${res.resourceIdentifier.resourceTypeId})`
-                            },
-                            { ele: 'br'},
-                            {
-                                ele: 'p',
-                                text: `${res.resourceIdentifier.description}`
-                            }
-                        ]
-                    },
-                    {
-                        ele: 'div',
-                        classList: 'tree-item',
-                        children: [
-                            ...getScannerConfigs(res.scannerConfigurations)
-                        ]
+                        classList: 'tags',
+                        style: {
+                            padding: '10px'
+                        },
+                        attribs: {
+                            innerHTML: item.tags.map(t => `<span class="inst-searchresult-tag">${t}</span>`).join(' ')
+                        }
                     }
-                ]
+                ],
+                evnts: {
+                    click: function () {
+                        self.connDetail = { url: url, username: inst.appusername, password: inst.apppassword }
+                        let chkbox = this.querySelector('input[type="radio"]')
+                        chkbox.checked = !chkbox.checked
+                    }
+                }
             }
         }
-        return render('edcresconfig', template(obj));
-    }
 
-    getEditor(obj) {
-        let self = this;
-        if(obj) {
-            obj = JSON.parse(obj.content);
+        this.listInstances = (q, where) => {
+            inodes.search(`%instances #edc ${q}`)
+                .then(resp => JSON.parse(resp.response))
+                .then(res => {
+                    where.innerHTML = ""
+                    res.results.forEach(item => {
+                        let templ = this.inst_template(item)
+                        if (templ) {
+                            render('inst-search-result', templ, x => 1, where)
+                        }
+                    })
+                })
         }
-        let renderable = function (obj) {
-            let c = obj ? obj.config : undefined;
-            return {
-                ele: "div",
-                children: [
-                    {
-                        ele: "input",
-                        classList: "input",
-                        iden: "url",
-                        attribs: {
-                            placeholder: "edc url",
-                            value: c ? c.url : ""
-                        }
-                    },
-                    {
-                        ele: "input",
-                        classList: "input",
-                        iden: "user",
-                        attribs: {
-                            placeholder: "username",
-                            value: c ? c.username : ""
-                        }
-                    },
-                    {
-                        ele: "input",
-                        classList: "input",
-                        iden: "password",
-                        attribs: {
-                            placeholder: "password",
-                            value: c ? c.password : ""
-                        },
-                    },
-                    {
-                        ele: "input",
-                        classList: "input",
-                        iden: "resourcename",
-                        attribs: {
-                            placeholder: "resource name",
-                            value: c ? c.resourcename : ""
-                        },
-                    },
-                    {
-                        ele: 'textarea',
-                        iden: 'comment',
-                        classList: 'comment',
-                        attribs: {
-                            placeholder: "comment",
-                            value: c ? (c.comment ? c.comment : "") : ""
-                        },
-                    },
-                    {
-                        ele: "button",
-                        classList: "button",
-                        text: "Get resource config",
-                        evnts: {
-                            click: () => {
-                                self.loadResource().then(
-                                    x => {
-                                        self.value = x
-                                        self['rcpreview'].appendChild(
-                                            self.getCard(
-                                                {
-                                                    content: JSON.stringify(
-                                                        {
-                                                            value: x
-                                                        }
-                                                    )
-                                                }
-                                            )
-                                        )
-                                    }
-                                )
+    }
+}
+
+class ResourceSelectionStory {
+    constructor(args) {
+        let uniqId = Math.random()
+        this.title = () => 'Pick a resource'
+        this.tell = () => {
+            let ele = render('resource-search-result', { ele: 'div' })
+            this.listResources(args.connDetail, ele)
+            return ele
+        }
+
+        this.nextStoryClass = () => ResourceConfigStory
+
+        this.moral = () => ({ ...args, resourceName: this.resourceName, resourceType: this.resourceType, version: this.version })
+
+        this.isCompleted = () => (this.resourceName && 1)
+
+        this.getErrMsg = () => "Pick a resource to continue.."
+
+        this.listResources = (c, where) => {
+            console.log(c)
+            let self = this
+            callWithWaitUI(where, (done) => {
+                let headers = { Authorization: "Basic " + btoa(`${c.username}:${c.password}`) }
+                let getRConf = post(`/nocors`, { method: "GET", headers, url: `${c.url}/access/1/catalog/resources` }, { "Content-Type": "application/json" })
+                let getVersion = post(`/nocors`, { method: "GET", headers, url: `${c.url}/access/2/catalog/data/productInformation` }, { "Content-Type": "application/json" })
+                Promise.allSettled([getRConf, getVersion])
+                    .then(proms => {
+                        let resources = JSON.parse(proms[0].value.response)
+                        let version = JSON.parse(proms[1].value.response).releaseVersion
+                        where.innerHTML = ""
+                        tabulate(resources, where, {
+                            classPrefix: 'res-search-result',
+                            defaultSortKey: 'Name',
+                            keys: {
+                                "Select": { vFunc: (r) => { return { ele: 'input', attribs: { type: 'radio', name: `resource-${uniqId}`, resourceName: r.resourceName, resourceType: r.resourceTypeName }, evnts: { change: (e) => e.stopPropagation() } } } },
+                                "Name": { sortable: true, keyId: "resourceName" },
+                                "Type": { sortable: true, keyId: "resourceTypeName" },
+                                "Created By": { keyId: "createdBy" },
+                                "Description": { keyId: "description" }
+                            },
+                            rowEvents: {
+                                click: function () {
+                                    let chkbox = this.querySelector('input[type=radio]')
+                                    self.resourceName = chkbox.resourceName
+                                    self.resourceType = chkbox.resourceType
+                                    self.version = version
+                                    chkbox.checked = !chkbox.checked
+                                }
                             }
-                        }
-                    },
-                    {
-                        ele: 'div',
-                        iden: 'rcpreview'
-                    }
-                ]
-            }
+                        })
+                    })
+                    .finally(() => done())
+            })
         }
-        let ele = render('edcresconfig', renderable(obj), (id, obj) => {
-            self[id] = obj
-        });
-        this.editor = ele.getElementsByTagName('textarea')[0];
-        this.scripteditor = ele.getElementsByTagName('textarea')[1];
-        this.preview = ele.getElementsByClassName('applet-preview')[0];
-        return ele;
     }
+}
 
-    loadResource() {
-        let v = (x) => this[x].value
-        return new Promise((s, f) => {
+class ResourceConfigStory {
+    constructor(args) {
+
+        let resourceConfig
+
+        this.title = () => 'Pick what you want to backup'
+
+        this.nextStoryClass = () => SummaryStory
+
+        this.moral = () => ({ ...args, resourceConfig: this.resourceConfig, xdocs: this.xdocFiles })
+
+        this.isCompleted = () => true
+
+        this.getErrMsg = () => ""
+
+        this.preDestroy = () => {
+            if (this.saveResourceConfig.checked)
+                this.resourceConfig = resourceConfig
+            this.xdocFiles = []
+            return new Promise((resolve) => {
+                callWithWaitUI(this.ele, (done) => {
+                    let scannerIds = this.scannerIds.querySelectorAll('input[type=checkbox]:checked')
+                    let proms = [], c = args.connDetail
+                    for (let i = 0; i < scannerIds.length; i++) {
+                        const scannerId = scannerIds[i].data
+                        let url = `${c.url}/access/1/catalog/data/downloadXdocs?resourceName=${args.resourceName}&providerId=${scannerId}`
+                        let x = post(
+                            `/files/download`,
+                            { method: 'GET', url: url, fileName: `${args.resourceName}_${scannerId}_${+(new Date())}.json`, headers: { 'Content-Type': 'application/octet-stream', Authorization: "Basic " + btoa(`${c.username}:${c.password}`) } },
+                            { 'Content-Type': 'application/json' }
+                        )
+                        x.then(resp => this.xdocFiles.push({ providerId: scannerId, resourceName: args.resourceName, file: resp.response }))
+                        proms.push(x)
+                    }
+                    Promise.allSettled(proms)
+                        .then(() => resolve())
+                        .finally(() => done())
+                })
+            })
+        }
+
+        this.tell = () => {
+            this.ele = render('resource-config', { ele: 'div' })
+            this.loadResourceConfig(this.ele)
+            return this.ele
+        }
+        this.loadResourceConfig = (ele) => {
+            let c = args.connDetail
             post(
                 `/nocors`,
                 {
                     method: "GET",
                     headers: {
-                        Authorization: "Basic " + btoa(v('user') + ":" + v('password'))
+                        Authorization: "Basic " + btoa(`${c.username}:${c.password}`)
                     },
-                    url: `${v('url')}/access/1/catalog/resources/${v('resourcename')}?sensitiveOptions=true`
+                    url: `${c.url}/access/1/catalog/resources/${args.resourceName}?sensitiveOptions=true`
                 },
-                {
-                    "Content-Type": "application/json"
-                }
-            ).then(x => s(JSON.parse(x.response)))
-             .catch(x => f(x))
-        })
-    }
-
-    getContent() {
-        if(!this.value) {
-            // alert('Get the resource config first')
-            throw "Get the resource config first"
-            return;
+                { "Content-Type": "application/json" }
+            )
+                .then(x => JSON.parse(x.response))
+                .then(res => {
+                    resourceConfig = res
+                    let hres = res.resourceIdentifier
+                    return render(
+                        'resource-import-detail',
+                        {
+                            ele: 'div',
+                            classList: 'container',
+                            children: [
+                                { ele: 'i', classList: 'key', text: 'Resource name' },
+                                { ele: 'b', classList: 'value', text: hres.resourceName },
+                                { ele: 'br' },
+                                { ele: 'i', classList: 'key', text: 'Type' },
+                                { ele: 'b', classList: 'value', text: hres.resourceTypeName },
+                                { ele: 'br' },
+                                {
+                                    ele: 'div',
+                                    classList: 'features',
+                                    children: [
+                                        { ele: 'span', text: 'Choose the features you want to backup' },
+                                        { ele: 'br' },
+                                        {
+                                            ele: 'input',
+                                            postlabel: 'Resource config',
+                                            classList: 'features',
+                                            iden: 'saveResourceConfig',
+                                            attribs: {
+                                                type: 'checkbox',
+                                                checked: true
+                                            }
+                                        },
+                                        { ele: 'br' },
+                                        {
+                                            ele: 'input',
+                                            classList: 'pick-xdocs features',
+                                            postlabel: 'Exchange documents (xdocs)',
+                                            attribs: {
+                                                type: 'checkbox'
+                                            }
+                                        },
+                                        {
+                                            ele: 'div',
+                                            classList: 'scannerids',
+                                            iden: 'scannerIds',
+                                            text: 'Choose all the type of xdocs you want to save',
+                                            children: res.scannerConfigurations.filter(x => x.enabled || x.scanner.providerTypeId == 'CORE').map(x => {
+                                                return {
+                                                    ele: 'div',
+                                                    classList: 'scannerid',
+                                                    children: [
+                                                        {
+                                                            ele: 'input',
+                                                            attribs: { type: 'checkbox', disabled: x.scanner.providerTypeId == 'CORE', checked: x.scanner.providerTypeId == 'CORE', data: x.scanner.scannerId },
+                                                            postlabel: x.scanner.scannerId
+                                                        }
+                                                    ]
+                                                }
+                                            })
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        (id, ele) => this[id] = ele,
+                        ele
+                    )
+                })
         }
-        let self = this
-        let v = (x) => self[x].value
-        return {
-            value: self.value,
-            config : {
-                url : v('url'),
-                username: v('user'),
-                password: v('password'),
-                resourcename: v('resourcename'),
-                comment : v('comment')
-            },
-        };
     }
+}
 
+class ManualConfigStory {
+    constructor(args) {
+
+        this.title = () => 'Enter the resource coordinates'
+
+        this.tell = function () {
+            return render('instance-selection-story', {
+                ele: 'div',
+                classList: 'inputs-res-config',
+                children: [
+                    {
+                        ele: "div",
+                        children: [
+                            { ele: "input", classList: "input", iden: "url", label: "edc url" },
+                            { ele: "input", classList: "input", iden: "user", label: "username" },
+                            { ele: "input", classList: "input", iden: "password", label: "password" }
+                        ]
+                    }
+                ]
+            }, (id, ele) => this[id] = ele)
+        }
+
+        this.isCompleted = () => (this.url.value && this.user.value && this.password.value)
+
+        this.nextStoryClass = () => ResourceSelectionStory
+
+        this.moral = () => {
+            let u = new URL(this.url.value)
+            return { connDetail: { url: `${u.protocol}//${u.host}`, username: this.user.value, password: this.password.value } }
+        }
+    }
+}
+
+class UploadXdocStory {
+    constructor(args) {
+        this.title = () => 'Upload xdocs'
+        this.tell = function () {
+            return render('xdocs-upload-story', {
+                ele: 'div',
+                classList: 'container',
+                children: [
+                    {
+                        ele: "select",
+                        classList: "inp",
+                        iden: "version",
+                        label: 'EDC version',
+                        children: [
+                            { ele: "option", value: "10.2.1", text: "10.2.1" },
+                            { ele: "option", value: "10.2.1", text: "10.2.2" },
+                            { ele: "option", value: "10.2.1", text: "10.2.2 HF1" },
+                            { ele: "option", value: "10.2.1", text: "10.4.0" },
+                            { ele: "option", value: "10.2.1", text: "10.4.1" },
+                            { ele: "option", value: "10.2.1", text: "10.5.0" },
+                        ]
+                    },
+                    {
+                        ele: 'button',
+                        classList: 'inp',
+                        text: 'Pick xdoc json files',
+                        label: 'Upload xdocs',
+                        evnts: {
+                            click: () => {
+                                filePicker().then((files) => {
+                                    this.files = files
+                                    this.filePath.innerHTML = files.map(file => `<a href="${files[0]}">${files[0]}</a>`).join('<br/>')
+                                })
+                            }
+                        }
+                    },
+                    { ele: 'div', classList: 'file-path', iden: 'filePath' }
+                ]
+            }, (id, ele) => this[id] = ele)
+        }
+        this.nextStoryClass = () => SummaryStory
+        this.moral = () => ({ ...args, version: this.version.value, xdocs: this.files.map(f => ({ file: f })) })
+
+        this.isCompleted = function () {
+            return (this.files && this.version.value)
+        }
+        this.getErrMsg = function () {
+            return 'Choose a file and version'
+        }
+    }
+}
+
+class SummaryStory {
+    constructor(arg) {
+        this.title = () => 'Summary'
+
+        this.tell = () => {
+            console.log(arg)
+            return render('summary-story', {
+                ele: 'div',
+                children: [
+                    ...(!arg.resourceName ? [] : [{ ele: 'span', classList: 'kvp', attribs: { innerHTML: `<i>Resource name</i>: <b>${arg.resourceName}</b>` } }]),
+                    ...(!arg.resourceType ? [] : [{ ele: 'span', classList: 'kvp', attribs: { innerHTML: `<i>Resource type</i>: <b>${arg.resourceType}</b>` } }]),
+                    ...(!arg.version ? [] : [{ ele: 'span', attribs: { innerHTML: `<i>EDC version</i>: <b>${arg.version}</b>` } }]),
+                    ...(!arg.xdocs ? [] : [{
+                        ele: 'div',
+                        children: [
+                            { ele: 'span', text: 'XDoc files' },
+                            ...arg.xdocs.map(xdoc => ({ ele: 'a', attribs: { href: xdoc.file }, text: xdoc.file, classList: 'xdoc-link' }))
+                        ]
+                    }]),
+                    ...(!arg.resourceConfig ? [] : [{
+                        ele: 'div',
+                        children: [
+                            { ele: 'span', text: 'Config' },
+                            {
+                                ele: 'div',
+                                classList: 'scanner-config',
+                                children: arg.resourceConfig.scannerConfigurations.filter(sc => sc.enabled).map(sc => ({
+                                    ele: 'div',
+                                    children: [
+                                        { ele: 'a', attribs: { href: '#' }, text: sc.scanner.scannerId, evnts: { click: function () { this.nextSibling.style.display = this.nextSibling.style.display == 'block' ? 'none' : 'block' } } },
+                                        {
+                                            ele: 'div',
+                                            classList: 'scanner-config-options',
+                                            children: sc.configOptions.map(co => ({ ele: 'span', classList: 'scanner-config-option', attribs: { innerHTML: `<i>${co.optionId}</i>: <b>${JSON.stringify(co.optionValues)}</b>` } }))
+                                        }
+                                    ]
+                                }))
+                            }
+                        ]
+                    }])
+                ]
+            })
+        }
+        this.moral = () => { return arg }
+    }
 }
