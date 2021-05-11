@@ -3,6 +3,7 @@ package inodes.service;
 import inodes.Configuration;
 import inodes.models.FileDetail;
 import inodes.service.api.StorageService;
+import inodes.util.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -108,7 +109,8 @@ public class FileSystemStorageService extends WebMvcConfigurerAdapter implements
     }
 
     @Override
-    public void delete(String user, String fileName) {
+    public void delete(String fileName) {
+        String user = SecurityUtil.getCurrentUser();
         System.out.println("fileName = " + fileName);
         System.out.println(rootLocation.resolve(user).resolve(fileName).toFile().getAbsolutePath());
         rootLocation.resolve(user).resolve(fileName).toFile().delete();

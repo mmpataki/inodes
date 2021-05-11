@@ -7,6 +7,7 @@ import inodes.models.UserInfo;
 import inodes.repository.GroupRepo;
 import inodes.repository.UserRepo;
 import inodes.util.Hasher;
+import inodes.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,8 +50,8 @@ public class UserGroupService extends Observable {
         });
 
         /* add user groups to user info */
-        registerPostEvent(Events.USER_SEARCH, o -> {
-            UserInfo u = (UserInfo) o;
+        registerPostEvent(Events.USER_SEARCH, ed -> {
+            UserInfo u = (UserInfo) ed.get("userInfo");
             u.addExtraInfo("groups", getGroupsOf(u.getBasic().getUserName()));
         });
 
@@ -90,9 +91,9 @@ public class UserGroupService extends Observable {
         user.setVerified(false);
         user.setRegTok(R.nextDouble() + "-" + R.nextInt());
 
-        notifyPreEvent(Events.USER_REGISTERED, user);
+        notifyPreEvent(Events.USER_REGISTERED, EventData.of("user", user));
         _register(user);
-        notifyPostEvent(Events.USER_REGISTERED, user);
+        notifyPostEvent(Events.USER_REGISTERED, EventData.of("user", user));
     }
 
     private void _register(User user) throws Exception {
@@ -118,6 +119,10 @@ public class UserGroupService extends Observable {
         return getUser(userId).getRoles().contains("ADMIN");
     }
 
+    public boolean amIAdmin() throws Exception {
+        return isAdmin(SecurityUtil.getCurrentUser());
+    }
+
     public List<User> getUsers() throws Exception {
         List<User> ret = new LinkedList<>();
         UR.findAll().forEach(ret::add);
@@ -126,16 +131,20 @@ public class UserGroupService extends Observable {
 
     public UserInfo getUserInfo(String uid) throws Exception {
         User user = getUser(uid);
+        notifyPreEvent(Events.USER_SEARCH, EventData.of("userId", uid));
         UserInfo uInfo = new UserInfo(user);
-        notifyPostEvent(Events.USER_SEARCH, uInfo);
+        notifyPostEvent(Events.USER_SEARCH, EventData.of("userInfo", uInfo));
         return uInfo;
     }
 
-    public void updateUser(String modifier, User u) throws Exception {
+    public void updateUser(User u) throws Exception {
 
-        if (!modifier.equals(u.getUserName()) && !isAdmin(modifier)) {
+        String modifier = SecurityUtil.getCurrentUser();
+
+        if (modifier == null || (!modifier.equals(u.getUserName()) && !isAdmin(modifier))) {
             throw new UnAuthorizedException("Unauthorized");
         }
+
         User modifierUser = getUser(modifier);
         if (u.getRoles() != null) {
             for (String role : u.getRoles().split(",")) {
@@ -204,19 +213,20 @@ public class UserGroupService extends Observable {
         return GR.findOne(groupName);
     }
 
-    public void createGroup(String user, Group grp) throws Exception {
-        AS.checkGroupCreationPermissions(user);
+    public void createGroup(Group grp) throws Exception {
+        AS.checkGroupCreationPermissions();
+        grp.addUser(getUser(SecurityUtil.getCurrentUser()));
         _createGroup(grp);
     }
 
-    public void addUserToGroup(String curUser, String group, String user) throws Exception {
-        AS.checkAddUserToGroupPermission(curUser, group);
+    public void addUserToGroup(String group, String user) throws Exception {
+        AS.checkAddUserToGroupPermission(group);
         _addUserToGroup(group, user);
-        notifyPostEvent(Events.USER_ADDED_TO_GROUP, Arrays.asList(curUser, user, group));
+        notifyPostEvent(Events.USER_ADDED_TO_GROUP, EventData.of("user", getUser(user), "group", group));
     }
 
-    public void deleteUserFromGroup(String curUser, String group, String user) throws Exception {
-        AS.checkDeleteUserFromGroupPermission(curUser, group);
+    public void deleteUserFromGroup(String group, String user) throws Exception {
+        AS.checkDeleteUserFromGroupPermission(group);
         _deleteUserFromGroup(group, user);
     }
 

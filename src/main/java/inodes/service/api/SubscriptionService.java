@@ -23,8 +23,8 @@ public abstract class SubscriptionService extends Observable {
 
     @PostConstruct
     public void init() {
-        US.registerPostEvent(UserGroupService.Events.USER_SEARCH, o -> {
-            UserInfo u = (UserInfo) o;
+        US.registerPostEvent(UserGroupService.Events.USER_SEARCH, ed -> {
+            UserInfo u = (UserInfo) ed.get("userInfo");
             u.addExtraInfo("direct_subscriptions", getSubscribers(Subscription.SubscriberType.USER, u.getBasic().getUserName()));
             Map<String, List<Subscription>> gSubscriptions = new HashMap<>();
             US.getGroupsOf(u.getBasic().getUserName()).forEach(gid -> {
@@ -35,12 +35,11 @@ public abstract class SubscriptionService extends Observable {
     }
 
     public void subscribe(
-            String user,
             Subscription.SubscriberType subscriberType, String subscriberId,
             Subscription.SubscribedObjectType objTyp, String objId,
             Subscription.Event event) throws Exception {
 
-        AS.checkSubscribePermission(user, subscriberType, subscriberId);
+        AS.checkSubscribePermission(subscriberType, subscriberId);
 
         Subscription s = Subscription.builder()
                 .subscriberType(subscriberType).subscriberId(subscriberId)
@@ -48,9 +47,9 @@ public abstract class SubscriptionService extends Observable {
                 .event(event)
                 .lastUpdTime(System.currentTimeMillis())
                 .build();
+        notifyPreEvent(EventType.NEW_SUBSCRIPTION, EventData.of("subscription", s));
         _saveSubscription(s);
-
-        notifyPostEvent(EventType.NEW_SUBSCRIPTION, s);
+        notifyPostEvent(EventType.NEW_SUBSCRIPTION, EventData.of("subscription", s));
     }
 
     protected abstract void _saveSubscription(Subscription subscription);

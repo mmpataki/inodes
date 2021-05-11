@@ -5,6 +5,7 @@ import inodes.models.VoteEntry;
 import inodes.repository.CommentsRepo;
 import inodes.repository.VotesRepo;
 import inodes.service.api.CollabService;
+import inodes.util.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Example;
 import org.springframework.stereotype.Service;
@@ -35,8 +36,8 @@ public class DBBasedCollabService extends CollabService {
     }
 
     @Override
-    protected Comment _comment(String user, String id, String comment) throws Exception {
-        Comment c = Comment.builder().postid(id).userid(user).itime(System.currentTimeMillis()).txt(comment).build();
+    protected Comment _comment(String id, String comment) throws Exception {
+        Comment c = Comment.builder().postid(id).userid(SecurityUtil.getCurrentUser()).itime(System.currentTimeMillis()).txt(comment).build();
         CR.save(c);
         return c;
     }
@@ -47,12 +48,12 @@ public class DBBasedCollabService extends CollabService {
     }
 
     @Override
-    protected void _downvote(String user, String id) throws Exception {
+    protected void _downvote(String id) throws Exception {
         vote(id, -1);
     }
 
     @Override
-    protected void _upvote(String user, String id) throws Exception {
+    protected void _upvote(String id) throws Exception {
         vote(id, +1);
     }
 

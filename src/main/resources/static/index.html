@@ -120,7 +120,12 @@
                         let e = g('editor');
                         e.innerHTML = '';
                         if (!klassObj.inodes_editor || force || obj) {
-                            klassObj.inodes_editor = klassObj.getEditor(obj)
+                            try {
+                                klassObj.inodes_editor = klassObj.getEditor(obj)
+                            } catch (e) {
+                                showError("You don't have permissions to edit this object")
+                                throw e
+                            }
                         }
                         e.appendChild(klassObj.inodes_editor)
                         g('changenoteeditor').style.display = obj ? 'block' : 'none'
@@ -135,6 +140,7 @@
                         <a class="action-item" href="javascript:inodes.openEditor(undefined, true)">New Post</a>
                         <a class="action-item" href="javascript:inodes.openAccount()">Account (${getCurrentUser()})</a>
                         <a class="action-item" href="javascript:inodes.openMyPosts()">My Posts</a>
+                        <a class="action-item" href="javascript:inodes.openNotifications()">Notifications</a>
                         <a class="action-item" href="javascript:inodes.logout()">Logout</a>
                         <a class="action-item" href="javascript:inodes.createGroup()">New Group</a>
                     `;
@@ -315,6 +321,9 @@
                         if (obj.needsApproval && getCurrentUser() && getCurrentUser() != obj.owner) {
                             card = klass.getSafeCard(obj);
                         } else {
+                            if (JSON.parse(obj.content) == '-perm-needed-') {
+                                klass = new NoPermissionKlass()
+                            }
                             card = klass.getCard(obj)
                         }
                     } catch (e) {
@@ -910,6 +919,13 @@
                     showError('You are not logged in, so all post related actions might not work')
                 }
             }
+            openNotifications() {
+                let u = getCurrentUser();
+                this.triggerSearch(`#inodesapp #notifications`)
+                if (!u) {
+                    showError('You are not logged in, so all post related actions might not work')
+                }
+            }
             openRegisterPage() {
                 this.triggerSearch('#register #inodesapp')
             }
@@ -970,6 +986,28 @@
                         }
                     })
                 });
+            }
+        }
+
+        class NoPermissionKlass {
+            getCard(obj) {
+                return render('no-permission', {
+                    ele: 'div',
+                    attribs: { style: 'padding: 50px' },
+                    children: [
+                        { ele: 'span', text: "You dont' have permissions to access this info. But you can " },
+                        { ele: 'button', text: 'request', evnts: { click: () => { this.requestAccess(obj.id) } } },
+                        { ele: 'span', text: " for it" }
+                    ]
+                })
+            }
+            getEditor() {
+                throw new Error("You don't have permissions to edit this object")
+            }
+            requestAccess(id) {
+                post(`/data/${id}/askPermission`, "", {})
+                    .then(() => showSuccess('Your request has been sent to team owning the object. Wait till someone approves it'))
+                    .catch(msg => showError(msg.message))
             }
         }
 

@@ -2,6 +2,7 @@ package inodes.controllers;
 
 import inodes.models.*;
 import inodes.service.api.TagsService;
+import inodes.util.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,8 +30,8 @@ public class TagsController {
     }
 
     @PostMapping("/tags")
-    public void putTag(@ModelAttribute("loggedinuser") String user, Tag tag) throws Exception {
-        TS.addTag(user, tag);
+    public void putTag(Tag tag) throws Exception {
+        TS.addTag(tag);
     }
 
 }

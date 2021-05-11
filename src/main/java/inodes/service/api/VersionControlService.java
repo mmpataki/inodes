@@ -3,6 +3,7 @@ package inodes.service.api;
 import com.google.gson.Gson;
 import inodes.Configuration;
 import inodes.models.Document;
+import inodes.util.SecurityUtil;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -31,11 +32,11 @@ public class VersionControlService {
         Gson G = new Gson();
         root = conf.getProperty("vcservice.storage.dir");
 
-        Interceptor docObserver = o -> {
+        Interceptor docObserver = ed -> {
 
-            Document doc = (Document) ((List)o).get(1);
-            String user = (String) ((List)o).get(0);
-            String changeNote = (String) ((List)o).get(2);
+            Document doc = (Document) ed.get("doc");
+            String user = SecurityUtil.getCurrentUser();
+            String changeNote = (String) ed.get("changeNote");
 
             if(Files.exists(Paths.get(root)))
                 Files.createDirectories(Paths.get(root));

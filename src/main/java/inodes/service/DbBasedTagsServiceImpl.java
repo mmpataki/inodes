@@ -32,7 +32,7 @@ public class DbBasedTagsServiceImpl extends TagsService {
     void init() throws Exception {
         DS.registerPostEvent(DataService.ObservableEvents.SEARCH, o -> {
             Set<String> tags = new HashSet<>();
-            for (Document doc : (List<Document>) o) {
+            for (Document doc : (List<Document>) o.get("results")) {
                 if (doc.getTags() != null) {
                     for (String tag : doc.getTags()) {
                         tags.add(tag);
@@ -48,7 +48,7 @@ public class DbBasedTagsServiceImpl extends TagsService {
         });
 
         Interceptor newTagsCapturer = d -> {
-            tDocs.add((Document) ((List)d).get(1));
+            tDocs.add((Document) d.get("doc"));
         };
         DS.registerPostEvent(DataService.ObservableEvents.NEW, newTagsCapturer);
         DS.registerPostEvent(DataService.ObservableEvents.UPDATE, newTagsCapturer);

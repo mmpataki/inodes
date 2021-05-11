@@ -25,19 +25,20 @@ public class Observable {
         preobservers.get(tag).add(interceptor);
     }
 
-    public void notifyPreEvent(Object tag, Object o) {
-        notify(tag, preobservers, o);
+    public void notifyPreEvent(Object tag, EventData args) {
+        notify(tag, preobservers, args);
     }
 
-    public void notifyPostEvent(Object tag, Object o) {
-        notify(tag, postobservers, o);
+    public void notifyPostEvent(Object tag, EventData args) {
+        notify(tag, postobservers, args);
     }
 
-    private void notify(Object tag, Map<Object, List<Interceptor>> observers, Object o) {
-        if(observers.containsKey(tag)) {
+    private void notify(Object tag, Map<Object, List<Interceptor>> observers, EventData args) {
+        if (observers.containsKey(tag)) {
+            LOG.info(String.format("Notifying event (%s : %s) to %s", tag.toString(), args.toString(), observers.get(tag)));
             for (Interceptor interceptor : observers.get(tag)) {
                 try {
-                    interceptor.intercept(o);
+                    interceptor.intercept(args);
                 } catch (Exception e) {
                     LOG.error("Failed to notify interceptor: " + interceptor.getClass().getName(), e);
                 }

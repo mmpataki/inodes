@@ -3,6 +3,7 @@ package inodes.service.api;
 import com.google.gson.Gson;
 import inodes.Configuration;
 import inodes.models.Document;
+import inodes.util.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -54,15 +55,20 @@ public class AdminService {
     public void loadTrusted() throws Exception {
         File dir = new File(conf.getProperty("adminservice.trusted.doc.dir"));
         Gson g = new Gson();
-        for (File file : dir.listFiles()) {
-            Document d = g.fromJson(new FileReader(file), Document.class);
-            DS.createContent(d.getOwner(), d, "restored version : " + new Date());
-            DS.approve(UserGroupService.ADMIN, d.getId());
+        try {
+            SecurityUtil.setCurrentUser(UserGroupService.ADMIN);
+            for (File file : dir.listFiles()) {
+                Document d = g.fromJson(new FileReader(file), Document.class);
+                DS.createContent(d, "restored version : " + new Date());
+                DS.approve(d.getId());
+            }
+        } finally {
+            SecurityUtil.unsetCurrentUser();
         }
     }
 
     public void trust(String id) throws Exception {
-        Document d = DS.get(UserGroupService.ADMIN, id);
+        Document d = DS.get(id);
         FileWriter fw = new FileWriter(conf.getProperty("adminservice.trusted.doc.dir") + "/" + d.getType() + "-" + d.getId());
         Gson g = new Gson();
         g.toJson(d, fw);
@@ -91,7 +97,12 @@ public class AdminService {
         Gson g = new Gson();
         for (File file : dir.listFiles()) {
             Document d = g.fromJson(new FileReader(file), Document.class);
-            DS.createContent(d.getOwner(), d, "restored version : " + new Date());
+            try {
+                SecurityUtil.setCurrentUser(d.getOwner());
+                DS.createContent(d, "restored version : " + new Date());
+            } finally {
+                SecurityUtil.unsetCurrentUser();
+            }
         }
     }
 }

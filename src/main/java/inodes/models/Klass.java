@@ -17,4 +17,5 @@ public class Klass {
     List<String> cssPaths;
     Integer version;
     boolean editApprovalNeeded;
+    boolean permissionNeeded;
 }

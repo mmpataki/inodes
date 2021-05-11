@@ -2,6 +2,7 @@ package inodes.controllers;
 
 import inodes.models.FileDetail;
 import inodes.service.api.StorageService;
+import inodes.util.SecurityUtil;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -15,37 +16,32 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-public class FileUploadController extends AuthenticatedController {
+public class FileUploadController {
 
     @Autowired
     StorageService storageService;
 
-    public FileUploadController() {
-        System.setProperty("com.sun.net.ssl.checkRevocation", "false");
-    }
-
     @GetMapping("/allmyfiles")
-    public List<FileDetail> listUploadedFiles(@ModelAttribute("loggedinuser") String user) throws Exception {
+    public List<FileDetail> listUploadedFiles() throws Exception {
+        String user = SecurityUtil.getCurrentUser();
         if (user == null || user.isEmpty())
             return Collections.emptyList();
         return storageService.loadAll(user);
     }
 
     @DeleteMapping("/files")
-    public void deleteFile(@ModelAttribute("loggedinuser") String user, @RequestParam String file) throws Exception {
-        storageService.delete(user, file);
+    public void deleteFile(@RequestParam String file) throws Exception {
+        storageService.delete(file);
     }
 
     @PostMapping("/files")
     public String handleFileUpload(
-            @ModelAttribute("loggedinuser") String user,
             @RequestParam("file") MultipartFile file) throws Exception {
-        return storageService.store(user, file);
+        return storageService.store(SecurityUtil.getCurrentUser(), file);
     }
 
     @PostMapping("/files/download")
     public String handleFileDownload(
-            @ModelAttribute("loggedinuser") String user,
             @RequestBody FileSaveRequest req) throws Exception {
         URL url = new URL(req.getUrl());
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -60,7 +56,7 @@ public class FileUploadController extends AuthenticatedController {
         }
 
         InputStream in = connection.getInputStream();
-        return storageService.store(user, req.fileName, in);
+        return storageService.store(SecurityUtil.getCurrentUser(), req.fileName, in);
     }
 
     @Data

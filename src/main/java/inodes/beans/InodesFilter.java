@@ -3,6 +3,7 @@ package inodes.beans;
 import inodes.models.Credential;
 import inodes.models.User;
 import inodes.service.api.UserGroupService;
+import inodes.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,26 +84,32 @@ public class InodesFilter implements Filter {
         resp.setHeader("Access-Control-Allow-Headers", "authorization,authinfo,content-type");
         resp.setHeader("Access-Control-Allow-Methods", "POST,PUT,DELETE");
 
-        if (!method.equals("OPTIONS")) {
-            if (url.equals("/auth/login")) {
-                doLogin(req, resp, true);
-                return;
-            } else if (url.equals("/auth/logout")) {
-                doLogout(req, resp);
-                return;
-            } else if(url.equals("/auth/register") || url.equals("/nocors") || url.startsWith("/h2-console")) {
-                // leave these guys
-            } else {
-                if (!isLoggedIn(req, resp) && !method.equals("GET")) {
-                    sendNoAuth(req, resp);
+        try {
+            if (!method.equals("OPTIONS")) {
+                if (url.equals("/auth/login")) {
+                    doLogin(req, resp, true);
                     return;
+                } else if (url.equals("/auth/logout")) {
+                    doLogout(req, resp);
+                    return;
+                } else if (url.equals("/auth/register") || url.equals("/nocors") || url.startsWith("/h2-console")) {
+                    // leave these guys
+                } else {
+                    if (!isLoggedIn(req, resp)) {
+                        if(!method.equals("GET")) {
+                            sendNoAuth(req, resp);
+                            return;
+                        }
+                    }
                 }
             }
-        }
-        filterChain.doFilter(servletRequest, servletResponse);
+            filterChain.doFilter(servletRequest, servletResponse);
 
-        Object user = req.getAttribute("loggedinuser");
-        LOG.info("[{}] - ({}) - {} {} - {}", user == null ? "--" : user.toString(), ip, method, url, resp.getStatus());
+            Object user = SecurityUtil.getCurrentUser();
+            LOG.info("[{}] - ({}) - {} {} - {}", user == null ? "--" : user.toString(), ip, method, url, resp.getStatus());
+        } finally {
+            SecurityUtil.unsetCurrentUser();
+        }
     }
 
     private boolean isLoggedIn(HttpServletRequest req, HttpServletResponse resp) {
@@ -114,7 +121,7 @@ public class InodesFilter implements Filter {
             SessionHeader sh = SessionHeader.fromHeader(sessHdr);
             boolean ret = sessMap.containsKey(sh.getUser()) && sessMap.get(sh.getUser()).getTok().equals(sh.getTok());
             if (ret) {
-                req.setAttribute("loggedinuser", sh.getUser());
+                SecurityUtil.setCurrentUser(sh.getUser());
                 return ret;
             }
         }
@@ -142,7 +149,7 @@ public class InodesFilter implements Filter {
                         sessMap.put(cred.getUserName(), sh);
                         resp.setHeader("AuthInfo", sh.toString());
                     }
-                    req.setAttribute("loggedinuser", cred.getUserName());
+                    SecurityUtil.setCurrentUser(cred.getUserName());
                     return true;
                 }
             } catch (Exception e) {

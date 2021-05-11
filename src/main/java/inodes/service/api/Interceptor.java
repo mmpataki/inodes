@@ -2,6 +2,6 @@ package inodes.service.api;
 
 public interface Interceptor {
 
-    void intercept(Object o) throws Exception;
+    void intercept(EventData o) throws Exception;
 
 }

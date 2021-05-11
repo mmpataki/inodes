@@ -4,6 +4,7 @@ import inodes.models.Klass;
 import inodes.service.api.Observable;
 import inodes.service.api.KlassService;
 import inodes.service.api.UnAuthorizedException;
+import inodes.util.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,7 +12,7 @@ import java.util.List;
 
 @RestController
 @CrossOrigin
-public class KlassController extends AuthenticatedController {
+public class KlassController {
 
     @Autowired
     KlassService KS;
@@ -22,8 +23,8 @@ public class KlassController extends AuthenticatedController {
     }
 
     @PostMapping("/klass")
-    public void register(@RequestBody Klass klass, @ModelAttribute("loggedinuser") String user) throws Exception {
-        KS.putKlass(user, klass);
+    public void register(@RequestBody Klass klass) throws Exception {
+        KS.putKlass(klass);
     }
 
     @GetMapping(value = "/klasses")

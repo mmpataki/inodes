@@ -2,24 +2,24 @@ package inodes.controllers;
 
 import inodes.models.Subscription;
 import inodes.service.api.SubscriptionService;
+import inodes.util.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-public class SubscriptionController extends AuthenticatedController {
+public class SubscriptionController {
 
     @Autowired
     SubscriptionService SS;
 
     @PostMapping("/subscribe")
     public void subscribe(
-            @ModelAttribute("loggedinuser") String user,
             @RequestParam Subscription.SubscriberType subscriberType, @RequestParam String subscriberId,
             @RequestParam Subscription.SubscribedObjectType objTyp, @RequestParam String objId,
             @RequestParam Subscription.Event event) throws Exception {
-        SS.subscribe(user, subscriberType, subscriberId, objTyp, objId, event);
+        SS.subscribe(subscriberType, subscriberId, objTyp, objId, event);
     }
 
     @GetMapping("/subscriptionsof/{subscriberType}/{gid}")

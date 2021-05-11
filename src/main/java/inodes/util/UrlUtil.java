@@ -16,4 +16,8 @@ public class UrlUtil {
         return String.format("%s/?q=@%s", Inodes.getLocalAddr(), docId);
     }
 
+    public static String getDocPermApprovalLink(String docId, String userId) {
+        return String.format("%s/data/%s/givePermission/%s", Inodes.getLocalAddr(), docId, userId);
+    }
+
 }

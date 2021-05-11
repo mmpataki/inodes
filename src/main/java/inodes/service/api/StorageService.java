@@ -21,7 +21,7 @@ public interface StorageService {
 
     Resource loadAsResource(String filename) throws Exception;
 
-    void delete(String user, String fileName);
+    void delete(String fileName);
 
     void deleteAll();
 

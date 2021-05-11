@@ -2,13 +2,11 @@ package inodes.service.api;
 
 import com.google.gson.Gson;
 import inodes.Inodes;
-import inodes.models.Document;
-import inodes.models.Group;
-import inodes.models.Subscription;
-import inodes.models.User;
+import inodes.models.*;
 import inodes.repository.EventQueue;
 import inodes.service.EmailService;
 import inodes.service.TeamsNotificationSenderService;
+import inodes.util.SecurityUtil;
 import inodes.util.UrlUtil;
 import lombok.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +44,9 @@ public class EventService {
     @Autowired
     EventQueue EQ;
 
+    @Autowired
+    AppNotificationService ANS;
+
     static EventService es;
 
     @Getter
@@ -63,65 +64,81 @@ public class EventService {
     }
 
     interface RecipientResolver {
-        Set<Reciepient> getUsers(Object o) throws Exception;
+        Set<Reciepient> getUsers(EventData o) throws Exception;
     }
 
     interface EventToEmailNotificationTransformer {
-        EmailService.EmailObject transform(Object payload);
+        EmailService.EmailObject transform(EventData payload);
     }
 
     interface EventToTeamsNotificationTransformer {
-        TeamsNotificationSenderService.TeamsNotification transform(Object payload);
+        TeamsNotificationSenderService.TeamsNotification transform(EventData payload);
+    }
+
+    interface EventToAppNotificationTransfomer {
+        AppNotification transform(EventData payload);
     }
 
     enum Type {
 
         REGISTER_USER
-                (es.getUserResolver(), es.getRegisterEmailTemplateBuilder(), null),
+                (es.getUserResolver(), es.getRegisterEmailTemplateBuilder(), null, null),
 
         USER_ADD_TO_GROUP
-                (es.getUserResolver(), es.getUserAddedToGroupEmailBuilder(), null),
+                (es.getUserResolver(), es.getUserAddedToGroupEmailBuilder(), null, null),
 
         NEW_DOC
-                (es.getDocWatcherResolver(), es.getNewDocEmailBuilder(), es.getNewDocTeamsNBuilder()),
+                (es.getDocWatcherResolver(), es.getNewDocEmailBuilder(), es.getNewDocTeamsNBuilder(), null),
 
         NEW_COMMENT
-                (es.getNewCommentWatcherResolver(), es.getNewCommentEmailBuilder(), null),
+                (es.getNewCommentWatcherResolver(), es.getNewCommentEmailBuilder(), null, null),
 
         ADMIN
-                (o -> Collections.singleton(new Reciepient().withId(UserGroupService.ADMIN).withTyp(RecipientType.GROUP)), null, null),
+                (o -> Collections.singleton(new Reciepient().withId(UserGroupService.ADMIN).withTyp(RecipientType.GROUP)), null, null, null),
 
         APPROVAL_NEEDED
-                (o -> Collections.singleton(new Reciepient().withId(UserGroupService.SECURITY).withTyp(RecipientType.GROUP)), es.getApprovalNeededEmailBuilder(), null),
+                (o -> Collections.singleton(new Reciepient().withId(UserGroupService.SECURITY).withTyp(RecipientType.GROUP)), es.getApprovalNeededEmailBuilder(), null, null),
+
+        PERMISSION_NEEDED
+                (es.getPermissionProviderResolver(), null, null, es.getPermissionNeededAppNotificationBuilder()),
+
+        PERMISSION_GIVEN
+                (es.getPermissionGivenWatcherResolver(), null, null, es.getPermissionGivenAppNotificationBuilder()),
 
         NEW_SUBSCRIPTION
-                (es.getNewSubscriptionRecptResolver(), es.getNewSubscriptionEmailBuilder(), null)
-
-        ;
+                (es.getNewSubscriptionRecptResolver(), es.getNewSubscriptionEmailBuilder(), null, null);
 
         RecipientResolver ur;
         EventToEmailNotificationTransformer eet;
         EventToTeamsNotificationTransformer ett;
+        EventToAppNotificationTransfomer eat;
 
-        Type(RecipientResolver ur, EventToEmailNotificationTransformer eet, EventToTeamsNotificationTransformer ett) {
+        Type(RecipientResolver ur, EventToEmailNotificationTransformer eet, EventToTeamsNotificationTransformer ett, EventToAppNotificationTransfomer eat) {
             this.ur = ur;
             this.eet = eet;
             this.ett = ett;
+            this.eat = eat;
         }
 
-        Set<Reciepient> resolveRecipients(Object payload) throws Exception {
+        Set<Reciepient> resolveRecipients(EventData payload) throws Exception {
             return this.ur.getUsers(payload);
         }
 
-        public TeamsNotificationSenderService.TeamsNotification getTeamsNotificationPayload(Object payLoad) {
+        public TeamsNotificationSenderService.TeamsNotification getTeamsNotificationPayload(EventData payLoad) {
             if (ett != null)
                 return ett.transform(payLoad);
             return null;
         }
 
-        public EmailService.EmailObject getEmailPayload(Object payLoad) {
+        public EmailService.EmailObject getEmailPayload(EventData payLoad) {
             if (eet != null)
                 return eet.transform(payLoad);
+            return null;
+        }
+
+        public AppNotification getAppNotificationPayload(EventData payLoad) {
+            if (eat != null)
+                return eat.transform(payLoad);
             return null;
         }
     }
@@ -130,7 +147,7 @@ public class EventService {
     @Builder
     public static class Event {
         Type typ;
-        Object payLoad;
+        EventData payLoad;
     }
 
     interface EventToPayloadTransformer {
@@ -141,7 +158,8 @@ public class EventService {
     public enum NotificationType {
 
         EMAIL(e -> e.getTyp().getEmailPayload(e.getPayLoad())),
-        TEAMS_NOTIFICATION(e -> e.getTyp().getTeamsNotificationPayload(e.getPayLoad()));
+        TEAMS_NOTIFICATION(e -> e.getTyp().getTeamsNotificationPayload(e.getPayLoad())),
+        APP_NOTIFICATION(e -> e.getTyp().getAppNotificationPayload(e.getPayLoad()));
 
         private final EventToPayloadTransformer pg;
 
@@ -165,21 +183,47 @@ public class EventService {
         Event event;
     }
 
+
+    private RecipientResolver getPermissionProviderResolver() {
+        return o -> {
+            Set<Reciepient> reciepients = new HashSet<>();
+            for (String owner : (List<String>) o.get("currentOwners")) {
+                String id;
+                if ((id = DataService.getUFromUtag(owner)) != null) {
+                    reciepients.add(Reciepient.builder().typ(RecipientType.USER).id(id).build());
+                } else if ((id = DataService.getGFromGtag(owner)) != null) {
+                    reciepients.add(Reciepient.builder().typ(RecipientType.GROUP).id(id).build());
+                }
+            }
+            return reciepients;
+        };
+    }
+
+    private RecipientResolver getPermissionGivenWatcherResolver() {
+        return o -> {
+            return Collections.singleton(Reciepient.builder().typ(RecipientType.USER).id((String) o.get("userId")).build());
+        };
+    }
+
     private RecipientResolver getNewCommentWatcherResolver() {
         return o -> {
-            List<String> chunks = (List<String>) o;
-            String comment = (new Gson()).fromJson(chunks.get(2), String.class);
-            Document d = DS.get("admin", chunks.get(1));
             Set<Reciepient> rcpnts = new HashSet<>();
-            rcpnts.add(new Reciepient().withId(d.getOwner()).withTyp(RecipientType.USER));
-            Matcher m = Pattern.compile("\\@([0-9A-Za-z]+)").matcher(comment);
-            while (m.find()) {
-                String id = m.group(1);
-                if (id.startsWith("g:")) {
-                    rcpnts.add(new Reciepient().withId(id.substring(2)).withTyp(RecipientType.GROUP));
-                } else {
-                    rcpnts.add(new Reciepient().withId(id).withTyp(RecipientType.USER));
+            try {
+                SecurityUtil.setCurrentUser(o.getPublisher());
+                String comment = (new Gson()).fromJson((String) o.get("comment"), String.class);
+                Document d = DS.get((String) o.get("docid"));
+                rcpnts.add(new Reciepient().withId(d.getOwner()).withTyp(RecipientType.USER));
+                Matcher m = Pattern.compile("\\@([0-9A-Za-z]+)").matcher(comment);
+                while (m.find()) {
+                    String id = m.group(1);
+                    if (id.startsWith("g:")) {
+                        rcpnts.add(new Reciepient().withId(id.substring(2)).withTyp(RecipientType.GROUP));
+                    } else {
+                        rcpnts.add(new Reciepient().withId(id).withTyp(RecipientType.USER));
+                    }
                 }
+            } finally {
+                SecurityUtil.unsetCurrentUser();
             }
             return rcpnts;
         };
@@ -187,7 +231,7 @@ public class EventService {
 
     private RecipientResolver getDocWatcherResolver() {
         return o -> {
-            Document doc = (Document) o;
+            Document doc = (Document) o.get("doc");
             Set<Reciepient> users = new HashSet<>();
             doc.getTags().forEach(tag -> {
                 SUS.getSubscribers(Subscription.SubscribedObjectType.TAG, tag).forEach(s -> {
@@ -213,52 +257,83 @@ public class EventService {
 
     private RecipientResolver getNewSubscriptionRecptResolver() {
         return o -> {
-            Subscription s = (Subscription) o;
+            Subscription s = (Subscription) o.get("subscription");
             return Collections.singleton(
-                new Reciepient()
-                    .withTyp(s.getSubscriberType() == Subscription.SubscriberType.USER ? RecipientType.USER : RecipientType.GROUP)
-                    .withId(s.getSubscriberId())
+                    new Reciepient()
+                            .withTyp(s.getSubscriberType() == Subscription.SubscriberType.USER ? RecipientType.USER : RecipientType.GROUP)
+                            .withId(s.getSubscriberId())
             );
         };
     }
 
     private RecipientResolver getUserResolver() {
-        return o -> Collections.singleton(Reciepient.builder().id(((User) o).getUserName()).typ(RecipientType.USER).build());
+        return o -> Collections.singleton(Reciepient.builder().id(((User) o.get("user")).getUserName()).typ(RecipientType.USER).build());
     }
 
     private EventToEmailNotificationTransformer getRegisterEmailTemplateBuilder() {
-        return o -> {
-            User u = (User) o;
+        return ed -> {
+            User u = (User) ed.get("user");
             String url = String.format("%s/auth/validate/%s?tok=%s", Inodes.getLocalAddr(), u.getUserName(), u.__getRegTok());
             return new EmailService.EmailObject()
                     .withSubject("Verify your account")
                     .withBody(
                             String.format(
-                                    "Thanks for registering on inodes. <br/><br/><a href='%s'>Click here</a> to verify your inodes account, or open this url manually<br/>%s<br/><br/>Intial credentials<br/>%s / %s",
-                                    url, url, u.getUserName(), u.getPassword()
+                                    "Thanks for registering on inodes. <br/><br/><a href='%s'>Click here</a> to verify your inodes account, or open this url manually<br/>%s<br/><br/>Your username<br/>%s",
+                                    url, url, u.getUserName()
                             )
                     );
         };
     }
 
-
     private EventToTeamsNotificationTransformer getNewDocTeamsNBuilder() {
-        return o -> {
-            Document doc = (Document) o;
+        return ed -> {
+            Document doc = (Document) ed.get("docid");
             return new TeamsNotificationSenderService.TeamsNotification()
                     .withBody(
-                        String.format(
-                            "**New node** published in the tags you follow \n %s \n **Link** : <a href='%s'>%s</a>",
-                                doc.getTags().toString(),
-                                UrlUtil.getDocUrl(doc.getId()), UrlUtil.getDocUrl(doc.getId())
-                        )
+                            String.format(
+                                    "**New node** published in the tags you follow \n %s \n **Link** : <a href='%s'>%s</a>",
+                                    doc.getTags().toString(),
+                                    UrlUtil.getDocUrl(doc.getId()), UrlUtil.getDocUrl(doc.getId())
+                            )
                     );
         };
     }
 
+    private EventToAppNotificationTransfomer getPermissionNeededAppNotificationBuilder() {
+        return ed -> {
+            String aGuy = (String) ed.get("for");
+            String docId = (String) ed.get("docId");
+            return AppNotification.builder()
+                    .nFrom("permission service")
+                    .nFor("")
+                    .ntext(String.format(
+                            "<a href=\"%s\"><b>%s</b></a> wants permission to access <a href=\"%s\" target=\"_blank\">this</a> object. " +
+                                    "Click <a href=\"#\" onclick=\"post(`%s`).then(x => showSuccess('Done')).catch(e => showError(e.msg))\"><b>this</b></a> link, if you want to approve this request",
+                            UrlUtil.getUserUrl(aGuy), aGuy, UrlUtil.getDocUrl(docId), UrlUtil.getDocPermApprovalLink(docId, aGuy)
+                    ))
+                    .ptime(System.currentTimeMillis())
+                    .build();
+        };
+    }
+
+    private EventToAppNotificationTransfomer getPermissionGivenAppNotificationBuilder() {
+        return ed -> {
+            String docId = (String) ed.get("docId");
+            return AppNotification.builder()
+                    .nFrom("permission service")
+                    .nFor("")
+                    .ntext(String.format(
+                            "Your permission request for <a href=\"%s\">this</a> object is approved. Try accessing it now",
+                            UrlUtil.getDocUrl(docId)
+                    ))
+                    .ptime(System.currentTimeMillis())
+                    .build();
+        };
+    }
+
     private EventToEmailNotificationTransformer getNewDocEmailBuilder() {
-        return o -> {
-            Document doc = (Document) o;
+        return ed -> {
+            Document doc = (Document) ed.get("docid");
             return new EmailService.EmailObject()
                     .withSubject("New node published in the tags you follow")
                     .withBody(
@@ -271,12 +346,10 @@ public class EventService {
         };
     }
 
-
     private EventToEmailNotificationTransformer getUserAddedToGroupEmailBuilder() {
-        return o -> {
-            List<String> ll = (List<String>) o;
-            String adder = ll.get(0);
-            String group = ll.get(2);
+        return ed -> {
+            String adder = (String) ed.getPublisher();
+            String group = (String) ed.get("group");
             return new EmailService.EmailObject()
                     .withSubject(String.format("%s added you to %s", adder, group))
                     .withBody(
@@ -289,16 +362,15 @@ public class EventService {
     }
 
     private EventToEmailNotificationTransformer getApprovalNeededEmailBuilder() {
-        return o -> new EmailService.EmailObject().withSubject("New applet alert").withBody(
-                String.format("New <a href='%s'>applet alert</a>", UrlUtil.getDocUrl(((Document) o).getId())));
+        return ed -> new EmailService.EmailObject().withSubject("New applet alert").withBody(
+                String.format("New <a href='%s'>applet alert</a>", UrlUtil.getDocUrl(((Document) ed.get("docid")).getId())));
     }
 
     private EventToEmailNotificationTransformer getNewCommentEmailBuilder() {
-        return o -> {
-            List<String> ll = (List<String>) o;
-            String user = ll.get(0);
-            String id = ll.get(1);
-            String comment = ll.get(2);
+        return ed -> {
+            String user = (String) ed.getPublisher();
+            String id = (String) ed.get("docid");
+            String comment = (String) ed.get("comment");
 
             return new EmailService.EmailObject()
                     .withSubject(user + " commented on your post")
@@ -314,15 +386,14 @@ public class EventService {
 
     private EventToEmailNotificationTransformer getNewSubscriptionEmailBuilder() {
         return o -> {
-            Subscription s = (Subscription) o;
+            Subscription s = (Subscription) o.get("subscription");
             return new EmailService.EmailObject()
                     .withSubject("inodes - subscription")
                     .withBody(String.format("You have subscribed for %s <a href='%s'>%s</a> for %s event", s.getObjType(), UrlUtil.getDocUrl(s.getObjid()), UrlUtil.getDocUrl(s.getObjid()), s.getEvent()));
         };
     }
 
-    public void post(Type typ, Object content) {
-        System.out.printf("New event: %s [%s]\n", typ.toString(), content.toString());
+    public void post(Type typ, EventData content) {
         EQ.enqueue(Event.builder().typ(typ).payLoad(content).build());
     }
 
@@ -331,7 +402,9 @@ public class EventService {
 
         es = this;
 
-        DS.registerPostEvent(DataService.ObservableEvents.NEW, o -> post(Type.NEW_DOC, ((List)o).get(1)));
+        DS.registerPostEvent(DataService.ObservableEvents.NEW, o -> post(Type.NEW_DOC, o));
+        DS.registerPostEvent(DataService.ObservableEvents.PERMISSION_NEEDED, o -> post(Type.PERMISSION_NEEDED, o));
+        DS.registerPostEvent(DataService.ObservableEvents.PERMISSION_GIVEN, o -> post(Type.PERMISSION_GIVEN, o));
         SS.registerPostEvent(SecurityService.EventTypes.APPROVAL_NEEDED, o -> post(Type.APPROVAL_NEEDED, o));
         US.registerPostEvent(UserGroupService.Events.USER_ADDED_TO_GROUP, o -> post(EventService.Type.USER_ADD_TO_GROUP, o));
         CS.registerPostEvent(CollabService.EventType.NEW_COMMENT, o -> post(Type.NEW_COMMENT, o));
@@ -381,15 +454,21 @@ public class EventService {
                                             exception.printStackTrace();
                                         }
                                         break;
+                                    case APP_NOTIFICATION:
+                                        try {
+                                            AppNotification payload = (AppNotification) n.getTyp().getPayload(n.getEvent());
+                                            payload.setNFor(n.getChannelInfo());
+                                            ANS.postNotification(payload);
+                                        } catch (Throwable t) {
+                                            t.printStackTrace();
+                                        }
                                 }
                             });
 
                 } catch (Throwable t) {
                     t.printStackTrace();
                 }
-
             }
-
         }).start();
     }
 
@@ -400,6 +479,7 @@ public class EventService {
             notifications.add(new Notification().withChannelInfo(grp.getEmail()).withTyp(NotificationType.EMAIL).withEvent(e));
         if (grp.getTeamsUrl() != null && !grp.getTeamsUrl().isEmpty())
             notifications.add(new Notification().withChannelInfo(grp.getTeamsUrl()).withTyp(NotificationType.TEAMS_NOTIFICATION).withEvent(e));
+        notifications.add(new Notification().withChannelInfo(grp.getGroupName()).withTyp(NotificationType.APP_NOTIFICATION).withEvent(e));
         return notifications;
     }
 
@@ -410,6 +490,7 @@ public class EventService {
             notifications.add(new Notification().withChannelInfo(user.getEmail()).withTyp(NotificationType.EMAIL).withEvent(e));
         if (user.getTeamsUrl() != null && !user.getTeamsUrl().isEmpty())
             notifications.add(new Notification().withChannelInfo(user.getTeamsUrl()).withTyp(NotificationType.TEAMS_NOTIFICATION).withEvent(e));
+        notifications.add(new Notification().withChannelInfo(user.getUserName()).withTyp(NotificationType.APP_NOTIFICATION).withEvent(e));
         return notifications;
     }
 

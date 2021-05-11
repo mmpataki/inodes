@@ -5,6 +5,7 @@ import inodes.models.User;
 import inodes.models.UserInfo;
 import inodes.service.api.UserGroupService;
 import inodes.service.api.DataService;
+import inodes.util.SecurityUtil;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @CrossOrigin
-public class UserController extends AuthenticatedController {
+public class UserController {
 
     @Autowired
     UserGroupService US;
@@ -41,7 +42,7 @@ public class UserController extends AuthenticatedController {
     }
 
     @GetMapping("/auth/users")
-    public List<String> getUsers(@ModelAttribute("loggedinuser") String user) throws Exception {
+    public List<String> getUsers() throws Exception {
         return US.getUsers().stream().map(u -> u.getUserName()).collect(Collectors.toList());
     }
 
@@ -53,28 +54,26 @@ public class UserController extends AuthenticatedController {
     }
 
     @PostMapping("/auth/user")
-    public void updateUser(@RequestBody User user, @ModelAttribute("loggedinuser") String curUser) throws Exception {
-        Objects.requireNonNull(curUser);
-        US.updateUser(curUser, user);
+    public void updateUser(@RequestBody User user) throws Exception {
+        US.updateUser(user);
     }
 
     @PostMapping("/auth/groups")
-    public void addGroup(@RequestBody Group grp, @ModelAttribute("loggedinuser") String user) throws Exception {
-        US.createGroup(user, grp);
-        US.addUserToGroup(user, grp.getGroupName(), user);
+    public void addGroup(@RequestBody Group grp) throws Exception {
+        US.createGroup(grp);
     }
 
     @PostMapping("/auth/groups/{gname}/add")
-    public void addUserToGroup(@PathVariable("gname") String group, @RequestParam("user") List<String> users, @ModelAttribute("loggedinuser") String curUser) throws Exception {
+    public void addUserToGroup(@PathVariable("gname") String group, @RequestParam("user") List<String> users) throws Exception {
         for (String user : users) {
-            US.addUserToGroup(curUser, group, user);
+            US.addUserToGroup(group, user);
         }
     }
 
     @PostMapping("/auth/groups/{gname}/delete")
-    public void deleteUserFromGroup(@PathVariable("gname") String group, @RequestParam("user") List<String> users, @ModelAttribute("loggedinuser") String curUser) throws Exception {
+    public void deleteUserFromGroup(@PathVariable("gname") String group, @RequestParam("user") List<String> users) throws Exception {
         for (String user : users) {
-            US.deleteUserFromGroup(curUser, group, user);
+            US.deleteUserFromGroup(group, user);
         }
     }
 

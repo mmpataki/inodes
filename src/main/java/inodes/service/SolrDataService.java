@@ -3,17 +3,12 @@ package inodes.service;
 import inodes.Configuration;
 import inodes.models.Document;
 import inodes.service.api.DataService;
-import inodes.service.api.UserGroupService;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.request.schema.SchemaRequest;
 import org.apache.solr.client.solrj.response.FacetField;
 import org.apache.solr.client.solrj.response.QueryResponse;
-import org.apache.solr.client.solrj.response.schema.SchemaResponse;
-import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.SolrDocumentList;
-import org.apache.solr.common.SolrInputDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,7 +51,10 @@ public class SolrDataService extends DataService {
                     m.put("required", true);
                     return m;
                 })
-                .map(m -> { LOG.info("registering solr field: " + m); return m; })
+                .map(m -> {
+                    LOG.info("registering solr field: " + m);
+                    return m;
+                })
                 .map(m -> new SchemaRequest.AddField(m))
                 .forEach(a -> {
                     try {
@@ -79,22 +77,34 @@ public class SolrDataService extends DataService {
         put("int", "plongs");
         put("boolean", "booleans");
     }};
+
     private String mapType(Class<?> klass) {
-        if(clasToTypeMap.containsKey(klass.getSimpleName()))
+        if (clasToTypeMap.containsKey(klass.getSimpleName()))
             return clasToTypeMap.get(klass.getSimpleName());
         return "text_general";
     }
 
     private String getSearchQuery(String userId, SearchQuery sq) throws Exception {
-        String visibility = String.format("visibility:(%s) AND ",
-                sq.getVisibility().stream().map(x -> String.format("\"%s\"", x)).collect(Collectors.joining(" OR ")));
 
+        List<String> klassesNeedingPerms = getKlassesNeedingViewPermission();
+        String klassesNeedingPerm = "";
+        if(!klassesNeedingPerms.isEmpty())
+            klassesNeedingPerm = String.format("type:(%s)", String.join(" OR ", klassesNeedingPerms));
+
+        String visibility = String.format("visibility:(%s) AND ",
+                sq.getVisibility().stream().map(x -> x == "*" ? "*" : String.format("\"%s\"", x)).collect(Collectors.joining(" OR ")));
+
+        if(!klassesNeedingPerm.isEmpty()) {
+            visibility = String.format("(%s OR visibility:(%s)) AND ",
+                    klassesNeedingPerm, sq.getVisibility().stream().map(x -> x == "*" ? "*" : String.format("\"%s\"", x)).collect(Collectors.joining(" OR ")));
+        }
+
+        StringBuilder q = new StringBuilder();
         if (sq.getId() != null && !sq.getId().isEmpty()) {
-            return String.format("%s id:(%s)", visibility, sq.getId());
+            return q.append(String.format("%s id:(%s)", visibility, sq.getId())).toString();
         }
 
         String[] chunks = sq.getQ().split("\\s+");
-        StringBuilder q = new StringBuilder();
         q.append(visibility);
         for (String chunk : chunks) {
             if (chunk.charAt(0) == '#') {
@@ -144,7 +154,7 @@ public class SolrDataService extends DataService {
         // facets
         List<FacetField> ffs = response.getFacetFields();
         Map<String, Map<String, Long>> facetResults = new HashMap<>();
-        if(ffs != null) {
+        if (ffs != null) {
             ffs.forEach(ff -> {
                 Map<String, Long> m = new HashMap<>();
                 facetResults.put(ff.getName(), m);

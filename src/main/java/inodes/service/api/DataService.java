@@ -2,6 +2,7 @@ package inodes.service.api;
 
 import inodes.models.Document;
 import inodes.models.UserInfo;
+import inodes.util.SecurityUtil;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,9 @@ public abstract class DataService extends Observable {
         SEARCH,
         NEW,
         APPROVAL_NEEDED,
-        UPDATE;
+        UPDATE,
+        PERMISSION_NEEDED,
+        PERMISSION_GIVEN;
     }
 
     @Data
@@ -37,13 +40,37 @@ public abstract class DataService extends Observable {
     @Autowired
     UserGroupService US;
 
+    @Autowired
+    KlassService KS;
+
+    List<String> klassesNeedingViewPermission = new ArrayList<>();
+
+    public List<String> getKlassesNeedingViewPermission() {
+        return klassesNeedingViewPermission;
+    }
 
     @PostConstruct
-    public void _init() {
-        US.registerPostEvent(UserGroupService.Events.USER_SEARCH, o -> {
-            UserInfo userInfo = (UserInfo) o;
-            userInfo.addExtraInfo("postCount", getUserPostsFacets(userInfo.getBasic().getUserName()));
+    public void _init() throws Exception {
+
+        US.registerPostEvent(UserGroupService.Events.USER_SEARCH, ed -> {
+            UserInfo userInfo = (UserInfo) ed.get("userInfo");
+            userInfo.addExtraInfo("postCount", getUserPostsFacets());
         });
+
+        for (String klassName : KS.getRegisteredKlasses()) {
+            if (KS.getKlass(klassName).isPermissionNeeded())
+                klassesNeedingViewPermission.add(klassName);
+        }
+    }
+
+    public static String getUFromUtag(String uTag) {
+        if(uTag.startsWith("u-")) return uTag.substring(2);
+        return null;
+    }
+
+    public static String getGFromGtag(String gTag) {
+        if(gTag.startsWith("g-")) return gTag.substring(2);
+        return null;
     }
 
     public static String getUserTag(String userName) {
@@ -54,35 +81,37 @@ public abstract class DataService extends Observable {
         return "g-" + groupName;
     }
 
-    public SearchResponse search(String user, SearchQuery q) throws Exception {
+    public SearchResponse search(SearchQuery q) throws Exception {
+        String user = SecurityUtil.getCurrentUser();
         q.setVisibility(new HashSet<>());
         if (user != null && !user.isEmpty()) {
             q.getVisibility().add(getUserTag(user));
         }
         q.getVisibility().addAll(US.getGroupsOf(user).stream().map(DataService::getGroupTag).collect(Collectors.toList()));
-        if(US.isAdmin(user)) {
+        if (US.isAdmin(user)) {
             q.getVisibility().clear();
             q.getVisibility().add("*");
         }
+        notifyPreEvent(ObservableEvents.SEARCH, EventData.of("query", q));
         SearchResponse resp = _search(user, q);
-        notifyPostEvent(ObservableEvents.SEARCH, resp.getResults());
+        notifyPostEvent(ObservableEvents.SEARCH, EventData.of("query", q, "results", resp.getResults()));
         return resp;
     }
 
-    public void deleteObj(String user, String id) throws Exception {
-        AS.checkDeletePermission(user, get(user, id));
+    public void deleteObj(String id) throws Exception {
+        AS.checkDeletePermission(id);
         _deleteObj(id);
     }
 
-    public Document get(String user, String id) throws Exception {
+    public Document get(String id) throws Exception {
         try {
-            return search(user, SearchQuery.builder().id(id).pageSize(1).build()).getResults().get(0);
+            return search(SearchQuery.builder().id(id).pageSize(1).build()).getResults().get(0);
         } catch (IndexOutOfBoundsException i) {
             throw new NoSuchDocumentException(id);
         }
     }
 
-    public void putData(String user, Document doc, String changeNote) throws Exception {
+    public void putData(Document doc, String changeNote) throws Exception {
         assert
                 Objects.nonNull(doc) &&
                         Objects.nonNull(doc.getContent()) &&
@@ -90,57 +119,74 @@ public abstract class DataService extends Observable {
                         Objects.nonNull(doc.getVisibility()) &&
                         Objects.nonNull(doc.getType());
 
-        if (doc.getTags().contains("inodesapp") && !US.isAdmin(user))
+        if (doc.getTags().contains("inodesapp") && !US.amIAdmin())
             doc.getTags().remove("inodesapp");
 
         if (doc.getId() != null && !doc.getId().isEmpty()) {
-            if(changeNote == null || changeNote.isEmpty()) {
+            if (changeNote == null || changeNote.isEmpty()) {
                 throw new Exception("change note is required to edit this item");
             }
-            Document oldDoc = get(user, doc.getId());
-            AS.checkEditPermission(user, oldDoc);
+            Document oldDoc = get(doc.getId());
+            AS.checkEditPermission(oldDoc);
             doc.setOwner(oldDoc.getOwner());
             doc.setVotes(oldDoc.getVotes());
             doc.setComments(oldDoc.getComments());
             doc.setPostTime(oldDoc.getPostTime());
             doc.setType(oldDoc.getType());
-            updateContent(user, doc, changeNote);
+            updateContent(doc, changeNote);
         } else {
-            AS.checkCreatePermission(user, doc);
+            AS.checkCreatePermission(doc);
             doc.setId(UUID.randomUUID().toString());
             doc.setPostTime(System.currentTimeMillis());
-            doc.setOwner(user);
-            createContent(user, doc, changeNote);
+            doc.setOwner(SecurityUtil.getCurrentUser());
+            createContent(doc, changeNote);
         }
     }
 
-    public void updateContent(String user, Document doc, String changeNote) throws IOException {
-        notifyPreEvent(ObservableEvents.UPDATE, Arrays.asList(user, doc, changeNote));
+    public void updateContent(Document doc, String changeNote) throws IOException {
+        notifyPreEvent(ObservableEvents.UPDATE, EventData.of("doc", doc, "changeNote", changeNote));
         _putData(doc);
-        notifyPostEvent(ObservableEvents.UPDATE, Arrays.asList(user, doc, changeNote));
+        notifyPostEvent(ObservableEvents.UPDATE, EventData.of("doc", doc, "changeNote", changeNote));
     }
 
-    public void createContent(String user, Document doc, String changeNote) throws IOException {
-        notifyPreEvent(ObservableEvents.NEW, Arrays.asList(user, doc, changeNote));
+    public void createContent(Document doc, String changeNote) throws IOException {
+        notifyPreEvent(ObservableEvents.NEW, EventData.of("doc", doc, "changeNote", changeNote));
         _putData(doc);
-        notifyPostEvent(ObservableEvents.NEW, Arrays.asList(user, doc, changeNote));
+        notifyPostEvent(ObservableEvents.NEW, EventData.of("doc", doc, "changeNote", changeNote));
     }
 
-    public void approve(String userId, String docId) throws Exception {
-        Document doc = get(userId, docId);
-        AS.checkApprovePermission(userId, doc);
+    public void approve(String docId) throws Exception {
+        Document doc = get(docId);
+        AS.checkApprovePermission(docId);
         doc.setVisibility(doc.getSavedVisibility());
         doc.setNeedsApproval(false);
         _putData(doc);
     }
 
-    public void flag(String userId, String docId) throws Exception {
-        Document doc = get(userId, docId);
-        AS.checkFlagPermission(userId, doc);
+    public void flag(String docId) throws Exception {
+        Document doc = get(docId);
+        AS.checkFlagPermission(doc);
         doc.setSavedVisibility(doc.getVisibility());
-        doc.setVisibility(Arrays.asList(doc.getOwner(), UserGroupService.SECURITY));
+        doc.setVisibility(Arrays.asList(doc.getOwner(), getGroupTag(UserGroupService.SECURITY)));
         doc.setNeedsApproval(true);
         _putData(doc);
+    }
+
+    public void askPermission(String docId) throws Exception {
+        Document doc = get(docId);
+        EventData ed = EventData.of("for", SecurityUtil.getCurrentUser(), "docId", docId, "currentOwners", doc.getVisibility());
+        notifyPreEvent(ObservableEvents.PERMISSION_NEEDED, ed);
+        notifyPostEvent(ObservableEvents.PERMISSION_NEEDED, ed);
+    }
+
+    public void givePermission(String docId, String userid) throws Exception {
+        Document doc = get(docId);
+        if(doc.getContent().equals(SecurityService.PERM_NEEDED)) {
+            throw new UnAuthorizedException("You don't have permissions on the object to delegate them");
+        }
+        doc.getVisibility().add(getUserTag(userid));
+        _putData(doc);
+        notifyPostEvent(ObservableEvents.PERMISSION_GIVEN, EventData.of("docId", docId, "userId", userid));
     }
 
     protected abstract SearchResponse _search(String user, SearchQuery q) throws Exception;
@@ -149,8 +195,8 @@ public abstract class DataService extends Observable {
 
     protected abstract void _putData(Document doc) throws IOException;
 
-    public Map<String, Long> getUserPostsFacets(String userName) throws Exception {
-        return search(userName, SearchQuery.builder().q("*").fq(Arrays.asList("type")).fqLimit(Integer.MAX_VALUE).build()).getFacetResults().get("type");
+    public Map<String, Long> getUserPostsFacets() throws Exception {
+        return search(SearchQuery.builder().q("*").fq(Collections.singletonList("type")).fqLimit(Integer.MAX_VALUE).build()).getFacetResults().get("type");
     }
 
     @Builder
