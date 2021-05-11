@@ -35,7 +35,7 @@ public class Observable {
 
     private void notify(Object tag, Map<Object, List<Interceptor>> observers, EventData args) {
         if (observers.containsKey(tag)) {
-            LOG.info(String.format("Notifying event (%s : %s) to %s", tag.toString(), args.toString(), observers.get(tag)));
+            LOG.debug(String.format("Notifying event (%s : %s) to %s", tag.toString(), args.toString(), observers.get(tag)));
             for (Interceptor interceptor : observers.get(tag)) {
                 try {
                     interceptor.intercept(args);
