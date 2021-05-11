@@ -9,6 +9,7 @@ import inodes.service.TeamsNotificationSenderService;
 import inodes.util.SecurityUtil;
 import inodes.util.UrlUtil;
 import lombok.*;
+import lombok.extern.log4j.Log4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -18,6 +19,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
+@Log4j
 public class EventService {
 
     @Autowired
@@ -427,13 +429,13 @@ public class EventService {
                                     try {
                                         notifications.addAll(getNotifications(e, US.getGroup(r.getId())));
                                     } catch (Exception exception) {
-                                        exception.printStackTrace();
+                                        log.error("error while creating group notifications", exception);
                                     }
                                 } else {
                                     try {
                                         notifications.addAll(getNotifications(e, US.getUser(r.getId())));
                                     } catch (Exception exception) {
-                                        exception.printStackTrace();
+                                        log.error("error while creating user notifications", exception);
                                     }
                                 }
                                 return notifications.stream();
@@ -443,15 +445,15 @@ public class EventService {
                                     case EMAIL:
                                         try {
                                             ES.send(n.getChannelInfo(), (EmailService.EmailObject) n.getTyp().getPayload(n.getEvent()));
-                                        } catch (Throwable exception) {
-                                            exception.printStackTrace();
+                                        } catch (Throwable ex) {
+                                            log.error("error while sending email notifications", ex);
                                         }
                                         break;
                                     case TEAMS_NOTIFICATION:
                                         try {
                                             TS.send(n.getChannelInfo(), (TeamsNotificationSenderService.TeamsNotification) n.getTyp().getPayload(n.getEvent()));
-                                        } catch (Throwable exception) {
-                                            exception.printStackTrace();
+                                        } catch (Throwable ex) {
+                                            log.error("error while sending teams notifications", ex);
                                         }
                                         break;
                                     case APP_NOTIFICATION:
@@ -460,13 +462,13 @@ public class EventService {
                                             payload.setNFor(n.getChannelInfo());
                                             ANS.postNotification(payload);
                                         } catch (Throwable t) {
-                                            t.printStackTrace();
+                                            log.error("Error while sending app notifications: ", t);
                                         }
                                 }
                             });
 
                 } catch (Throwable t) {
-                    t.printStackTrace();
+                    log.error("error in notification sender thread: ", t);
                 }
             }
         }).start();
