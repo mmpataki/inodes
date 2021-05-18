@@ -153,7 +153,7 @@ public class InodesFilter implements Filter {
                     return true;
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.error("error while logging in: ", e);
             }
         }
         return false;
