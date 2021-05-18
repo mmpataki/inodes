@@ -136,20 +136,32 @@
             }
             showUserInfo() {
                 if (this.loggedIn()) {
-                    g('actions').innerHTML = `
-                        <a class="action-item" href="javascript:inodes.openEditor(undefined, true)">New Post</a>
-                        <a class="action-item" href="javascript:inodes.openAccount()">Account (${getCurrentUser()})</a>
-                        <a class="action-item" href="javascript:inodes.openMyPosts()">My Posts</a>
-                        <a class="action-item" href="javascript:inodes.openNotifications()">Notifications</a>
-                        <a class="action-item" href="javascript:inodes.logout()">Logout</a>
-                        <a class="action-item" href="javascript:inodes.createGroup()">New Group</a>
-                    `;
+                    g('actions').innerHTML = ''
+                    render('action', {
+                        ele: 'div',
+                        children : [
+                            {ele: 'a', attribs: {href: '#'}, classList: 'item', text: 'New Post', evnts: { click: () => inodes.openEditor(undefined, true) }},
+                            {ele: 'a', attribs: {href: '#'}, classList: 'item', text: `Account (${getCurrentUser()})`, evnts: { click: () => inodes.openAccount() }},
+                            {ele: 'a', attribs: {href: '#'}, classList: 'item', text: 'My Posts', evnts: { click: () => inodes.openMyPosts() }},
+                            {ele: 'a', attribs: {href: '#'}, classList: 'item', text: 'Notifications', evnts: { click: () => inodes.openNotifications() }, iden: 'notifscount'},
+                            {ele: 'a', attribs: {href: '#'}, classList: 'item', text: 'Logout', evnts: { click: () => inodes.logout() }},
+                            {ele: 'a', attribs: {href: '#'}, classList: 'item', text: 'New Group', evnts: { click: () => inodes.createGroup() }},
+                        ]
+                    }, (id, ele) => this[id] = ele, g('actions'))
+                    this.updateNotificationsCount();
                 } else {
                     g('actions').innerHTML = `
                         <a class="action-item" href="javascript:inodes.openSignInPage()">Sign In</a>
                         <a class="action-item" href="javascript:inodes.openRegisterPage()">Sign Up</a>
                     `
                 }
+            }
+            updateNotificationsCount() {
+                get('/notifications/unseen').then(resp => {
+                        let nc = +resp.response;
+                        let nctxt = `<span style='background-color: black; color: white; border-radius: 50%; padding: 1px 5px; font-size: 0.8em'>${nc}</span>`
+                        this.notifscount.innerHTML = `Notifications ${(nc > 0) ? nctxt : ""}`
+                    })
             }
             createGroup() {
                 this.triggerSearch('#inodesapp #creategroup')

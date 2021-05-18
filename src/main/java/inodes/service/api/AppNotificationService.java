@@ -27,7 +27,21 @@ public class AppNotificationService {
     }
 
     public void postNotification(AppNotification notification) {
+        notification.setSeen(false);
         ANR.save(notification);
     }
 
+    public void markAsSeen(String nFor, String nFrom, long ptime) {
+        AppNotification notification = ANR.findOne(AppNotification.NID.builder().nFrom(nFrom).nFor(nFor).ptime(ptime).build());
+        notification.setSeen(true);
+        ANR.save(notification);
+    }
+
+    public Integer getUnseenNotificationCount(String currentUser) {
+        return ANR.countByNForAndSeenFalse(currentUser);
+    }
+
+    public void deleteNotification(String nFor, String nFrom, long ptime) {
+        ANR.delete(AppNotification.NID.builder().nFor(nFor).nFrom(nFrom).ptime(ptime).build());
+    }
 }

@@ -689,13 +689,13 @@ function StoryTeller(storyBoardElement) {
     }
 
     this.next = () => {
-        this.nextbtn.disabled = true
         let storyPack = stack[stack.length - 1]
         if (!storyPack.story.isCompleted()) {
             this.errmsg.innerHTML = storyPack.story.getErrMsg();
             this.errmsg.style.display = 'block'
             return;
         }
+        this.nextbtn.disabled = true
         let preDestroy = storyPack.story.preDestroy || (() => new Promise((resolve) => resolve()))
         preDestroy()
             .then(() => {
