@@ -1,5 +1,6 @@
 package inodes.service.api;
 
+import inodes.models.AppNotification;
 import inodes.models.Document;
 import inodes.models.Subscription;
 import inodes.util.SecurityUtil;
@@ -154,4 +155,23 @@ public class AuthorizationService {
         throw new UnAuthorizedException(SecurityUtil.getCurrentUser() + " has no permission to " + action);
     }
 
+    public void checkNotificationSendPermission(AppNotification notification) throws Exception {
+        String uid = DataService.getUFromUtag(notification.getNFor());
+        String cuid = SecurityUtil.getCurrentUser();
+        if(uid != null && AS.getUser(uid) != null) {
+            return;
+        }
+        String gid = DataService.getGFromGtag(notification.getNFor());
+        if(gid != null) {
+            if(gid.equals(UserGroupService.PUBLIC)) {
+                if(!AS.amIAdmin() && !AS.getGroupsOf(cuid).contains(UserGroupService.SECURITY)) {
+                    reject("send notifications to " + gid);
+                }
+            } else {
+                if(!AS.getGroupsOf(cuid).contains(gid)) {
+                    reject("send notifications to " + gid + " (" + cuid + " not in " + gid + ")");
+                }
+            }
+        }
+    }
 }

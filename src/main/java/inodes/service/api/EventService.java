@@ -481,7 +481,7 @@ public class EventService {
             notifications.add(new Notification().withChannelInfo(grp.getEmail()).withTyp(NotificationType.EMAIL).withEvent(e));
         if (grp.getTeamsUrl() != null && !grp.getTeamsUrl().isEmpty())
             notifications.add(new Notification().withChannelInfo(grp.getTeamsUrl()).withTyp(NotificationType.TEAMS_NOTIFICATION).withEvent(e));
-        notifications.add(new Notification().withChannelInfo(grp.getGroupName()).withTyp(NotificationType.APP_NOTIFICATION).withEvent(e));
+        notifications.add(new Notification().withChannelInfo(DataService.getGroupTag(grp.getGroupName())).withTyp(NotificationType.APP_NOTIFICATION).withEvent(e));
         return notifications;
     }
 
@@ -492,7 +492,7 @@ public class EventService {
             notifications.add(new Notification().withChannelInfo(user.getEmail()).withTyp(NotificationType.EMAIL).withEvent(e));
         if (user.getTeamsUrl() != null && !user.getTeamsUrl().isEmpty())
             notifications.add(new Notification().withChannelInfo(user.getTeamsUrl()).withTyp(NotificationType.TEAMS_NOTIFICATION).withEvent(e));
-        notifications.add(new Notification().withChannelInfo(user.getUserName()).withTyp(NotificationType.APP_NOTIFICATION).withEvent(e));
+        notifications.add(new Notification().withChannelInfo(DataService.getUFromUtag(user.getUserName())).withTyp(NotificationType.APP_NOTIFICATION).withEvent(e));
         return notifications;
     }
 

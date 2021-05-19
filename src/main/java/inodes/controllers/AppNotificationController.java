@@ -3,11 +3,14 @@ package inodes.controllers;
 import inodes.models.AppNotification;
 import inodes.service.api.AppNotificationService;
 import inodes.util.SecurityUtil;
+import lombok.extern.log4j.Log4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
+@Log4j
 @RestController
 @RequestMapping("/notifications")
 public class AppNotificationController {
@@ -22,9 +25,21 @@ public class AppNotificationController {
         return ANS.getNotificationsFor(SecurityUtil.getCurrentUser(), offset, size);
     }
 
+    @PostMapping("")
+    public void postNotification(@RequestParam("ugids") ArrayList<String> ugids, @RequestParam("txt") String txt) throws Exception {
+        for (String ugid : ugids) {
+            AppNotification nnotif = AppNotification.builder().nFrom(SecurityUtil.getCurrentUser()).nFor(ugid).ntext(txt).ptime(System.currentTimeMillis()).build();
+            try {
+                ANS.postNotification(nnotif);
+            } catch (Exception e) {
+                log.error("error while sending notifications", e);
+            }
+        }
+    }
+
     @GetMapping("/unseen")
-    public Integer getUnseenNotificationCount() {
-        return ANS.getUnseenNotificationCount(SecurityUtil.getCurrentUser());
+    public Integer getUnseenNotificationCount() throws Exception {
+        return ANS.getUnseenNotificationCount();
     }
 
     @PostMapping("/markasseen")

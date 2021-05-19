@@ -11,6 +11,6 @@ public interface AppNotificationRepo extends PagingAndSortingRepository<AppNotif
 
     List<AppNotification> findByNForInOrderByPtimeDesc(List<String> ugids, Pageable page);
 
-    Integer countByNForAndSeenFalse(String ugid);
+    Integer countByNForInAndSeenFalse(List<String> ugids);
 
 }
