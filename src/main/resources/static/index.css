@@ -12,9 +12,6 @@ body {
     margin: 0px;
     font-size: 1.1em;
     background-color: #f3f6fd;
-}
-
-* {
     font-family: "DM Sans", sans-serif;
 }
 
@@ -204,6 +201,10 @@ body {
     display: flex;
     flex-direction: column;
     float: left;
+}
+
+.ppane {
+    padding-top: 10px;
 }
 
 .left-w85 {
