@@ -55,12 +55,12 @@ public class UserGroupService extends Observable {
             u.addExtraInfo("groups", getGroupsOf(u.getBasic().getUserName()));
         });
 
-        tc(() -> _register(new User("mmp", "Madhusoodan Pataki", "m@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT", "", "")));
-        tc(() -> _register(new User("admin", "Admin", "a@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT,ADMIN", "", "")));
-
         tc(() -> _createGroup(new Group(ADMIN, "admin group", "", "")));
         tc(() -> _createGroup(new Group(PUBLIC, "everyone", "", "")));
         tc(() -> _createGroup(new Group(SECURITY, "security group to review content", "", "")));
+
+        tc(() -> _register(new User("mmp", "Madhusoodan Pataki", "m@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT", "", "")));
+        tc(() -> _register(new User("admin", "Admin", "a@123", true, "CREATE,DELETE,EDIT,UPVOTE,DOWNVOTE,COMMENT,ADMIN", "", "")));
 
         tc(() -> _addUserToGroup(ADMIN, "admin"));
         tc(() -> _addUserToGroup(SECURITY, "admin"));
@@ -99,6 +99,7 @@ public class UserGroupService extends Observable {
     private void _register(User user) throws Exception {
         user.setPassword(Hasher.hash(user.getPassword()));
         UR.save(user);
+        _addUserToGroup(PUBLIC, user.getUserName());
     }
 
     /**
@@ -205,7 +206,6 @@ public class UserGroupService extends Observable {
             return Collections.singletonList(PUBLIC);
         }
         List<String> grps = GR.findGroupNameByUsers(User.builder().userName(user).build()).stream().map(x -> x.getGroupName()).collect(Collectors.toList());
-        grps.add(PUBLIC);
         return grps;
     }
 
