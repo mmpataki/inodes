@@ -413,7 +413,7 @@ function _filePicker(selectedFiles, title) {
         tabulate(files, self.userFiles, spec)
     }
     function refreshUserFileList() {
-        callWithWaitUI(self.fp, (done) => {
+        callWithWaitUI(self.userFiles, (done) => {
             get('/allmyfiles')
                 .then(resp => JSON.parse(resp.response))
                 .then(files => showFiles(files))

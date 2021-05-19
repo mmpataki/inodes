@@ -74,118 +74,129 @@ class posts {
                             },
                             {
                                 ele: 'div',
-                                classList: 'editor-controls',
+                                styles: { display: 'flex', maxHeight: '450px'},
                                 children: [
                                     {
-                                        ele: 'select',
-                                        attribs: { style: 'vertical-align: text-bottom;' },
+                                        ele: 'div',
+                                        styles: { width: "50%", display: "block", padding: "0px", margin: "0px" },
                                         children: [
-                                            { ele: 'option', text: 'Header 1' },
-                                            { ele: 'option', text: 'Header 2' },
-                                            { ele: 'option', text: 'Header 3' },
-                                            { ele: 'option', text: 'Header 4' }
-                                        ],
-                                        evnts: {
-                                            change: function () {
-                                                let V = { "Header 1": '#', "Header 2": '##', "Header 3": '###', "Header 4": '####' }
-                                                self.surround(V[this.value] + " ", " ")
+                                            {
+                                                ele: 'div',
+                                                classList: 'editor-controls',
+                                                children: [
+                                                    {
+                                                        ele: 'select',
+                                                        attribs: { style: 'vertical-align: text-bottom;' },
+                                                        children: [
+                                                            { ele: 'option', text: 'Header 1' },
+                                                            { ele: 'option', text: 'Header 2' },
+                                                            { ele: 'option', text: 'Header 3' },
+                                                            { ele: 'option', text: 'Header 4' }
+                                                        ],
+                                                        evnts: {
+                                                            change: function () {
+                                                                let V = { "Header 1": '#', "Header 2": '##', "Header 3": '###', "Header 4": '####' }
+                                                                self.surround(V[this.value] + " ", " ")
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'b', text: 'B', classList: 'ctrl txt-ctrl ctrl-bold', attribs: { src: '/posts-plugin/bold.png' },
+                                                        evnts: { click: function (e) { self.surround("__") } }
+                                                    },
+                                                    {
+                                                        ele: 'i', text: 'I', classList: 'ctrl txt-ctrl ctrl-italic', attribs: { src: '/posts-plugin/bold.png' },
+                                                        evnts: { click: function (e) { self.surround("_") } }
+                                                    },
+                                                    {
+                                                        ele: 'u', text: 'U', classList: 'ctrl txt-ctrl ctrl-underline', attribs: { src: '/posts-plugin/bold.png' },
+                                                        evnts: { click: function (e) { self.surround("<u>", "</u>") } }
+                                                    },
+                                                    {
+                                                        ele: 'img',
+                                                        classList: 'ctrl img-ctrl',
+                                                        attribs: { src: '/posts-plugin/image.png', title: 'Insert images' },
+                                                        evnts: {
+                                                            click: function () {
+                                                                filePicker([], 'Pick an image')
+                                                                    .then(fileNames => {
+                                                                        self.insertImgLinks(fileNames)
+                                                                        self.showPreview()
+                                                                    })
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'img',
+                                                        classList: 'ctrl img-ctrl',
+                                                        attribs: { src: '/posts-plugin/attach24.png', title: 'Attach files' },
+                                                        evnts: {
+                                                            click: function () {
+                                                                filePicker([], 'Pick a file')
+                                                                    .then(fileNames => {
+                                                                        self.attachments = [...new Set(self.attachments.concat(fileNames))]
+                                                                        self.updateAttachmentView()
+                                                                    })
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'img',
+                                                        classList: 'ctrl img-ctrl',
+                                                        attribs: { src: '/posts-plugin/code.png', title: 'Insert code snippet' },
+                                                        evnts: { click: function (e) { self.surround("```\n", "\n```") } }
+                                                    },
+                                                    {
+                                                        ele: 'img',
+                                                        classList: 'ctrl img-ctrl',
+                                                        attribs: { src: '/posts-plugin/quote.png', title: 'Insert quote' },
+                                                        evnts: { click: function (e) { self.surround("\n> ", " ") } }
+                                                    },
+                                                    {
+                                                        ele: 'img',
+                                                        classList: 'ctrl img-ctrl',
+                                                        attribs: { src: '/posts-plugin/bullet.png', title: 'List' },
+                                                        evnts: { click: function (e) { self.listview("- ") } }
+                                                    },
+                                                    {
+                                                        ele: 'img',
+                                                        classList: 'ctrl img-ctrl',
+                                                        attribs: { src: '/posts-plugin/numbered-bullet.png', title: 'List' },
+                                                        evnts: { click: function (e) { self.listview("1. ") } }
+                                                    },
+                                                    {
+                                                        ele: 'img',
+                                                        classList: 'ctrl img-ctrl',
+                                                        attribs: { src: '/posts-plugin/table.png', title: 'List' },
+                                                        evnts: { click: function (e) { self.insertAtCursor(self.editor, "Col1 | Col2\n-------|--------\n1 | 2\n3 | 4"); self.showPreview() } }
+                                                    },
+                                                ]
+                                            },
+                                            {
+                                                ele: "textarea",
+                                                classList: "editor",
+                                                iden: 'editor',
+                                                attribs: {
+                                                    rows: 25,
+                                                    value: obj ? obj.content : ""
+                                                },
+                                                evnts: { input: () =>self.showPreview() }
                                             }
-                                        }
+                                        ]
                                     },
                                     {
-                                        ele: 'b', text: 'B', classList: 'ctrl txt-ctrl ctrl-bold', attribs: { src: '/posts-plugin/bold.png' },
-                                        evnts: { click: function (e) { self.surround("__") } }
-                                    },
-                                    {
-                                        ele: 'i', text: 'I', classList: 'ctrl txt-ctrl ctrl-italic', attribs: { src: '/posts-plugin/bold.png' },
-                                        evnts: { click: function (e) { self.surround("_") } }
-                                    },
-                                    {
-                                        ele: 'u', text: 'U', classList: 'ctrl txt-ctrl ctrl-underline', attribs: { src: '/posts-plugin/bold.png' },
-                                        evnts: { click: function (e) { self.surround("<u>", "</u>") } }
-                                    },
-                                    {
-                                        ele: 'img',
-                                        classList: 'ctrl img-ctrl',
-                                        attribs: { src: '/posts-plugin/image.png', title: 'Insert images' },
-                                        evnts: {
-                                            click: function () {
-                                                filePicker([], 'Pick an image')
-                                                    .then(fileNames => {
-                                                        self.insertImgLinks(fileNames)
-                                                        self.showPreview()
-                                                    })
+                                        ele: 'div',
+                                        styles: { width: "50%", display: "block", padding: "0px 5px", margin: "0px", overflow: 'auto', border: 'solid 1px lightgray' },
+                                        children: [
+                                            {
+                                                ele: "div",
+                                                classList: "preview",
+                                                iden: 'preview',
+                                                text: 'Preview'
                                             }
-                                        }
-                                    },
-                                    {
-                                        ele: 'img',
-                                        classList: 'ctrl img-ctrl',
-                                        attribs: { src: '/posts-plugin/attach24.png', title: 'Attach files' },
-                                        evnts: {
-                                            click: function () {
-                                                filePicker([], 'Pick a file')
-                                                    .then(fileNames => {
-                                                        self.attachments = [...new Set(self.attachments.concat(fileNames))]
-                                                        self.updateAttachmentView()
-                                                    })
-                                            }
-                                        }
-                                    },
-                                    {
-                                        ele: 'img',
-                                        classList: 'ctrl img-ctrl',
-                                        attribs: { src: '/posts-plugin/code.png', title: 'Insert code snippet' },
-                                        evnts: { click: function (e) { self.surround("```\n", "\n```") } }
-                                    },
-                                    {
-                                        ele: 'img',
-                                        classList: 'ctrl img-ctrl',
-                                        attribs: { src: '/posts-plugin/quote.png', title: 'Insert quote' },
-                                        evnts: { click: function (e) { self.surround("\n> ", " ") } }
-                                    },
-                                    {
-                                        ele: 'img',
-                                        classList: 'ctrl img-ctrl',
-                                        attribs: { src: '/posts-plugin/bullet.png', title: 'List' },
-                                        evnts: { click: function (e) { self.listview("- ") } }
-                                    },
-                                    {
-                                        ele: 'img',
-                                        classList: 'ctrl img-ctrl',
-                                        attribs: { src: '/posts-plugin/numbered-bullet.png', title: 'List' },
-                                        evnts: { click: function (e) { self.listview("1. ") } }
-                                    },
-                                    {
-                                        ele: 'img',
-                                        classList: 'ctrl img-ctrl',
-                                        attribs: { src: '/posts-plugin/table.png', title: 'List' },
-                                        evnts: { click: function (e) { self.insertAtCursor(self.editor, "Col1 | Col2\n-------|--------\n1 | 2\n3 | 4"); self.showPreview() } }
-                                    },
-                                ]
-                            },
-                            {
-                                ele: "textarea",
-                                classList: "editor",
-                                iden: 'editor',
-                                attribs: {
-                                    rows: 20,
-                                    value: obj ? obj.content : ""
-                                },
-                                evnts: {
-                                    input: function (e) {
-                                        self.showPreview(e);
+                                        ]
                                     }
-                                }
-                            },
-                            {
-                                ele: 'span',
-                                text: 'Preview'
-                            },
-                            {
-                                ele: "div",
-                                classList: "preview",
-                                iden: 'preview'
+                                ]
                             },
                             {
                                 ele: 'div',
@@ -331,7 +342,7 @@ class posts {
                         {
                             ele: 'span',
                             classList: 'deletebtn',
-                            attribs: { innerHTML : '&#10006;'},
+                            attribs: { innerHTML: '&#10006;' },
                             evnts: {
                                 click: function () {
                                     self.attachments.splice(self.attachments.indexOf(file), 1);

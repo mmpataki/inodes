@@ -112,12 +112,14 @@ class applets {
                             {
                                 ele: "span",
                                 classList: "toggle-btn",
-                                text: "Edit",
-                                evnts: {
-                                    click: function (e) {
-                                        self.showEditor(e);
-                                    }
-                                }
+                                text: "HTML",
+                                evnts: { click: () => self.toggleView('htmleditor') }
+                            },
+                            {
+                                ele: "span",
+                                classList: "toggle-btn",
+                                text: "Javascript",
+                                evnts: { click: () => self.toggleView('jseditor') }
                             },
                             {
                                 ele: "span",
@@ -138,8 +140,9 @@ class applets {
                             {
                                 ele: "textarea",
                                 classList: "editor",
+                                iden: 'htmleditor',
                                 attribs: {
-                                    rows: 20,
+                                    rows: 25,
                                     value: obj ? obj.html : "",
                                     placeholder: "HTML"
                                 },
@@ -148,8 +151,10 @@ class applets {
                             {
                                 ele: "textarea",
                                 classList: "editor",
+                                iden: 'jseditor',
                                 attribs: {
-                                    rows: 20,
+                                    rows: 25,
+                                    style: 'display: none',
                                     value: obj ? obj.js : "",
                                     placeholder: "Javascript"
                                 },
@@ -157,6 +162,7 @@ class applets {
                             },
                             {
                                 ele: "div",
+                                iden: 'preview',
                                 classList: "preview",
                                 evnts: {}
                             }
@@ -165,33 +171,28 @@ class applets {
                 ]
             }
         }
-        let ele = render('applet', renderable(obj));
-        this.editor = ele.getElementsByTagName('textarea')[0];
-        this.scripteditor = ele.getElementsByTagName('textarea')[1];
-        this.preview = ele.getElementsByClassName('applet-preview')[0];
+        let ele = render('applet', renderable(obj), (id, ele) => this[id] = ele);
         return ele;
     }
 
     getContent() {
         return {
-            html: this.editor.value,
-            js: this.scripteditor.value
+            html: this.htmleditor.value,
+            js: this.jseditor.value
         };
     }
 
     // private
     showPreview() {
-        this.editor.style.display = "none"
-        this.scripteditor.style.display = "none"
-        this.preview.style.display = "block"
-        this.preview.innerHTML = this.editor.value;
+        this.toggleView('preview')
+        this.preview.innerHTML = this.htmleditor.value;
         let scrpt = document.createElement('script');
-        scrpt.innerHTML = this.getScript(this.scripteditor.value);
+        scrpt.innerHTML = this.getScript(this.jseditor.value);
         this.preview.appendChild(scrpt)
     }
-    showEditor() {
-        this.editor.style.display = "block"
-        this.scripteditor.style.display = "block"
-        this.preview.style.display = "none"
+
+    toggleView(id) {
+        ['htmleditor', 'jseditor', 'preview'].forEach(x => this[x].style.display = 'none')
+        this[id].style.display = "block"
     }
 }

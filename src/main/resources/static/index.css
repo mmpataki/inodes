@@ -11,6 +11,11 @@
 body {
     margin: 0px;
     font-size: 1.1em;
+    background-color: #f3f6fd;
+}
+
+* {
+    font-family: "DM Sans", sans-serif;
 }
 
 .tag-hits {
@@ -206,13 +211,12 @@ body {
 }
 
 .inode-container {
-    border-bottom: solid 1px lightgray;
-    padding: 5px;
+    padding: 15px;
     padding: 10px 10px 0px 10px;
     border: solid 1px lightgray;
     margin: 20px;
-    border-radius: 5px;
-    background-color: #fdfdfd;
+    border-radius: 8px;
+    background-color: white;
 }
 
 .inode-user-time {
@@ -261,7 +265,11 @@ body {
 #editor-pane {
     margin-top: 20px;
     margin-bottom: 30px;
+    padding: 20px;
+    background-color: white;
+    border-radius: 10px;
     display: none;
+    position: relative;
 }
 
 .trending-tag {
@@ -300,16 +308,15 @@ body {
 
 .title {
     font-size: 28px;
-    padding-left: 10px;
     color: black;
+    vertical-align: middle;
+    margin-right: 20px;
 }
 
 .title-bar {
     position: relative;
-    margin-bottom: 10px;
+    padding-top: 10px;
     font-weight: bolder;
-    background-color: #eaeaea;
-    font-family: monospace;
 }
 
 .maxwidth {
@@ -321,8 +328,15 @@ body {
 }
 
 .closebtn {
-    float: right;
+    position: absolute;
+    top: 0px;
+    right: 0px;
     cursor: pointer;
+    padding: 10px;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    border-radius: 50%;
 }
 
 .paginator-page-btn:hover,
@@ -590,4 +604,30 @@ img {
 
 .tabulate-cell {
     padding: 5px 10px;
+}
+
+
+.search-wrapper {
+    border-radius: 20px;
+    background-color: #fff;
+    padding-right: 12px;
+    height: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    color: #1f1c2e;
+    box-shadow: 0 2px 6px 0 rgba(136,148,171,.2),0 24px 20px -24px rgba(71,82,107,.1);
+    overflow: hidden;
+}
+  
+.search-input {
+    border: none;
+    flex: 1;
+    outline: none;
+    height: 100%;
+    padding: 0 20px;
+    font-size: 1.3em;
+    background-color: #fff;
+    color: #1f1c2e;
 }

@@ -139,13 +139,14 @@
                     g('actions').innerHTML = ''
                     render('action', {
                         ele: 'div',
-                        children : [
-                            {ele: 'a', attribs: {href: '#'}, classList: 'item', text: 'New Post', evnts: { click: () => inodes.openEditor(undefined, true) }},
-                            {ele: 'a', attribs: {href: '#'}, classList: 'item', text: `Account (${getCurrentUser()})`, evnts: { click: () => inodes.openAccount() }},
-                            {ele: 'a', attribs: {href: '#'}, classList: 'item', text: 'My Posts', evnts: { click: () => inodes.openMyPosts() }},
-                            {ele: 'a', attribs: {href: '#'}, classList: 'item', text: 'Notifications', evnts: { click: () => inodes.openNotifications() }, iden: 'notifscount'},
-                            {ele: 'a', attribs: {href: '#'}, classList: 'item', text: 'Logout', evnts: { click: () => inodes.logout() }},
-                            {ele: 'a', attribs: {href: '#'}, classList: 'item', text: 'New Group', evnts: { click: () => inodes.createGroup() }},
+                        children: [
+                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: `Account (${getCurrentUser()})`, evnts: { click: () => inodes.openAccount() } },
+                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'My Posts', evnts: { click: () => inodes.openMyPosts() } },
+                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'Notifications', evnts: { click: () => inodes.openNotifications() }, iden: 'notifscount' },
+                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'Logout', evnts: { click: () => inodes.logout() } },
+                            { ele: 'div', attribs: { style: 'margin: 10px 0px; border-top: solid 1px black; width: 50%' } },
+                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'New Post', evnts: { click: () => inodes.openEditor(undefined, true) } },
+                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'New Group', evnts: { click: () => inodes.createGroup() } },
                         ]
                     }, (id, ele) => this[id] = ele, g('actions'))
                     this.updateNotificationsCount();
@@ -158,10 +159,10 @@
             }
             updateNotificationsCount() {
                 get('/notifications/unseen').then(resp => {
-                        let nc = +resp.response;
-                        let nctxt = `<span style='background-color: black; color: white; border-radius: 50%; padding: 1px 5px; font-size: 0.8em'>${nc}</span>`
-                        this.notifscount.innerHTML = `Notifications ${(nc > 0) ? nctxt : ""}`
-                    })
+                    let nc = +resp.response;
+                    let nctxt = `<span style='background-color: black; color: white; border-radius: 50%; padding: 1px 5px; font-size: 0.8em'>${nc}</span>`
+                    this.notifscount.innerHTML = `Notifications ${(nc > 0) ? nctxt : ""}`
+                })
             }
             createGroup() {
                 this.triggerSearch('#inodesapp #creategroup')
@@ -359,7 +360,7 @@
                         ele: 'div',
                         classList: 'container',
                         styles: {
-                            borderLeft: `solid 3px ${self.randColor()}`,
+                            borderLeft: `solid 4px ${self.randColor()}`,
                             position: 'relative',
                             display: 'flex',
                             'flex-direction': 'column'
@@ -1037,33 +1038,44 @@
 
 <body>
     <div class="title-bar">
-        <div class="maxwidth" style="margin: auto;">
+        <div class="maxwidth" style="margin: auto; position: relative">
             <span class="title">i-nodes</span>
+            <div style="display: inline-block; width: 85%">
+                <div class="search-wrapper">
+                    <input class="search-input searchbox" type="text" placeholder="search"
+                        oninput="inodes.doSearch(this.value)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor"
+                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="feather feather-search"
+                        viewBox="0 0 24 24">
+                        <defs></defs>
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="M21 21l-4.35-4.35"></path>
+                    </svg>
+                </div>
+            </div>
         </div>
     </div>
     <div class="content maxwidth">
         <div id="editor-pane">
-            <fieldset>
-                <span onclick="inodes.closeEditor()" class="closebtn">x</span>
-                <label for="kclasses" class="">Post type: </label><br />
-                <select id="kclasses"></select><br /><br />
-                <div id="editor"></div><br />
-                <label for="tags-editor">Tags</label><br />
-                <input type="text" id="tags-editor" placeholder="start typing a tag name. eg edc hack"></input><br />
-                <label for="visibility-editor">Visibility</label><br />
-                <input type="text" id="visibility-editor" placeholder="start typing a user or group name"></input>
-                <div id="changenoteeditor">
-                    <label for="changenote-editor">What changed?</label><br />
-                    <input id="changenote-editor" placeholder="describe what changed in this version"></input><br />
-                </div>
-                <br />
-                <button onclick="inodes.post()">Post</button>
-            </fieldset>
+            <span onclick="inodes.closeEditor()" class="closebtn">&#10006;</span>
+            <label for="kclasses" class="">Post type: </label><br />
+            <select id="kclasses"></select><br /><br />
+            <div id="editor"></div><br />
+            <label for="tags-editor">Tags</label><br />
+            <input type="text" id="tags-editor" placeholder="start typing a tag name. eg edc hack"></input><br />
+            <label for="visibility-editor">Visibility</label><br />
+            <input type="text" id="visibility-editor" placeholder="start typing a user or group name"></input>
+            <div id="changenoteeditor">
+                <label for="changenote-editor">What changed?</label><br />
+                <input id="changenote-editor" placeholder="describe what changed in this version"></input><br />
+            </div>
+            <br />
+            <button onclick="inodes.post()">Post</button>
         </div>
         <div class="ppane">
-            <div class="searchbox-container">
+            <!-- <div class="searchbox-container">
                 <input type="text" placeholder="search" class="searchbox" oninput="inodes.doSearch(this.value)" />
-            </div>
+            </div> -->
             <div class="posts-trending">
                 <div class="left-w85">
                     <div class="posts-container">

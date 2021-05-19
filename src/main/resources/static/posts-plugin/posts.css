@@ -9,11 +9,10 @@
          box-sizing: border-box;
     border: solid 1px gray;
     resize: none;
-    padding: 10px;
+    padding: 7px;
 }
 .posts-preview {
     width: auto;
-    border: solid 1px gray;
     min-height: 10px;
     padding: 10px;
 }
@@ -76,7 +75,6 @@
 }
 .posts-editor-controls {
     background-color: lemonchiffon;
-    margin-top: 5px;
     border: solid 1px gold;
 }
 
