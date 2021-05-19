@@ -206,6 +206,10 @@ body {
     float: left;
 }
 
+.ppane {
+    padding-top: 10px;
+}
+
 .left-w85 {
     width: 80%;
 }
