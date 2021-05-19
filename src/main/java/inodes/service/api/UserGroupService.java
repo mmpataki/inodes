@@ -238,7 +238,8 @@ public class UserGroupService extends Observable {
     }
 
     protected void _createGroup(Group grp) throws Exception {
-        GR.save(grp);
+        if(getGroup(grp.getGroupName()) == null)
+            GR.save(grp);
     }
 
     public void _deleteUserFromGroup(String group, String user) throws Exception {
