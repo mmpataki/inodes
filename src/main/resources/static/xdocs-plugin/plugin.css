@@ -1,9 +1,0 @@
-.xdocs-ed-input, .xdocs-ed-textarea, .xdocs-ed-file, .xdocs-ed-select {
-    width: 80%;
-    margin: 5px;
-}
-
-.xdocs-name, .xdocs-version, .xdocs-url, .xdocs-description {
-    display: block;
-    padding: 5px;
-}
