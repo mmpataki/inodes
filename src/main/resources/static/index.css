@@ -675,7 +675,7 @@ img {
     white-space: nowrap;
     color: blue;
     text-decoration: underline;
-    cursor: 
+    cursor: pointer;
 }
 
 .new-actions:hover {
