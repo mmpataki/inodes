@@ -98,6 +98,10 @@
     background-color: lightyellow;
 }
 
+.instances-urltag > a {
+    color: orange;
+}
+
 .instances-urltag a::after {
     content: url('./images/outlink.svg');
     margin-left: 3px;
@@ -105,10 +109,6 @@
 
 .instances-urltag a {
     font-style: italic;
-}
-
-.instances-urltag a:visited {
-    color: blue;
 }
 
 .instances-icons {
@@ -122,4 +122,37 @@
 .instances-details {
     float: left;
     width: 90%;
+}
+
+.instance-up {
+    background-color: rgb(52, 196, 113, 0.13);
+    border: none;
+    padding: 5px 15px;
+}
+
+.instance-up > a, .instance-up > a:link, .instance-up > a:visited {
+    color: #007700;
+}
+
+.instance-down {
+    background-color: #f5f5f5;
+    border: none;
+    padding: 5px 15px;
+    margin-right: 5px;
+}
+
+.instance-down > a, .instance-down > a:link, .instance-down > a:visited {
+    color: #999999;
+}
+
+.instance-down, .instance-up {
+    border: solid 2px transparent;
+}
+
+.instance-up:hover {
+    border: solid 2px rgb(52, 196, 113, 0.2);
+}
+
+.instance-down:hover {
+    border: solid 2px #eaeaea;
 }

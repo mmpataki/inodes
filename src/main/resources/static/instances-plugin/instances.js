@@ -614,8 +614,8 @@ class instances {
         ).then(x => {
             let resp = JSON.parse(x.response)
             resp.items.forEach(val => {
-                self.currentUrls[val.extra].style.backgroundColor = val.message == 'up' ? "#E8FFE0" : "#FFE8E0"
-                self.currentUrls[val.extra].style.color = val.message == 'up' ? "green" : "red"
+                self.currentUrls[val.extra].classList.remove('instance-up', 'instance-down')
+                self.currentUrls[val.extra].classList.add(val.message == 'up' ? 'instance-up' : 'instance-down')
                 self.currentUrls[val.extra].data = val
             })
         })
