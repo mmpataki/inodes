@@ -205,10 +205,12 @@ body {
 
 .ppane {
     padding-top: 10px;
+    margin: 0px 5px
 }
 
 .left-w85 {
-    width: 80%;
+    min-width: 80%;
+    flex-grow: 1;
 }
 
 .inode-container {
@@ -315,7 +317,7 @@ body {
 
 .title-bar {
     position: relative;
-    padding-top: 10px;
+    padding: 10px 10px 0px 10px;
     font-weight: bolder;
 }
 
