@@ -136,23 +136,12 @@
             }
             showUserInfo() {
                 if (this.loggedIn()) {
+                    c('title-right-panel').style.display = 'flex'
                     g('actions').innerHTML = ''
-                    render('action', {
-                        ele: 'div',
-                        children: [
-                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: `Account (${getCurrentUser()})`, evnts: { click: () => inodes.openAccount() } },
-                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'My Posts', evnts: { click: () => inodes.openMyPosts() } },
-                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'Notifications', evnts: { click: () => inodes.openNotifications() }, iden: 'notifscount' },
-                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'Pending PRs', evnts: { click: () => inodes.openPRs() } },
-                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'Logout', evnts: { click: () => inodes.logout() } },
-                            { ele: 'div', attribs: { style: 'margin: 10px 0px; border-top: solid 1px black; width: 50%' } },
-                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'New Post', evnts: { click: () => inodes.openEditor(undefined, true) } },
-                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'New Group', evnts: { click: () => inodes.createGroup() } },
-                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'New Announcement', evnts: { click: () => inodes.announceApp() } },
-                        ]
-                    }, (id, ele) => this[id] = ele, g('actions'))
+                    g('profilebtn').innerHTML = getCurrentUser()
                     this.updateNotificationsCount();
                 } else {
+                    c('title-right-panel').style.display = 'none'
                     g('actions').innerHTML = `
                         <a class="action-item" href="javascript:inodes.openSignInPage()">Sign In</a>
                         <a class="action-item" href="javascript:inodes.openRegisterPage()">Sign Up</a>
@@ -162,8 +151,10 @@
             updateNotificationsCount() {
                 get('/notifications/unseen').then(resp => {
                     let nc = +resp.response;
-                    let nctxt = `<span style='background-color: black; color: white; border-radius: 50%; padding: 1px 5px; font-size: 0.8em'>${nc}</span>`
-                    this.notifscount.innerHTML = `Notifications ${(nc > 0) ? nctxt : ""}`
+                    if (nc > 0) {
+                        g('notifcount').style.display = 'block';
+                        g('notifcount').innerHTML = nc;
+                    }
                 })
             }
             createGroup() {
@@ -1014,7 +1005,7 @@
                     attribs: { style: 'padding: 50px' },
                     children: [
                         { ele: 'span', text: "Your request to get a permission on this object is still pending. You can track all your pending permission requests " },
-                        { ele: 'a', text: 'here', attribs: { href: '/?q=%23inodesapp %23mypermissionrequests' }}
+                        { ele: 'a', text: 'here', attribs: { href: '/?q=%23inodesapp %23mypermissionrequests' } }
                     ]
                 }
                 return render('no-permission', obj.readState == 'PERM_REQUESTED' ? permRequestedSpec : noPermSpec)
@@ -1043,9 +1034,12 @@
 
 <body>
     <div class="title-bar">
-        <div class="maxwidth" style="margin: auto; position: relative">
-            <span class="title">i-nodes</span>
-            <div style="display: inline-block; width: 85%">
+        <div class="maxwidth title-box">
+
+            <div class="title-left-panel">
+                <span class="title">i-nodes</span>
+            </div>
+            <div class="title-mid-panel">
                 <div class="search-wrapper">
                     <input class="search-input searchbox" type="text" placeholder="search"
                         oninput="inodes.doSearch(this.value)">
@@ -1057,6 +1051,44 @@
                         <path d="M21 21l-4.35-4.35"></path>
                     </svg>
                 </div>
+            </div>
+            <div class="title-right-panel">
+                <button class="add-btn new-has-tooltip" title="New">
+                    <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                        stroke-linejoin="round" class="feather feather-plus">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <div class="new-tooltip">
+                        <ul style="list-style-type: none; padding: 0px; text-align: right; margin: 0px">
+                            <li class="new-actions" onclick="inodes.openEditor(undefined, true)">&#128462; New Post</li>
+                            <li class="new-actions" onclick="inodes.createGroup()">&#x1F465; New Group</li>
+                            <li class="new-actions" onclick="inodes.announceApp()">&#x1F4E2; New Announcement</li>
+                        </ul>
+                    </div>
+                </button>
+                <button class="notification-btn" style="position:relative" onclick="inodes.openNotifications()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="feather feather-bell">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                    </svg>
+                    <b id="notifcount"
+                        style="position: absolute; display: none; top: 0px; right: 0px; background: orange; color: white; padding: 3px 5px; border-radius: 50%; font-size: 0.8em"></b>
+                </button>
+                <button class="profile-btn new-has-tooltip">
+                    <span>&#x1F464;</span>
+                    <div class="new-tooltip">
+                        <ul style="list-style-type: none; padding: 0px; text-align: right; margin: 0px">
+                            <li class="new-actions" onclick="inodes.openAccount()" id='profilebtn'>Account</li>
+                            <li class="new-actions" onclick="inodes.openMyPosts()">My Posts</li>
+                            <li class="new-actions" onclick="inodes.openPRs()">My Pending PRs</li>
+                            <li class="new-actions" onclick="inodes.logout()">Logout</li>
+                        </ul>
+                    </div>
+                </button>
             </div>
         </div>
     </div>
@@ -1078,9 +1110,6 @@
             <button onclick="inodes.post()">Post</button>
         </div>
         <div class="ppane">
-            <!-- <div class="searchbox-container">
-                <input type="text" placeholder="search" class="searchbox" oninput="inodes.doSearch(this.value)" />
-            </div> -->
             <div class="posts-trending">
                 <div class="left-w85">
                     <div class="posts-container">
@@ -1088,9 +1117,7 @@
                     </div>
                 </div>
                 <div class="right-w15">
-                    <div>
-                        <h4>Actions</h4>
-                        <div id="actions" class="actions sidebar-item"></div>
+                    <div id="actions" class="actions sidebar-item">
                     </div>
                     <div>
                         <h4>Post types</h4>
