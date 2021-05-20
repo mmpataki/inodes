@@ -1,8 +1,9 @@
 package inodes.controllers;
 
 import inodes.models.Document;
+import inodes.models.PermissionRequest;
 import inodes.service.api.DataService;
-import inodes.util.SecurityUtil;
+import inodes.service.api.SecurityService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,7 +16,10 @@ public class DataController {
     @Autowired
     DataService DS;
 
-    @RequestMapping(value = "/data", method = RequestMethod.GET)
+    @Autowired
+    SecurityService SS;
+
+    @GetMapping("/data")
     public DataService.SearchResponse search(
             @RequestParam(required = false, defaultValue = "*") String q,
             @RequestParam(required = false, defaultValue = "0") Long offset,
@@ -36,32 +40,37 @@ public class DataController {
         );
     }
 
-    @RequestMapping(value = "/data", method = RequestMethod.POST)
+    @PostMapping("/data")
     public void put(@RequestBody Document doc, @RequestParam String changeNote) throws Exception {
         DS.putData(doc, changeNote);
     }
 
-    @RequestMapping(value = "/data/{docId}/approve", method = RequestMethod.POST)
+    @PostMapping("/data/{docId}/approve")
     public void approve(@PathVariable("docId") String docId) throws Exception {
         DS.approve(docId);
     }
 
-    @RequestMapping(value = "/data/{docId}/flag", method = RequestMethod.POST)
+    @PostMapping("/data/{docId}/flag")
     public void flag(@PathVariable("docId") String docId) throws Exception {
         DS.flag(docId);
     }
 
-    @RequestMapping(value = "/data/{docId}/askPermission", method = RequestMethod.POST)
+    @PostMapping("/data/{docId}/askPermission")
     public void askPermission(@PathVariable("docId") String docId) throws Exception {
-        DS.askPermission(docId);
+        SS.askPermission(docId);
     }
 
-    @PostMapping(value = "/data/{docId}/givePermission/{userid}")
+    @PostMapping("/data/{docId}/givePermission/{userid}")
     public void givePermission(@PathVariable("docId") String docId, @PathVariable("userid") String userid) throws Exception {
-        DS.givePermission(docId, userid);
+        SS.givePermission(docId, userid);
     }
 
-    @RequestMapping(value = "/data/{id}", method = RequestMethod.DELETE)
+    @GetMapping("/data/permission-requests")
+    public List<PermissionRequest> permissionRequests() {
+        return SS.getPermRequests();
+    }
+
+    @DeleteMapping("/data/{id}")
     public void delete(@PathVariable String id) throws Exception {
         DS.deleteObj(id);
     }

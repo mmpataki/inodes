@@ -143,10 +143,12 @@
                             { ele: 'a', attribs: { href: '#' }, classList: 'item', text: `Account (${getCurrentUser()})`, evnts: { click: () => inodes.openAccount() } },
                             { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'My Posts', evnts: { click: () => inodes.openMyPosts() } },
                             { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'Notifications', evnts: { click: () => inodes.openNotifications() }, iden: 'notifscount' },
+                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'Pending PRs', evnts: { click: () => inodes.openPRs() } },
                             { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'Logout', evnts: { click: () => inodes.logout() } },
                             { ele: 'div', attribs: { style: 'margin: 10px 0px; border-top: solid 1px black; width: 50%' } },
                             { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'New Post', evnts: { click: () => inodes.openEditor(undefined, true) } },
                             { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'New Group', evnts: { click: () => inodes.createGroup() } },
+                            { ele: 'a', attribs: { href: '#' }, classList: 'item', text: 'New Announcement', evnts: { click: () => inodes.announceApp() } },
                         ]
                     }, (id, ele) => this[id] = ele, g('actions'))
                     this.updateNotificationsCount();
@@ -334,7 +336,7 @@
                         if (obj.needsApproval && getCurrentUser() && getCurrentUser() != obj.owner) {
                             card = klass.getSafeCard(obj);
                         } else {
-                            if (JSON.parse(obj.content) == '-perm-needed-') {
+                            if (obj.content == '') {
                                 klass = new NoPermissionKlass()
                             }
                             card = klass.getCard(obj)
@@ -919,25 +921,19 @@
                 this.doSearch(q)
             }
             openAccount() {
-                let u = getCurrentUser();
-                this.triggerSearch(`#user !${u}`)
-                if (!u) {
-                    showWarning('You are not logged in, so all user options are not available')
-                }
+                this.triggerSearch(`#user !${getCurrentUser()}`)
             }
             openMyPosts() {
-                let u = getCurrentUser();
-                this.triggerSearch(`~${u}`)
-                if (!u) {
-                    showError('You are not logged in, so all post related actions might not work')
-                }
+                this.triggerSearch(`~${getCurrentUser()}`)
             }
             openNotifications() {
-                let u = getCurrentUser();
                 this.triggerSearch(`#inodesapp #notifications`)
-                if (!u) {
-                    showError('You are not logged in, so all post related actions might not work')
-                }
+            }
+            openPRs() {
+                this.triggerSearch(`#inodesapp #mypermissionrequests`)
+            }
+            announceApp() {
+                this.triggerSearch(`#inodesapp #notifier`)
             }
             openRegisterPage() {
                 this.triggerSearch('#register #inodesapp')
@@ -1004,7 +1000,7 @@
 
         class NoPermissionKlass {
             getCard(obj) {
-                return render('no-permission', {
+                let noPermSpec = {
                     ele: 'div',
                     attribs: { style: 'padding: 50px' },
                     children: [
@@ -1012,7 +1008,16 @@
                         { ele: 'button', text: 'request', evnts: { click: () => { this.requestAccess(obj.id) } } },
                         { ele: 'span', text: " for it" }
                     ]
-                })
+                };
+                let permRequestedSpec = {
+                    ele: 'div',
+                    attribs: { style: 'padding: 50px' },
+                    children: [
+                        { ele: 'span', text: "Your request to get a permission on this object is still pending. You can track all your pending permission requests " },
+                        { ele: 'a', text: 'here', attribs: { href: '/?q=%23inodesapp %23mypermissionrequests' }}
+                    ]
+                }
+                return render('no-permission', obj.readState == 'PERM_REQUESTED' ? permRequestedSpec : noPermSpec)
             }
             getEditor() {
                 throw new Error("You don't have permissions to edit this object")

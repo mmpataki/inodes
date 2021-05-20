@@ -1,6 +1,7 @@
 package inodes.service.api;
 
 import inodes.models.Document;
+import inodes.models.PermissionRequest;
 import inodes.models.UserInfo;
 import inodes.util.SecurityUtil;
 import lombok.Builder;
@@ -22,9 +23,7 @@ public abstract class DataService extends Observable {
         SEARCH,
         NEW,
         APPROVAL_NEEDED,
-        UPDATE,
-        PERMISSION_NEEDED,
-        PERMISSION_GIVEN;
+        UPDATE
     }
 
     @Data
@@ -170,23 +169,6 @@ public abstract class DataService extends Observable {
         doc.setVisibility(Arrays.asList(doc.getOwner(), getGroupTag(UserGroupService.SECURITY)));
         doc.setNeedsApproval(true);
         _putData(doc);
-    }
-
-    public void askPermission(String docId) throws Exception {
-        Document doc = get(docId);
-        EventData ed = EventData.of("for", SecurityUtil.getCurrentUser(), "docId", docId, "currentOwners", doc.getVisibility());
-        notifyPreEvent(ObservableEvents.PERMISSION_NEEDED, ed);
-        notifyPostEvent(ObservableEvents.PERMISSION_NEEDED, ed);
-    }
-
-    public void givePermission(String docId, String userid) throws Exception {
-        Document doc = get(docId);
-        if(doc.getContent().equals(SecurityService.PERM_NEEDED)) {
-            throw new UnAuthorizedException("You don't have permissions on the object to delegate them");
-        }
-        doc.getVisibility().add(getUserTag(userid));
-        _putData(doc);
-        notifyPostEvent(ObservableEvents.PERMISSION_GIVEN, EventData.of("docId", docId, "userId", userid));
     }
 
     protected abstract SearchResponse _search(String user, SearchQuery q) throws Exception;

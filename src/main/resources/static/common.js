@@ -1,9 +1,11 @@
 const USER_KEY = "user", TOK_KEY = "tok";
 let baseUrl = window.location.port == 5001 ? "http://localhost:8080" : ""
 let rejectCodeList = [400, 401, 500, 403];
+
 function getBaseUrl() {
     return baseUrl;
 }
+
 function ajax(method, url, data, hdrs, cancelToken) {
     if (getCurrentUser()) {
         if (!hdrs) hdrs = {}
@@ -36,6 +38,7 @@ function ajax(method, url, data, hdrs, cancelToken) {
         xhttp.send(data);
     });
 }
+
 function makeHMap(headers) {
     var arr = headers.trim().split(/[\r\n]+/);
     var headerMap = {};
@@ -67,12 +70,15 @@ let getLast = last(get);
 function post(url, data, hdrs) {
     return ajax('POST', url, JSON.stringify(data), hdrs);
 }
+
 function postFile(url, data, hdrs) {
     return ajax('POST', url, data, hdrs);
 }
+
 function delet(url) {
     return ajax('DELETE', url);
 }
+
 function setCookie(name, value, days) {
     var expires = "";
     if (days) {
@@ -82,6 +88,7 @@ function setCookie(name, value, days) {
     }
     document.cookie = name + "=" + (value || "") + expires + "; path=/";
 }
+
 function getCookie(name) {
     var nameEQ = name + "=";
     var ca = document.cookie.split(';');
@@ -92,15 +99,19 @@ function getCookie(name) {
     }
     return null;
 }
+
 function eraseCookie(name) {
     document.cookie = name + '=; Max-Age=-99999999;';
 }
+
 function g(id) {
     return document.getElementById(id);
 }
+
 function c(cl) {
     return document.getElementsByClassName(cl)[0];
 }
+
 function getCurrentUser() {
     return getCookie(USER_KEY)
 }

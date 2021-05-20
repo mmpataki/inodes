@@ -189,7 +189,7 @@ public class EventService {
     private RecipientResolver getPermissionProviderResolver() {
         return o -> {
             Set<Reciepient> reciepients = new HashSet<>();
-            for (String owner : (List<String>) o.get("currentOwners")) {
+            for (String owner : ((PermissionRequest) o.get("req")).getReqTo()) {
                 String id;
                 if ((id = DataService.getUFromUtag(owner)) != null) {
                     reciepients.add(Reciepient.builder().typ(RecipientType.USER).id(id).build());
@@ -303,15 +303,16 @@ public class EventService {
 
     private EventToAppNotificationTransfomer getPermissionNeededAppNotificationBuilder() {
         return ed -> {
-            String aGuy = (String) ed.get("for");
-            String docId = (String) ed.get("docId");
+            PermissionRequest pr = (PermissionRequest) ed.get("req");
+            String aGuy = pr.getReqBy();
+            String docId = pr.getDocId();
             return AppNotification.builder()
                     .nFrom("permission service")
                     .nFor("")
                     .ntext(String.format(
                             "<a href=\"%s\"><b>%s</b></a> wants permission to access <a href=\"%s\" target=\"_blank\">this</a> object. " +
                                     "Click <a href=\"#\" onclick=\"post(`%s`).then(x => showSuccess('Done')).catch(e => showError(e.msg))\"><b>this</b></a> link, if you want to approve this request",
-                            UrlUtil.getUserUrl(aGuy), aGuy, UrlUtil.getDocUrl(docId), UrlUtil.getDocPermApprovalLink(docId, aGuy)
+                            UrlUtil.getUserUrl(aGuy), aGuy, UrlUtil.getDocUrl(docId), UrlUtil.getRelativeDocPermApprovalLink(docId, aGuy)
                     ))
                     .ptime(System.currentTimeMillis())
                     .build();
@@ -405,8 +406,8 @@ public class EventService {
         es = this;
 
         DS.registerPostEvent(DataService.ObservableEvents.NEW, o -> post(Type.NEW_DOC, o));
-        DS.registerPostEvent(DataService.ObservableEvents.PERMISSION_NEEDED, o -> post(Type.PERMISSION_NEEDED, o));
-        DS.registerPostEvent(DataService.ObservableEvents.PERMISSION_GIVEN, o -> post(Type.PERMISSION_GIVEN, o));
+        SS.registerPostEvent(SecurityService.EventTypes.PERMISSION_NEEDED, o -> post(Type.PERMISSION_NEEDED, o));
+        SS.registerPostEvent(SecurityService.EventTypes.PERMISSION_GIVEN, o -> post(Type.PERMISSION_GIVEN, o));
         SS.registerPostEvent(SecurityService.EventTypes.APPROVAL_NEEDED, o -> post(Type.APPROVAL_NEEDED, o));
         US.registerPostEvent(UserGroupService.Events.USER_ADDED_TO_GROUP, o -> post(EventService.Type.USER_ADD_TO_GROUP, o));
         CS.registerPostEvent(CollabService.EventType.NEW_COMMENT, o -> post(Type.NEW_COMMENT, o));
@@ -492,7 +493,7 @@ public class EventService {
             notifications.add(new Notification().withChannelInfo(user.getEmail()).withTyp(NotificationType.EMAIL).withEvent(e));
         if (user.getTeamsUrl() != null && !user.getTeamsUrl().isEmpty())
             notifications.add(new Notification().withChannelInfo(user.getTeamsUrl()).withTyp(NotificationType.TEAMS_NOTIFICATION).withEvent(e));
-        notifications.add(new Notification().withChannelInfo(DataService.getUFromUtag(user.getUserName())).withTyp(NotificationType.APP_NOTIFICATION).withEvent(e));
+        notifications.add(new Notification().withChannelInfo(DataService.getUserTag(user.getUserName())).withTyp(NotificationType.APP_NOTIFICATION).withEvent(e));
         return notifications;
     }
 
