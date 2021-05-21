@@ -39,18 +39,18 @@ class goodkb {
                     {
                         ele: "input",
                         classList: "input",
+                        label: "Title",
                         iden: "title",
                         attribs: {
-                            placeholder: "title",
                             value: obj ? obj.title : ""
                         }
                     },
                     {
                         ele: "input",
                         classList: "input",
+                        label: "URL",
                         iden: "url",
                         attribs: {
-                            placeholder: "url",
                             value: obj ? obj.url : ""
                         }
                     }
@@ -68,6 +68,11 @@ class goodkb {
             url: this.url.value,
             title: this.title.value
         };
+    }
+
+    getCopyContent(doc) {
+        let obj = JSON.parse(doc.content)
+        return `<b>${obj.title}</b><br/><a href="${obj.url}">${obj.url}</a><br/>`
     }
 
 }

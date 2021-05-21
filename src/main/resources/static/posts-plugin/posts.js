@@ -356,4 +356,8 @@ class posts {
             })
         }, () => 0, this.attachmentsView)
     }
+
+    getCopyContent(doc) {
+        return this.getCard(doc).outerHTML + "<br/>";
+    }
 }

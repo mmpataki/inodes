@@ -1,5 +1,5 @@
 const USER_KEY = "user", TOK_KEY = "tok";
-let baseUrl = window.location.port == 5001 ? "http://localhost:8080" : ""
+let baseUrl = window.location.port == 5001 ? "http://inedctst01:8080" : ""
 let rejectCodeList = [400, 401, 500, 403];
 
 function getBaseUrl() {

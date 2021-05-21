@@ -442,6 +442,14 @@
                                                             click: function (e) { self.editInode(obj) }
                                                         }
                                                     }]),
+                                                    ...(!klass.getCopyContent ? [] : [{
+                                                        ele: 'span',
+                                                        text: 'copy',
+                                                        classList: 'action',
+                                                        evnts: {
+                                                            click: () => self.copyFormatted(klass.getCopyContent(obj))
+                                                        }
+                                                    }]),
                                                     ...(!getCurrentUser() ? [] : [{
                                                         ele: 'span',
                                                         text: 'delete',
@@ -575,6 +583,53 @@
                         })
                     })
                 });
+            }
+
+            copyFormatted(html) {
+                let clipboardDiv;
+                if (!this.copyClipBoardSet) {
+                    clipboardDiv = document.createElement('div');
+                    clipboardDiv.style.fontSize = '12pt'; // Prevent zooming on iOS
+                    // Reset box model
+                    clipboardDiv.style.border = '0';
+                    clipboardDiv.style.padding = '0';
+                    clipboardDiv.style.margin = '0';
+                    // Move element out of screen 
+                    clipboardDiv.style.position = 'fixed';
+                    clipboardDiv.style['right'] = '-9999px';
+                    clipboardDiv.style.top = (window.pageYOffset || document.documentElement.scrollTop) + 'px';
+                    // more hiding
+                    clipboardDiv.setAttribute('readonly', '');
+                    clipboardDiv.style.opacity = 0;
+                    clipboardDiv.style.pointerEvents = 'none';
+                    clipboardDiv.style.zIndex = -1;
+                    clipboardDiv.setAttribute('tabindex', '0'); // so it can be focused
+                    clipboardDiv.innerHTML = '';
+                    document.body.appendChild(clipboardDiv);
+                    this.copyClipBoardSet = true;
+                    this.clipboardDiv = clipboardDiv;
+                }
+                clipboardDiv = this.clipboardDiv;
+
+                clipboardDiv.innerHTML = html;
+
+                var focused = document.activeElement;
+                clipboardDiv.focus();
+
+                window.getSelection().removeAllRanges();
+                var range = document.createRange();
+                range.setStartBefore(clipboardDiv.firstChild);
+                range.setEndAfter(clipboardDiv.lastChild);
+                window.getSelection().addRange(range);
+
+                var ok = false;
+                try {
+                    if (document.execCommand('copy')) ok = true; else console.log('execCommand returned false !');
+                } catch (err) {
+                    console.log('execCommand failed ! exception ' + err);
+                }
+
+                focused.focus();
             }
 
             watchDoc(id) {

@@ -541,7 +541,7 @@ class instances {
                             ele: "a",
                             classList: "card-boxlogin",
                             attribs: {
-                                href: `ssh://${obj.boxusername}:${encodeURIComponent(obj.boxpassword)}@${obj.ipaddr}`,
+                                href: self.getPuttyUrl(obj),
                                 innerHTML: `<img alt='SSH' src="./instances-plugin/images/putty.png" style="width: 20px"/>`,
                                 title: 'SSH'
                             }
@@ -550,7 +550,7 @@ class instances {
                             ele: "a",
                             classList: "card-boxlogin",
                             attribs: {
-                                href: `scp://${obj.boxusername}:${encodeURIComponent(obj.boxpassword)}@${obj.ipaddr}`,
+                                href: self.getScpUrl(obj),
                                 innerHTML: `<img alt='SCP' src="./instances-plugin/images/winscp.jpg" style="width: 20px"/>`,
                                 title: 'SCP'
                             }
@@ -582,6 +582,14 @@ class instances {
                 this.currentUrls[id] = ele
             }
         });
+    }
+
+    getPuttyUrl(obj) {
+        return `ssh://${obj.boxusername}:${encodeURIComponent(obj.boxpassword)}@${obj.ipaddr}`
+    }
+
+    getScpUrl(obj) {
+        return `scp://${obj.boxusername}:${encodeURIComponent(obj.boxpassword)}@${obj.ipaddr}`
     }
 
     getTags() {
@@ -632,6 +640,16 @@ class instances {
             })
             this.fetchStatus(postItems)
         })
+    }
+
+    getCopyContent(doc) {
+        let obj = JSON.parse(doc.content)
+        return `Hostname: <b>${obj.ipaddr}</b> &nbsp; <a href='${this.getPuttyUrl(obj)}'>putty</a> &nbsp; <a href='${this.getScpUrl(obj)}'>scp</a><br/>
+Box credentials : <b>${obj.boxusername} / ${obj.boxpassword}</b><br/>
+App credentials : <b>${obj.appusername} / ${obj.apppassword}</b><br/>
+Installation location : <b>${obj.installloc}</b><br/>
+URLs : ${obj.urls.map(url => `<a href="${url.url}">${url.tag.toLowerCase()}</a>`).join(' &nbsp;|&nbsp; ')}<br/>
+<i>(To view more info about this instance in <b>inodes</b> click <a href='${document.location + `/?q=@${doc.id}`}'>here</a></i>)`
     }
 
 }
