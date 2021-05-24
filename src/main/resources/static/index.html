@@ -17,6 +17,7 @@
                 this.scriptPromises = {}
                 this.pageSize = 10;
                 this.pageNum = 0;
+                post('/test-login').catch(() => this.logout())
                 get('/klasses').then((data) => {
                     this.klassNames = JSON.parse(data.response)
                     self.populateClassTypes(this.klassNames);
@@ -216,8 +217,8 @@
                 });
             }
             search(str, offset = 0, pageSize = 10) {
-                if(this._lock) {
-                    if(!confirm('You might have some unsaved work on the page. Do you really want to continue?'))
+                if (this._lock) {
+                    if (!confirm('You might have some unsaved work on the page. Do you really want to continue?'))
                         return;
                 }
                 str = str ? str : ""
@@ -829,11 +830,19 @@
 
             createTagElement(tag, char, hits) {
                 let self = this;
+                let icon = (tag, char) => char == '%' ? tag + ".png" : 'tag.png';
                 return render('tag', {
                     ele: 'span',
                     classList: 'has-tooltip',
                     children: [
-                        { ele: 'span', classList: 'container', text: (hits ? "" : char) + tag },
+                        {
+                            ele: 'span',
+                            classList: 'container',
+                            children: [
+                                
+                                { ele: 'span', text: (hits ? "" : char) + tag }
+                            ]
+                        },
                         ...(hits ? [{ ele: 'span', classList: 'hits', text: ` x ${hits}` }] : []),
                         {
                             ele: 'div',
@@ -956,7 +965,6 @@
                 eraseCookie(USER_KEY)
                 eraseCookie(TOK_KEY)
                 this.showUserInfo()
-                showSuccess('logged out successfully')
             }
             register() {
                 post(

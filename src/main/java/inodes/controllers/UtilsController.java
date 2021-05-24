@@ -17,9 +17,9 @@ import java.util.Map;
 
 @RestController
 @CrossOrigin
-public class NoCors {
+public class UtilsController {
 
-    public NoCors() {
+    public UtilsController() {
         TrustManager[] trustAllCerts = new TrustManager[]{
                 new X509TrustManager() {
                     public java.security.cert.X509Certificate[] getAcceptedIssuers() {
@@ -59,6 +59,11 @@ public class NoCors {
         };
         // All hosts will be valid
         HttpsURLConnection.setDefaultHostnameVerifier(validHosts);
+    }
+
+    @RequestMapping(value = "/test-login", method = RequestMethod.POST)
+    public String testLogin() throws IOException {
+        return "sucess";
     }
 
     @RequestMapping(value = "/nocors", method = RequestMethod.POST)
