@@ -1,0 +1,29 @@
+.automation-name-and-desc-container > input, .automation-name-and-desc-container > textarea {
+    display: block;
+    margin: 5px;
+    width: 80%;
+}
+
+.automation-name-and-desc-types > input {
+    margin: 5px 5px 5px 10px;
+}
+
+.automation-i-and-s-input-spec > input, .automation-i-and-s-input-spec > select {
+    margin-right: 10px;
+}
+
+.automation-i-and-s-input-spec > input {
+    min-width: 100px;
+}
+
+.automation-i-and-s-inputs {
+    display: block;
+    width: 100%;
+    margin: 10px 0px 20px 20px;
+}
+
+.automation-i-and-s-inputs > textarea, .automation-i-and-s-inputs > input {
+    width: 90%;
+    font-family: monospace;
+    font-size: 1.1em;
+}

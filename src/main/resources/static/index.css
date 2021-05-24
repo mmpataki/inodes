@@ -748,3 +748,38 @@ img {
 .notification-btn:hover, .profile-btn:hover, .add-btn:hover, .notification-btn:focus, .profile-btn:focus, .add-btn:focus {
     background-color: lightgrey;
 }
+
+
+/* story board */
+.storyboard-button {
+    padding: 10px;
+    font-weight: bolder;
+    cursor: pointer;
+    background-color: #eaeaea;
+}
+
+.storyboard-button:hover {
+    background-color: lightgray;
+}
+
+.storyboard-title {
+    padding: 10px;
+    font-weight: bolder;
+}
+
+.storyboard-titlebar {
+    padding: 10px 0px;
+}
+
+.storyboard-content {
+    padding: 0px 20px;
+}
+
+.storyboard-bottombar > button {
+    margin: 20px;
+}
+
+.storyboard-errmsg {
+    padding: 10px;
+    color: red;
+}

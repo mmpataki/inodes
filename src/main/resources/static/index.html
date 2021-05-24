@@ -17,11 +17,15 @@
                 this.scriptPromises = {}
                 this.pageSize = 10;
                 this.pageNum = 0;
-                get('/klasses').then(function (data) {
-                    self.populateClassTypes(JSON.parse(data.response));
+                get('/klasses').then((data) => {
+                    this.klassNames = JSON.parse(data.response)
+                    self.populateClassTypes(this.klassNames);
                 })
                 this.setupSearch();
                 this.showUserInfo();
+            }
+            getKlassNames() {
+                return this.klassNames;
             }
             setupSearch() {
                 let q = new URL(window.location.href).searchParams.get("q")
@@ -72,16 +76,17 @@
                     this.renderInput(d.name, undefined, false)
                 });
             }
-            loadScript(path, callBack) {
+            loadScript(path, elem) {
                 return new Promise((resolve, reject) => {
                     var jsElm = document.createElement("script");
                     jsElm.type = "application/javascript";
                     jsElm.src = path;
                     jsElm.addEventListener('load', e => resolve())
-                    document.body.appendChild(jsElm);
+                    elem = elem || document.body
+                    elem.appendChild(jsElm);
                 });
             }
-            loadCss(path, callBack) {
+            loadCss(path) {
                 return new Promise((resolve, reject) => {
                     var fileref = document.createElement("link");
                     fileref.rel = "stylesheet";
@@ -123,6 +128,7 @@
                             try {
                                 klassObj.inodes_editor = klassObj.getEditor(obj)
                             } catch (e) {
+                                console.error(e)
                                 showError("You don't have permissions to edit this object")
                                 throw e
                             }
@@ -210,6 +216,10 @@
                 });
             }
             search(str, offset = 0, pageSize = 10) {
+                if(this._lock) {
+                    if(!confirm('You might have some unsaved work on the page. Do you really want to continue?'))
+                        return;
+                }
                 str = str ? str : ""
                 str = str.replace(/\![-\w]+/, "")
                 return getLast(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}&fq=tags&fq=type&fq=owner`)
@@ -983,6 +993,9 @@
             }
             openRegisterPage() {
                 this.triggerSearch('#register #inodesapp')
+            }
+            lock() {
+                this._lock = true;
             }
             runCommand(scriptText, pnode, callBack, finishCallback) {
 

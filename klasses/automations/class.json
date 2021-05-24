@@ -1,0 +1,10 @@
+{
+  "name": "automations",
+  "jsPaths": [
+    "automations-plugin/plugin.js"
+  ],
+  "cssPaths": [
+    "automations-plugin/plugin.css"
+  ],
+  "version": 0
+}

@@ -1,5 +1,5 @@
 const USER_KEY = "user", TOK_KEY = "tok";
-let baseUrl = window.location.port == 5001 ? "http://inedctst01:8080" : ""
+let baseUrl = window.location.port == 5001 ? "http://localhost:8080" : ""
 let rejectCodeList = [400, 401, 500, 403];
 
 function getBaseUrl() {
@@ -149,29 +149,29 @@ function render(name, spec, elemCreated, container) {
     let e;
     if (!spec.preBuilt) {
         e = document.createElement(spec.ele);
-        spec.iden && elemCreated(spec.iden, e)
-        if (spec.text) e.innerHTML = spec.text;
-        if (spec.classList) {
-            e.classList = `${name}-` + spec.classList.split(/\s+/).join(` ${name}-`)
-        }
-        spec.attribs && Object.keys(spec.attribs).forEach(key => {
-            e[key] = spec.attribs[key]
-        })
-        spec.styles && Object.keys(spec.styles).forEach(key => {
-            e.style[key] = spec.styles[key]
-        })
-        spec.evnts && Object.keys(spec.evnts).forEach(key => {
-            e.addEventListener(key, spec.evnts[key])
-        })
-        if (spec.children) {
-            if (spec.children instanceof Function) {
-                spec.children().map(x => e.appendChild(x))
-            }
-            else spec.children.forEach(child => render(name, child, elemCreated, e))
-        }
     } else {
         e = spec.ele;
     }
+    spec.iden && elemCreated && elemCreated(spec.iden, e)
+    if (spec.text) e.innerHTML = spec.text;
+    if (spec.classList) {
+        spec.classList.split(/\s+/).map(x => e.classList.add(`${name}-${x}`))
+    }
+    spec.styles && Object.keys(spec.styles).forEach(key => {
+        e.style[key] = spec.styles[key]
+    })
+    spec.evnts && Object.keys(spec.evnts).forEach(key => {
+        e.addEventListener(key, spec.evnts[key])
+    })
+    if (spec.children) {
+        if (spec.children instanceof Function) {
+            spec.children().map(x => e.appendChild(x))
+        }
+        else spec.children.forEach(child => render(name, child, elemCreated, e))
+    }
+    spec.attribs && Object.keys(spec.attribs).forEach(key => {
+        e[key] = spec.attribs[key]
+    })
     if (container) {
         let lbl;
         if (spec.label || spec.postlabel) {
@@ -279,7 +279,8 @@ function _tabulate(arr, ele, spec) {
     }
 
     let renderTab = () => {
-        arr.sort(sortFunc)
+        if(currSortKey)
+            arr.sort(sortFunc)
         this.tab = render(spec.classPrefix, {
             ele: 'table',
             classList: 'table',
@@ -662,7 +663,6 @@ function tagify(inputElement, specKey) {
     return tagifyThings
 }
 
-
 function StoryTeller(storyBoardElement) {
 
     let stack = [];
@@ -707,13 +707,17 @@ function StoryTeller(storyBoardElement) {
             return;
         }
         this.nextbtn.disabled = true
-        let preDestroy = storyPack.story.preDestroy || (() => new Promise((resolve) => resolve()))
-        preDestroy()
-            .then(() => {
-                let next = { storyClass: storyPack.story.nextStoryClass(), args: storyPack.story.moral() }
-                if (!next) return;
-                this.openStory(next.storyClass, next.args)
-            })
+        try {
+            let preDestroy = storyPack.story.preDestroy || (() => new Promise((resolve) => resolve()))
+            preDestroy()
+                .then(() => {
+                    let next = { storyClass: storyPack.story.nextStoryClass(), args: storyPack.story.moral() }
+                    if (!next) return;
+                    this.openStory(next.storyClass, next.args)
+                })
+        } finally {
+            this.nextbtn.disabled = false
+        }
     }
 
     this.tell = (storyPack) => {
