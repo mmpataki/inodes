@@ -1005,7 +1005,7 @@
             }
             lock() { this._lock = true }
             locked() { return this._lock }
-            unlock() { this._lock = true }
+            unlock() { this._lock = false }
             runCommand(scriptText, pnode, callBack, finishCallback) {
 
                 if (!pnode) {
