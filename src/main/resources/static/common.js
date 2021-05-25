@@ -254,10 +254,13 @@ function _tabulate(arr, ele, spec) {
 
     let sortFunc = (a, b) => {
         let k = spec.keys[currSortKey].keyId
-        if (typeof (a[k]) == 'string') {
-            return (sortConf[currSortKey] == 'asc') ? a[k].localeCompare(b[k]) : b[k].localeCompare(a[k]);
+        let kf = spec.keys[currSortKey].kFunc
+        let v1 = kf ? kf(a) : a[k]
+        let v2 = kf ? kf(b) : b[k]
+        if (typeof (v1) == 'string') {
+            return (sortConf[currSortKey] == 'asc') ? v1.localeCompare(v2) : v2.localeCompare(v1);
         }
-        return (sortConf[currSortKey] == 'asc') ? a[k] - b[k] : b[k] - a[k];
+        return (sortConf[currSortKey] == 'asc') ? v1 - v2 : v2 - v1;
     }
 
     let sortBy = (key) => {

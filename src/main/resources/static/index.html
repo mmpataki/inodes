@@ -200,6 +200,11 @@
                     .catch(e => showError(e.message))
             }
             doSearch(str, offset = 0, pageSize = 10) {
+                if (this.locked()) {
+                    if (!confirm('You might have some unsaved work on the page. Do you really want to continue?'))
+                        return;
+                    this.unlock()
+                }
                 callWithWaitUI(c('posts-container'), (done) => {
                     this.search(str, offset, pageSize)
                         .then(d => {
@@ -217,10 +222,6 @@
                 });
             }
             search(str, offset = 0, pageSize = 10) {
-                if (this._lock) {
-                    if (!confirm('You might have some unsaved work on the page. Do you really want to continue?'))
-                        return;
-                }
                 str = str ? str : ""
                 str = str.replace(/\![-\w]+/, "")
                 return getLast(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}&fq=tags&fq=type&fq=owner`)
@@ -1002,9 +1003,9 @@
             openRegisterPage() {
                 this.triggerSearch('#register #inodesapp')
             }
-            lock() {
-                this._lock = true;
-            }
+            lock() { this._lock = true }
+            locked() { return this._lock }
+            unlock() { this._lock = true }
             runCommand(scriptText, pnode, callBack, finishCallback) {
 
                 if (!pnode) {
