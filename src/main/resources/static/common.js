@@ -146,14 +146,29 @@ function showMessage(x, col) {
 }
 
 function render(name, spec, elemCreated, container) {
+    let x = _render(name, spec, elemCreated, container);
+    _fireRenderedCallBacks(spec);
+    return x;
+}
+
+function _fireRenderedCallBacks(spec) {
+    if(spec && spec.evnts && spec.evnts.rendered)
+        spec.evnts.rendered(spec._______elem)
+    delete spec['_______elem']
+    spec.children && spec.children.forEach(child => _fireRenderedCallBacks(child))
+}
+
+function _render(name, spec, elemCreated, container) {
     let e;
     if (!spec.preBuilt) {
         e = document.createElement(spec.ele);
     } else {
         e = spec.ele;
     }
+    spec._______elem = e;
     spec.iden && elemCreated && elemCreated(spec.iden, e)
-    if (spec.text) e.innerHTML = spec.text;
+    if (spec.text) e.innerText = spec.text;
+    if (spec.html) e.innerHTML = spec.html;
     if (spec.classList) {
         spec.classList.split(/\s+/).map(x => e.classList.add(`${name}-${x}`))
     }
@@ -167,7 +182,7 @@ function render(name, spec, elemCreated, container) {
         if (spec.children instanceof Function) {
             spec.children().map(x => e.appendChild(x))
         }
-        else spec.children.forEach(child => render(name, child, elemCreated, e))
+        else spec.children.forEach(child => _render(name, child, elemCreated, e))
     }
     spec.attribs && Object.keys(spec.attribs).forEach(key => {
         e[key] = spec.attribs[key]
@@ -178,6 +193,7 @@ function render(name, spec, elemCreated, container) {
             let rgid = "id_" + Math.random();
             e.id = rgid
             lbl = document.createElement('label')
+            spec.labelStyle && (lbl.style = spec.labelStyle)
             lbl.innerHTML = spec.label || spec.postlabel
             lbl.setAttribute('for', rgid)
         }
@@ -740,4 +756,113 @@ function StoryTeller(storyBoardElement) {
             return stack[stack.length - 1].story;
     }
 
+}
+
+function makeSearchAndSelectButton(text, itemType, resultTemplate, valuePickedCallback, obj) {
+    return new _makeSearchAndSelectButton(text, itemType, resultTemplate, valuePickedCallback, obj)
+}
+
+function _makeSearchAndSelectButton(text, itemType, resultTemplate, valuePickedCallback, obj) {
+    return render('s-and-s-btn', {
+        ele: 'div',
+        iden: 'container',
+        classList: 'container',
+        children: [
+            {
+                ele: 'div',
+                classList: 'content-and-actions',
+                children: [
+                    {
+                        ele: 'div',
+                        classList: 'content',
+                        children: [
+                            {
+                                ele: 'div',
+                                iden: 'pickPrompt',
+                                styles: { display: obj ? 'none' : 'block' },
+                                children: [
+                                    { ele: 'span', text: 'Pick a ' },
+                                    {
+                                        ele: 'span', classList: 'lnk', text: text,
+                                        evnts: {
+                                            click: () => {
+                                                this.searchpane.style.display = 'block'
+                                                this.pickPrompt.style.display = 'none'
+                                            }
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                ele: 'div',
+                                iden: 'searchpane',
+                                classList: 'searchpane',
+                                children: [
+                                    {
+                                        ele: 'input', classList: 'search-box', label: `Search ${itemType}`,
+                                        evnts: {
+                                            input: (e) => {
+                                                inodes.search(`%${itemType} ${e.target.value}`)
+                                                    .then(resp => JSON.parse(resp.response))
+                                                    .then(res => {
+                                                        this.searchResults.innerHTML = ""
+                                                        res.results.forEach(item => {
+                                                            render('s-and-s-btn-search-result', {
+                                                                ele: 'div',
+                                                                classList: 'container',
+                                                                children: [{ ele: resultTemplate(item), preBuilt: true }],
+                                                                evnts: {
+                                                                    dblclick: () => {
+                                                                        valuePickedCallback && valuePickedCallback(item)
+                                                                        this.container.data = item;
+                                                                        this.searchpane.style.display = 'none';
+                                                                        this.pickedItem.style.display = 'block';
+                                                                        this.actions.style.display = 'flex'
+                                                                        this.pickedItem.innerHTML = ''
+                                                                        render('picked-item', { ele: resultTemplate(item), preBuilt: true }, () => 1, this.pickedItem)
+                                                                    }
+                                                                }
+                                                            }, () => 1, this.searchResults)
+                                                        })
+                                                    })
+                                            }
+                                        }
+                                    },
+                                    { ele: 'div', iden: 'searchResults', classList: 'search-results' }
+                                ]
+                            },
+                            {
+                                ele: 'div',
+                                classList: 'picked-item',
+                                iden: 'pickedItem',
+                                children: !obj ? [] : [{ ele: resultTemplate(obj), preBuilt: true }]
+                            }
+                        ]
+                    },
+                    {
+                        ele: 'div',
+                        iden: 'actions',
+                        classList: 'actions',
+                        styles: { display: obj ? 'flex' : 'none' },
+                        children: [
+                            {
+                                ele: 'span',
+                                classList: 'action',
+                                attribs: { innerHTML: 'reset', title: 'reset this unit' },
+                                evnts: {
+                                    click: () => {
+                                        this.container.setAttribute('data', undefined);
+                                        valuePickedCallback && valuePickedCallback(undefined)
+                                        this.pickPrompt.style.display = 'block'
+                                        this.pickedItem.style.display = 'none'
+                                        this.actions.style.display = 'none'
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                ]
+            }
+        ]
+    }, (id, el) => this[id] = el)
 }

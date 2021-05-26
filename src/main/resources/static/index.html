@@ -432,7 +432,7 @@
                                                 children: [
                                                     {
                                                         ele: 'span',
-                                                        text: `&#x25B2 ${obj.votes || 0}`,
+                                                        html: `&#x25B2 ${obj.votes || 0}`,
                                                         classList: 'action-upvote',
                                                         evnts: {
                                                             click: function (e) { self.upvoteInode(obj.id) }
@@ -440,7 +440,7 @@
                                                     },
                                                     {
                                                         ele: 'span',
-                                                        text: `&#x25BC`,
+                                                        html: `&#x25BC`,
                                                         classList: 'action-downvote',
                                                         evnts: {
                                                             click: function (e) { self.downvoteInode(obj.id) }
@@ -661,7 +661,7 @@
 
             getContextButtons(klass, obj) {
                 let self = this;
-                let getLockIcon = () => obj.visibility != 'g-public' ? [{ ele: 'span', text: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []
+                let getLockIcon = () => obj.visibility != 'g-public' ? [{ ele: 'span', html: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []
                 return {
                     ele: 'div',
                     classList: 'context-btns',
@@ -670,7 +670,7 @@
                         {
                             ele: 'span',
                             classList: 'context-btn',
-                            text: '&#x26F6;',
+                            html: '&#x26F6;',
                             attribs: { title: 'Full screen' },
                             evnts: {
                                 click: function () {
