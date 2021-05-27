@@ -26,20 +26,7 @@ public class AdminService {
     Configuration conf;
 
     public void iterateAllDocs(Consumer<Document> consumer) throws Exception {
-        int ps = 100;
-        while (true) {
-            DataService.SearchQuery sq = DataService.SearchQuery.builder()
-                    .q("*")
-                    .visibility(Collections.singleton("*"))
-                    .offset(0).pageSize(ps)
-                    .build();
-            DataService.SearchResponse resp =  DS._search("x", sq);
-            for (Document document : resp.getResults()) {
-                consumer.accept(document);
-            }
-            if(resp.getResults().size() < ps)
-                break;
-        }
+        DS.iterateAllDocs("*", consumer);
     }
 
     public void deleteAll() throws Exception {

@@ -167,7 +167,7 @@ public class InodesFilter implements Filter {
     private void sendNoAuth(HttpServletRequest req, HttpServletResponse r) throws IOException {
         r.setStatus(401);
         r.setHeader("401", "Unauthorized");
-        //r.setHeader("WWW-Authenticate", "Basic");
+        r.setHeader("WWW-Authenticate", "Basic");
         r.getOutputStream().write("{\"message\": \"Unauthorized, login first!\"}".getBytes());
     }
 

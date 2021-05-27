@@ -1,17 +1,18 @@
 package inodes.service.api;
 
-import inodes.models.Document;
-import inodes.models.PermissionRequest;
-import inodes.models.UserInfo;
+import inodes.models.*;
 import inodes.util.SecurityUtil;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import javax.print.Doc;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static inodes.util.TryCatchUtil.tc;
@@ -24,6 +25,77 @@ public abstract class DataService extends Observable {
         NEW,
         APPROVAL_NEEDED,
         UPDATE
+    }
+
+    public enum BulkUpdateField {
+        VISIBILITY {
+            @Override
+            public void update(Document d, List<Update> updates) throws Exception {
+                for (Update update : updates) {
+                    switch (update.getType()) {
+                        case ADD:
+                            String ug = (String) update.getUpdate();
+                            validateUGExists(ug);
+                            d.getVisibility().add(ug);
+                            break;
+                        case DELETE:
+                            d.getVisibility().remove((String) update.getUpdate());
+                    }
+                }
+            }
+        },
+        OWNER {
+            @Override
+            public void update(Document d, List<Update> updates) throws Exception {
+                if(updates.size() == 0)
+                    return;
+                Update upd = updates.get(0);
+                if(updates.size() > 1 || !upd.getType().equals(UpdateType.SET))
+                    throw new IllegalArgumentException("single update SET is supported for owner");
+                String ug = (String) upd.getUpdate();
+                if(getUFromUtag(ug) == null)
+                    throw new IllegalArgumentException("Owner can be a user not something else");
+
+                validateUGExists(ug);
+                d.setOwner(getUFromUtag(ug));
+            }
+        },
+        TAGS {
+            @Override
+            public void update(Document d, List<Update> updates) throws Exception {
+                for (Update update : updates) {
+                    switch (update.getType()) {
+                        case ADD:
+                            d.getTags().add((String) update.getUpdate());
+                            break;
+                        case DELETE:
+                            d.getTags().remove(update.getUpdate());
+                    }
+                }
+            }
+        };
+
+        private static void validateUGExists(String ug) throws Exception {
+            String u = getUFromUtag(ug);
+            String g = getGFromGtag(ug);
+            if(u != null) {
+                User usr = getUGS().getUser(u);
+                if (usr == null) {
+                    throw new Exception("User " + u + " not found");
+                }
+            } else if(g != null) {
+                Group grp = getUGS().getGroup(g);
+                if (grp == null) {
+                    throw new Exception("Group " + g + " not found");
+                }
+            } else {
+                throw new Exception(ug + " is not in u-uid / g-gid format");
+            }
+        }
+
+        public void update(Document d, List<Update> updates) throws Exception {
+            throw new UnsupportedOperationException("default function called");
+        }
     }
 
     @Data
@@ -48,6 +120,13 @@ public abstract class DataService extends Observable {
         return klassesNeedingViewPermission;
     }
 
+
+    static DataService PDS;
+
+    static UserGroupService getUGS() {
+        return PDS.US;
+    }
+
     @PostConstruct
     public void _init() throws Exception {
 
@@ -60,15 +139,18 @@ public abstract class DataService extends Observable {
             if (KS.getKlass(klassName).isPermissionNeeded())
                 klassesNeedingViewPermission.add(klassName);
         }
+
+        /* enums + helper functions need this */
+        PDS = this;
     }
 
     public static String getUFromUtag(String uTag) {
-        if(uTag.startsWith("u-")) return uTag.substring(2);
+        if (uTag.startsWith("u-")) return uTag.substring(2);
         return null;
     }
 
     public static String getGFromGtag(String gTag) {
-        if(gTag.startsWith("g-")) return gTag.substring(2);
+        if (gTag.startsWith("g-")) return gTag.substring(2);
         return null;
     }
 
@@ -154,6 +236,43 @@ public abstract class DataService extends Observable {
         notifyPostEvent(ObservableEvents.NEW, EventData.of("doc", doc, "changeNote", changeNote));
     }
 
+    public Map<String, Object> bulkUpdateContent(BulkUpdateRequest req) throws Exception {
+        System.out.println(req);
+        Map<String, String> failedUpdates = new HashMap<>();
+        Set<String> updatedDocs = new HashSet<>();
+        iterateAllDocs(req.getSearchQuery(), (d) -> {
+            try {
+                AS.checkEditPermission(d);
+            } catch (Exception e) {
+                failedUpdates.put(d.getId(), e.getMessage());
+                return;
+            }
+            boolean failed = false;
+            for (Map.Entry<BulkUpdateField, List<Update>> entry : req.getUpdates().entrySet()) {
+                BulkUpdateField updateField = entry.getKey();
+                List<Update> updates = entry.getValue();
+                try {
+                    updateField.update(d, updates);
+                } catch (Exception e) {
+                    failedUpdates.put(d.getId(), e.getMessage());
+                    failed = true;
+                }
+            }
+            if (!failed) {
+                try {
+                    _putData(d);
+                    updatedDocs.add(d.getId());
+                } catch (IOException e) {
+                    failedUpdates.put(d.getId(), e.getMessage());
+                }
+            }
+        });
+        Map<String, Object> ret = new HashMap<>();
+        ret.put("successful", updatedDocs);
+        ret.put("failed", failedUpdates);
+        return ret;
+    }
+
     public void approve(String docId) throws Exception {
         Document doc = get(docId);
         AS.checkApprovePermission(docId);
@@ -179,6 +298,41 @@ public abstract class DataService extends Observable {
 
     public Map<String, Long> getUserPostsFacets() throws Exception {
         return search(SearchQuery.builder().q("*").fq(Collections.singletonList("type")).fqLimit(Integer.MAX_VALUE).build()).getFacetResults().get("type");
+    }
+
+    public void iterateAllDocs(String q, Consumer<Document> consumer) throws Exception {
+        int ps = 100;
+        while (true) {
+            SearchQuery sq = SearchQuery.builder()
+                    .q(q)
+                    .visibility(Collections.singleton("*"))
+                    .offset(0).pageSize(ps)
+                    .build();
+            SearchResponse resp = _search("x", sq);
+            for (Document document : resp.getResults()) {
+                consumer.accept(document);
+            }
+            if (resp.getResults().size() < ps)
+                break;
+        }
+    }
+
+    public enum UpdateType {
+        ADD, DELETE, SET
+    }
+
+    @Data
+    @NoArgsConstructor
+    public static class Update {
+        UpdateType type;
+        Object update;
+    }
+
+    @Data
+    @NoArgsConstructor
+    public static class BulkUpdateRequest {
+        String searchQuery;
+        Map<BulkUpdateField, List<Update>> updates;
     }
 
     @Builder

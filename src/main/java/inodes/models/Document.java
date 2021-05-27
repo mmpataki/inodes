@@ -1,15 +1,23 @@
 package inodes.models;
 
-import lombok.Builder;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.apache.solr.client.solrj.beans.Field;
 
-import java.beans.Transient;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Data
 public class Document {
+
+    enum ReadState {
+        CAN_READ,
+        PERM_NEEDED,
+        PERM_REQUESTED
+    }
+
 
     @Field
     String id;
@@ -21,27 +29,54 @@ public class Document {
     String type;
 
     @Field
-    List<String> tags;
-
-    @Field
     String owner;
 
     @Field
     long postTime;
 
     @Field
-    List<String> visibility;
-
-    @Field
-    List<String> savedVisibility;
-
-    @Field
     boolean needsApproval;
 
-    enum ReadState {
-        CAN_READ,
-        PERM_NEEDED,
-        PERM_REQUESTED
+    /* solj doesn't support set datatype in beans, so the @Field annotation is on setter */
+
+    Set<String> tags;
+
+    Set<String> visibility;
+
+    Set<String> savedVisibility;
+
+    @Field
+    @JsonProperty("tags")
+    public void setTags(List<String> tags) {
+        this.tags = new HashSet<>(tags);
+    }
+
+    @Field
+    @JsonProperty("visibility")
+    public void setVisibility(List<String> visibility) {
+        this.visibility = new HashSet<>(visibility);
+    }
+
+    @Field
+    @JsonProperty("savedVisibility")
+    public void setSavedVisibility(List<String> savedVisibility) {
+        this.savedVisibility = new HashSet<>(savedVisibility);
+    }
+
+    /* compatibility setters, don't allow from REST APIs */
+    @JsonIgnore
+    public void setTags(Set<String> tags) {
+        this.tags = tags;
+    }
+
+    @JsonIgnore
+    public void setVisibility(Set<String> visibility) {
+        this.visibility = visibility;
+    }
+
+    @JsonIgnore
+    public void setSavedVisibility(Set<String> savedVisibility) {
+        this.savedVisibility = savedVisibility;
     }
 
     private transient ReadState readState = ReadState.PERM_NEEDED;

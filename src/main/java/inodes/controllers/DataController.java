@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @CrossOrigin
@@ -73,5 +74,10 @@ public class DataController {
     @DeleteMapping("/data/{id}")
     public void delete(@PathVariable String id) throws Exception {
         DS.deleteObj(id);
+    }
+
+    @PostMapping("/data/bulkupdate")
+    public Map<String, Object> bulkUpdate(@RequestBody DataService.BulkUpdateRequest req) throws Exception {
+        return DS.bulkUpdateContent(req);
     }
 }

@@ -7,7 +7,7 @@ import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.IdClass;
 import java.io.Serializable;
-import java.util.List;
+import java.util.Set;
 
 @Entity(name = "PERM_REQUESTS")
 @IdClass(PermissionRequest.PRID.class)
@@ -40,5 +40,5 @@ public class PermissionRequest {
     Long reqTime;
 
     @ElementCollection
-    List<String> reqTo;
+    Set<String> reqTo;
 }
