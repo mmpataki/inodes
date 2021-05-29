@@ -83,18 +83,27 @@ public class SolrDataService extends DataService {
             return clasToTypeMap.get(klass.getSimpleName());
         return "text_general";
     }
+    
+    private String orify(String qElem, String qText) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(qElem).append(":(");
+        if(qText.contains("/")) {
+            qText = Arrays.stream(qText.split("/")).collect(Collectors.joining("* OR *"));
+        }
+        return sb.append("*").append(qText).append("*)").toString();
+    }
 
     private String getSearchQuery(String userId, SearchQuery sq) throws Exception {
 
         List<String> klassesNeedingPerms = getKlassesNeedingViewPermission();
         String klassesNeedingPerm = "";
-        if(!klassesNeedingPerms.isEmpty())
+        if (!klassesNeedingPerms.isEmpty())
             klassesNeedingPerm = String.format("type:(%s)", String.join(" OR ", klassesNeedingPerms));
 
         String visibility = String.format("visibility:(%s) AND ",
                 sq.getVisibility().stream().map(x -> x == "*" ? "*" : String.format("\"%s\"", x)).collect(Collectors.joining(" OR ")));
 
-        if(!klassesNeedingPerm.isEmpty()) {
+        if (!klassesNeedingPerm.isEmpty()) {
             visibility = String.format("(%s OR visibility:(%s)) AND ",
                     klassesNeedingPerm, sq.getVisibility().stream().map(x -> x == "*" ? "*" : String.format("\"%s\"", x)).collect(Collectors.joining(" OR ")));
         }
@@ -106,35 +115,37 @@ public class SolrDataService extends DataService {
 
         String[] chunks = sq.getQ().split("\\s+");
         q.append(visibility);
+
         for (String chunk : chunks) {
-            if (chunk.charAt(0) == '#') {
-                q.append("tags:(")
-                        .append(chunk.substring(1))
-                        .append("*) AND ");
-            } else if (chunk.charAt(0) == '~') {
-                q.append("owner:(")
-                        .append(chunk.substring(1))
-                        .append("*) AND ");
-            } else if (chunk.charAt(0) == '%') {
-                q.append("type:(*")
-                        .append(chunk.substring(1))
-                        .append("*) AND ");
-            } else if (chunk.charAt(0) == '@') {
-                q.append("id:(")
-                        .append(chunk.substring(1))
-                        .append(") AND ");
-            } else {
-                q.append("content:(*")
-                        .append(chunk)
-                        .append("*) AND ");
+
+            // NOT query
+            if (chunk.charAt(0) == '-') {
+                chunk = chunk.substring(1);
+                if (chunk.length() == 0)
+                    continue;
+                q.append("-");
             }
+
+            if (chunk.charAt(0) == '#') {
+                q.append(orify("tags", chunk.substring(1)));
+            } else if (chunk.charAt(0) == '~') {
+                q.append(orify("owner", chunk.substring(1)));
+            } else if (chunk.charAt(0) == '%') {
+                q.append(orify("type", chunk.substring(1)));
+            } else if (chunk.charAt(0) == '@') {
+                q.append(orify("id", chunk.substring(1)));
+            } else {
+                q.append(orify("content", chunk));
+            }
+            q.append(" AND ");
         }
         return q.substring(0, q.length() - 5);
     }
 
     public SearchResponse _search(String userId, SearchQuery sq) throws Exception {
+        String bq = getSearchQuery(userId, sq);
         SolrQuery query = new SolrQuery();
-        query.set("q", getSearchQuery(userId, sq));
+        query.set("q", bq);
         query.setStart((int) sq.getOffset());
         query.setRows(sq.getPageSize());
 
@@ -168,6 +179,7 @@ public class SolrDataService extends DataService {
         resp.setResults(docs);
         resp.setTotalResults(response.getResults().getNumFound());
         resp.setFacetResults(facetResults);
+        resp.setDebugInfo(bq);
 
         return resp;
     }
@@ -184,6 +196,16 @@ public class SolrDataService extends DataService {
         } catch (SolrServerException e) {
             e.printStackTrace();
         }
+    }
+
+    @Override
+    protected Map<String, Long> _getUserPostsFacets(String user) throws Exception {
+        return search(
+                SearchQuery.builder()
+                    .q("* ~" + user)
+                    .fq(Collections.singletonList("type"))
+                    .fqLimit(Integer.MAX_VALUE).build()
+            ).getFacetResults().get("type");
     }
 
 }

@@ -454,14 +454,6 @@
                                                             click: function (e) { self.editInode(obj) }
                                                         }
                                                     }]),
-                                                    ...(!klass.getCopyContent ? [] : [{
-                                                        ele: 'span',
-                                                        text: 'copy',
-                                                        classList: 'action',
-                                                        evnts: {
-                                                            click: () => self.copyFormatted(klass.getCopyContent(obj))
-                                                        }
-                                                    }]),
                                                     ...(!getCurrentUser() ? [] : [{
                                                         ele: 'span',
                                                         text: 'delete',
@@ -481,10 +473,43 @@
                                                     {
                                                         ele: 'span',
                                                         text: 'share',
-                                                        classList: 'action',
+                                                        classList: 'action share-has-tooltip',
                                                         evnts: {
-                                                            click: function (e) { window.location = `?q=@${obj.id}` }
-                                                        }
+                                                            mouseenter: function (e) { this.children[0].style.display = 'block' },
+                                                            mouseleave: function (e) { this.children[0].style.display = 'none' }
+                                                        },
+                                                        children: [
+                                                            {
+                                                                ele: 'div', classList: 'share-tooltip', children: [
+                                                                    {
+                                                                        ele: 'b', text: 'copy ', children: [
+                                                                            { ele: 'a', attribs: { href: self.getPermalink(obj.id), target: '_blank' }, text: 'url' }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        ele: 'div', children: [
+                                                                            { ele: 'input', attribs: { readOnly: true, value: self.getPermalink(obj.id), style: 'width: 180px' } },
+                                                                            {
+                                                                                ele: 'button', text: 'copy', evnts: {
+                                                                                    click: function () { self.copyFormatted(this.previousElementSibling.value) }
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    ...(!klass.getCopyContent ? [] : [
+                                                                        { ele: 'b', styles: { display: 'block', 'margin-top': '10px' }, text: 'or copy the content' },
+                                                                        {
+                                                                            ele: 'button',
+                                                                            text: 'copy content',
+                                                                            evnts: {
+                                                                                click: () => self.copyFormatted(klass.getCopyContent(obj)),
+                                                                                rendered: e => e.removeAttribute('tabindex')
+                                                                            }
+                                                                        }
+                                                                    ])
+                                                                ]
+                                                            }
+                                                        ]
                                                     },
                                                     ...(!getCurrentUser() ? [] : [{
                                                         ele: 'span',
@@ -595,6 +620,11 @@
                         })
                     })
                 });
+            }
+
+            getPermalink(id) {
+                let u = new URL(window.location.href)
+                return `${u.protocol}//${u.host}?q=@${id}`
             }
 
             copyFormatted(html) {
@@ -840,7 +870,7 @@
                             ele: 'span',
                             classList: 'container',
                             children: [
-                                
+
                                 { ele: 'span', text: (hits ? "" : char) + tag }
                             ]
                         },
@@ -1202,12 +1232,12 @@
                         </div>
                     </div>
                     <div>
-                        <h4>Top tags</h4>
+                        <h4>Tags</h4>
                         <div id="toptags" class="sidebar-item">
                         </div>
                     </div>
                     <div>
-                        <h4>Top contributors</h4>
+                        <h4>Contributors</h4>
                         <div id="topcontributors" class="sidebar-item">
                         </div>
                     </div>

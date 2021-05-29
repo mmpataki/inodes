@@ -127,14 +127,22 @@ let ____configutil = new ConfigUtil()
 
 class automations {
 
-    getCard(obj) {
-        obj = JSON.parse(obj.content)
+    getCard(doc) {
+        let obj = JSON.parse(doc.content)
         return render('automation', {
             ele: 'div',
             classList: 'container',
             children: [
-                { ele: 'h3', text: obj.name || "<no name, bug?>" },
-                { ele: 'p', text: obj.description || "<no description, bug?>" }
+                { ele: 'img', attribs: { src: '/automations-plugin/automations.png' } },
+                { ele: 'h3', text: obj.name || "<no name, bug?>", styles: { display: 'inline-block', 'vertical-align': 'super', 'margin-left': '6px' } },
+                {
+                    ele: 'button', text: 'run', styles: { 'display': 'inline-block', 'vertical-align': 'super', 'margin-left': '10px' }, evnts: {
+                        click: () => {
+                            inodes.triggerSearch(`%applets #wfmanager !${doc.id}`)
+                        }
+                    }
+                },
+                { ele: 'span', html: obj.description || "<no description, bug?>", styles: { display: 'block', 'margin-bottom': '10px' } }
             ]
         })
     }
@@ -274,12 +282,262 @@ class automations {
 
 }
 
+class workflows {
+
+    getCard(doc) {
+        let obj = JSON.parse(doc.content)
+        return render('automation', {
+            ele: 'div',
+            classList: 'container',
+            children: [
+
+                { ele: 'img', attribs: { src: '/automations-plugin/workflow.png' } },
+                { ele: 'h3', text: obj.name || "<no name, bug?>", styles: { display: 'inline-block', 'vertical-align': 'super', 'margin-left': '6px' } },
+                {
+                    ele: 'button', text: 'run', styles: { 'display': 'inline-block', 'vertical-align': 'super', 'margin-left': '10px' }, evnts: {
+                        click: () => {
+                            inodes.triggerSearch(`%applets #wfmanager !${doc.id}`)
+                        }
+                    }
+                },
+                { ele: 'span', html: obj.description || "<no description, bug?>", styles: { display: 'block', 'margin-bottom': '10px' } }
+            ]
+        })
+    }
+
+    getEditor(obj) {
+
+        class ISummaryStory {
+            constructor(obj) { this.obj = obj }
+            title() { return "Summary" }
+            moral() { return this.obj }
+            tell() { return render('summary', { ele: 'pre', styles: { overflow: 'auto' }, text: JSON.stringify(this.obj, undefined, '  ') }) }
+        }
+
+        class InputEditorStory {
+            constructor(obj) { this.obj = obj }
+            title() { return "Provide inputs and script" }
+            moral() { return { ...(this.obj || {}), inputs: this.getInputSpecs(), type: 'workflow', postInputTitleTemplate: this.postInputTitleTemplate.value, ...this.wfBldr.getDesignWf() } }
+            isCompleted() { return true }
+            nextStoryClass() { return ISummaryStory }
+            getInputSpecs() {
+                let ispecs = this.inputs.querySelectorAll('.automation-i-and-s-input-spec')
+                let ret = [], cutil = ____configutil;
+                for (let i = 0; i < ispecs.length; i++) {
+                    let spec = ispecs[i]
+                    let select = spec.querySelector('.automation-i-and-s-input-type')
+                    ret.push({
+                        name: spec.querySelector('.automation-i-and-s-name').value,
+                        type: { name: select.value, ...(cutil.getExtraInputSpec(select.value, select.nextSibling)) },
+                        label: spec.querySelector('.automation-i-and-s-label').value
+                    })
+                }
+                return ret
+            }
+            tell() {
+
+                let getWfInputs = () => {
+                    return this.getInputSpecs();
+                }
+
+                class AutomationInputToWfInputMapperUI {
+
+                    constructor(ele, spec, inputs, inputChangedCb) {
+                        this.ele = ele;
+                        this.spec = spec;
+                        this.inputs = inputs || {};
+                        this.inputChangedCb = inputChangedCb;
+                    }
+
+                    destroy() {
+                        this.ele.innerHTML = ''
+                    }
+
+                    initialized() {
+                        let spec = this.spec
+                        for (let i = 0; i < spec.inputs.length; i++) {
+                            const inputName = spec.inputs[i].name;
+                            if (!(inputName in this.inputs))
+                                return false;
+                        }
+                        return true;
+                    }
+
+                    getValues() {
+                        return this.inputs;
+                    }
+
+                    showProps() {
+
+                        let obj = this.spec;
+
+                        let extraInputs = {
+                            failWfOnTaskFailure: { label: 'Fail workflow on this taks failure', type: { name: 'boolean' }, default: false }
+                        };
+
+                        /* add some extra inputs */
+                        Object.entries(extraInputs).forEach(arr => {
+                            let ei = arr[1]
+                            ei.name = arr[0]
+                            if (obj.inputs.filter(x => x.name == ei.name).length == 0) {
+                                obj.inputs.push(ei)
+                                this.inputs[ei.name] = ei.default
+                            }
+                        })
+
+                        this.ele.innerHTML = ''
+                        render('props', {
+                            ele: 'div',
+                            styles: { 'border-top': 'solid 1px black', 'padding': '10px 20px' },
+                            children: [
+                                { ele: 'b', text: 'Input mapper', styles: { display: 'block' } },
+                                { ele: 'span', text: 'Map the inputs of workflow to inputs of this automation' },
+                                { ele: 'div', iden: 'tab' }
+                            ]
+                        }, (id, ele) => this[id] = ele, this.ele)
+
+                        let inputChanged = (key, value) => {
+                            this.inputs[key] = value
+                            if (this.inputChangedCb) {
+                                try {
+                                    this.inputChangedCb(key, value)
+                                } catch (e) { /* don't give a damn */ }
+                            }
+                        }
+
+                        tabulate(obj.inputs, this.tab, {
+                            classPrefix: 'wfbldr-props',
+                            keys: {
+                                'Input property': { vFunc: (iSpec) => iSpec.label || iSpec.name },
+                                'Value': {
+                                    vFunc: (iSpec) => {
+                                        if (iSpec.name in extraInputs) {
+                                            return cutil.getValuePicker(iSpec, this.inputs[iSpec.name], inputChanged)
+                                        }
+                                        return {
+                                            ele: 'select',
+                                            evnts: {
+                                                change: function () { inputChanged(iSpec.name, this.value) },
+                                                rendered: x => inputChanged(iSpec.name, x.value)
+                                            },
+                                            children: getWfInputs().filter(i => iSpec.type.name == i.type.name).map(i => ({ ele: 'option', text: i.name }))
+                                        }
+                                    }
+                                }
+                            }
+                        })
+                    }
+                }
+
+                let cutil = ____configutil;
+                let getInputBuilder = (inp) => {
+                    let bldr = (x) => ({ ele: 'option', text: x, attribs: { value: x } })
+                    let types = cutil.getInputTypes()
+                    return {
+                        ele: 'div', classList: 'input-spec', children: [
+                            { ele: 'button', classList: 'input-spec-remover', text: '-', attribs: { title: 'remove' }, evnts: { click: function () { this.parentNode.remove() } } },
+                            { ele: 'input', classList: 'name', label: 'input name: ', attribs: { value: inp ? inp.name : "" } },
+                            { ele: 'input', classList: 'label', label: 'label: ', attribs: { value: inp ? inp.label : "" } },
+                            {
+                                ele: 'select', label: 'type: ', classList: 'input-type',
+                                children: types.map(bldr),
+                                attribs: { value: inp ? inp.type.name : types[0] },
+                                evnts: {
+                                    change: function () {
+                                        cutil.renderInputSpecInputter(this.value, this.nextSibling)
+                                    },
+                                    rendered: function (e) {
+                                        if (inp) {
+                                            cutil.renderInputSpecInputter(inp.type.name, e.nextSibling, inp.type.value)
+                                        }
+                                    }
+                                }
+                            },
+                            { ele: 'div', styles: { display: 'inline-block' } }
+                        ]
+                    }
+                }
+
+                let getInputs = () => {
+                    if (!this.obj || !this.obj.inputs || !this.obj.inputs.length) return [getInputBuilder()]
+                    return this.obj.inputs.map(input => getInputBuilder(input))
+                }
+
+                let container = render('automation-i-and-s', {
+                    ele: 'div',
+                    classList: 'container',
+                    children: [
+                        {
+                            ele: 'div', iden: 'inputs', classList: 'inputs', label: 'Inputs', labelStyle: 'font-weight: bold', children: [
+                                { ele: 'span', text: 'Specify the inputs this automation expects' },
+                                ...getInputs(),
+                                { ele: 'button', text: 'add input', evnts: { click: function () { this.parentNode.insertBefore(render('automation-i-and-s', getInputBuilder()), this) } } }
+                            ]
+                        },
+                        {
+                            ele: 'div', classList: 'inputs', label: 'Title template', labelStyle: 'font-weight: bold', children: [
+                                { ele: 'input', iden: 'postInputTitleTemplate', attribs: { value: this.obj ? this.obj.postInputTitleTemplate || '' : '' } }
+                            ]
+                        },
+                        { ele: 'div', label: 'Workflow', labelStyle: 'font-weight: bold', classList: 'wbfbldr', iden: 'container' }
+                    ]
+                }, (id, ele) => this[id] = ele)
+
+                this.wfBldr = new WorkflowBuilder(this.container, { getPropsManagerClass: () => AutomationInputToWfInputMapperUI }, this.obj.tasks, ['automation'])
+                this.wfBldr.templatize = function (e, vs) { return e }
+                this.wfBldr.draw();
+
+                return container
+            }
+        }
+
+        class NameAndDescriptionStory {
+            constructor(obj) { this.obj = obj }
+            title() { return "Describe this automation unit" }
+            moral() { return { ...(this.obj || {}), name: this.name.value, description: this.description.value } }
+            getErrMsg() { return "Fill in all the fields" }
+            isCompleted() { return this.name.value && this.name.value.trim() != '' && this.description && this.description.value.trim() != '' }
+            nextStoryClass() { return InputEditorStory }
+            tell() {
+                let r = Math.random();
+                return render('automation-name-and-desc', {
+                    ele: 'div',
+                    classList: 'container',
+                    children: [
+                        { ele: 'input', iden: 'name', label: 'Name', attribs: { value: this.obj ? this.obj.name : "" } },
+                        { ele: 'textarea', iden: 'description', label: 'Description', attribs: { value: this.obj ? this.obj.description : "" } }
+                    ]
+                }, (id, ele) => this[id] = ele)
+            }
+        }
+
+        if (obj) {
+            obj = JSON.parse(obj.content);
+        }
+        let ele = render('automation-ed', { ele: 'div' }, (id, obj) => this[id] = obj);
+        this.storyBoard = new StoryTeller(ele);
+        this.storyBoard.openStory(NameAndDescriptionStory, obj);
+        return ele;
+    }
+
+    getContent() {
+        let story = this.storyBoard.currentStory();
+        if (story && story.constructor.name == 'ISummaryStory') {
+            return story.moral()
+        }
+        throw new Error('Please provide all inputs')
+    }
+
+}
+
 class WorkflowBuilder {
 
-    constructor(ele, wfm) {
+    constructor(ele, wfm, tasks, allowedObjectTypes) {
         this.wfm = wfm;
-        this.tasks = []
+        this.tasks = tasks || []
+        this.allowedObjectTypes = allowedObjectTypes
         this.inst = Math.random()
+
         render('wfbldr', {
             ele: 'div', children: [
                 {
@@ -289,7 +547,11 @@ class WorkflowBuilder {
                 },
                 {
                     ele: 'div', iden: 'wfEditor', classList: 'wf-editor', children: [
-                        { ele: 'div', iden: 'graph', classList: 'graph', styles: { display: 'flex' } },
+                        {
+                            ele: 'div', classList: 'graph-container', children: [
+                                { ele: 'div', iden: 'graph', classList: 'graph', styles: { display: 'flex' } }
+                            ]
+                        },
                         { ele: 'div', classList: 'propseditor', iden: 'propsEle' }
                     ]
                 }
@@ -301,13 +563,20 @@ class WorkflowBuilder {
     getTaskItem(task) {
         let self = this;
         let autoTemplate = (item) => {
-            item = JSON.parse(item.content)
+            if (item.content)
+                item = JSON.parse(item.content)
+            let typ = item.type == 'workflow' ? 'workflow' : 'automations'
             return render('automation-sr', {
                 ele: 'div',
                 classList: 'container',
                 children: [
-                    { ele: 'b', text: `${item.name}: ` },
-                    { ele: 'i', text: item.description }
+                    { ele: 'img', classList: 'ico', attribs: { src: `automations-plugin/${typ}.png`, title: typ } },
+                    {
+                        ele: 'div', children: [
+                            { ele: 'b', text: `${item.name}: ` },
+                            { ele: 'i', html: item.description }
+                        ]
+                    }
                 ],
                 attribs: { data: item }
             })
@@ -332,11 +601,11 @@ class WorkflowBuilder {
                         {
                             preBuilt: true,
                             ele: makeSearchAndSelectButton(
-                                'automation task',
-                                'automation',
+                                'workflow or an automation task',
+                                this.allowedObjectTypes.join('/'),
                                 autoTemplate,
                                 (v) => {
-                                    task.automationSpec = v;
+                                    task.spec = v ? JSON.parse(v.content) : v;
                                     if (v == undefined) {
                                         task.propsManager.destroy();
                                         task.propsManager = undefined;
@@ -344,13 +613,14 @@ class WorkflowBuilder {
                                         this.showProps(task)
                                     }
                                 },
-                                task.automationSpec),
+                                task.spec
+                            ),
                             children: [
                                 { ele: 'input', attribs: { type: 'radio', name: `automation-selected-inst-${this.inst}` }, styles: { display: 'none' } }
                             ],
                             evnts: {
                                 click: function () {
-                                    if (!task.automationSpec) return
+                                    if (!task.spec) return
                                     let last = document.querySelector('.s-and-s-btn-container > input[type=radio]:checked');
                                     if (last) last.parentNode.classList.remove('automation-sr-container-selected');
                                     let cb = this.querySelector('input[type=radio]')
@@ -383,7 +653,8 @@ class WorkflowBuilder {
 
     showProps(task) {
         if (!task.propsManager) {
-            task.propsManager = new PropsManager(this.propsEle, JSON.parse(task.automationSpec.content), undefined, (key, value) => {
+            let className = this.wfm.getPropsManagerClass();
+            task.propsManager = new className(this.propsEle, task.spec, undefined, (key, value) => {
                 this.updateTitle(task)
             })
         }
@@ -392,21 +663,22 @@ class WorkflowBuilder {
 
     updateTitle(task) {
         let elem;
-        if (!task || !task.uiElem || !(elem = task.uiElem.querySelector('.s-and-s-btn-picked-item > .automation-sr-container'))) return;
+        if (!task || !task.uiElem || !(elem = task.uiElem.querySelector('.s-and-s-btn-picked-item > .automation-sr-container > div'))) return;
         let d = this.getTaskTitle(task);
         if (d) elem.innerHTML = d;
     }
 
     getTaskTitle(task) {
-        if (!task.automationSpec || !task.propsManager) return;
-        let automation = JSON.parse(task.automationSpec.content);
-        let values = task.propsManager.getValues();
-        if (automation.postInputTitleTemplate && values) {
-            task.displayName = this.templatize(automation.postInputTitleTemplate, this.normalizeDocsFromInputs(values))
+        if (!task.spec || (!task.propsManager && !task.inputs)) return;
+        return task.displayName = this._getTaskTitle(task.spec, { ...task.inputs, ...(task.propsManager ? task.propsManager.getValues() : {}) })
+    }
+
+    _getTaskTitle(automation, inputs) {
+        if (automation.postInputTitleTemplate && inputs) {
+            return this.templatize(automation.postInputTitleTemplate, this.normalizeDocsFromInputs(inputs))
         } else {
-            task.displayName = `<b>${task.automationSpec.name}</b> <i>${task.automationSpec.description}</i>`;
+            return `<b>${task.spec.name}</b> <i>${task.spec.description}</i>`;
         }
-        return task.displayName;
     }
 
     array_move(arr, old_index, new_index) {
@@ -449,17 +721,14 @@ class WorkflowBuilder {
         this.draw()
     }
 
-    newTask() { return { automationSpec: undefined } }
+    newTask() { return { spec: undefined } }
 
     reset() {
         this.draw();
         this.messages.innerHTML = ''
     }
 
-    runWf() {
-
-        this.reset()
-
+    getDesignWf() {
         let wf = { tasks: [] };
 
         for (var i = 0; i < this.tasks.length; i++) {
@@ -468,23 +737,21 @@ class WorkflowBuilder {
                 this.highLightUninitializedTask(task)
                 return
             } else {
-                wf.tasks.push({ ...task, inputs: task.propsManager.getValues() })
+                wf.tasks.push({
+                    displayName: task.displayName,
+                    spec: task.spec,
+                    inputs: task.propsManager.getValues()
+                })
             }
         }
 
-        let runnableWf = this.resolve(wf)
-        console.log(runnableWf)
+        return wf;
+    }
 
-        post(
-            '/nocors',
-            {
-                method: 'POST',
-                url: `http://inedctst01:5000/wf/${getCurrentUser()}`,
-                data: JSON.stringify(runnableWf),
-                headers: { 'Content-Type': 'application/json' }
-            },
-            { 'Content-Type': 'application/json' }
-        ).then(() => this.wfm.listJobs())
+    getRunnableWf() {
+        this.reset()
+        let wf = this.getDesignWf();
+        return this.resolve(wf)
     }
 
     templatize(____scr, ____varMap) {
@@ -508,24 +775,36 @@ class WorkflowBuilder {
         return inps;
     }
 
-    resolve(wf) {
-
+    resolveTask(task) {
         let resolvers = {
-            'shellscript': (spec, inputs) => {
-                return { script: this.templatize(spec.script, this.normalizeDocsFromInputs(inputs)) }
-            }
-        }
-        return {
-            tasks: wf.tasks.map(task => {
-                let spec = JSON.parse(task.automationSpec.content)
+            'shellscript': (task) => {
                 return {
                     displayName: task.displayName,
-                    automationSpec: spec,
+                    spec: task.spec,
                     inputs: task.inputs,
-                    ...resolvers[spec.type](spec, task.inputs)
+                    script: this.templatize(task.spec.script, this.normalizeDocsFromInputs(task.inputs))
                 }
-            })
+            },
+            'workflow': (wftask) => {
+                let spec = wftask.spec, inputs = wftask.inputs
+                let newTasks = spec.tasks.map(task => {
+                    Object.keys(task.inputs).forEach(inputName => {
+                        if (task.inputs[inputName] in wftask.inputs) {
+                            task.inputs[inputName] = wftask.inputs[task.inputs[inputName]]
+                        }
+                    })
+                    task.displayName = this._getTaskTitle(task.spec, task.inputs)
+                    return this.resolveTask(task)
+                })
+                newTasks[newTasks.length - 1].inputs['failWfOnTaskFailure'] = wftask.inputs['failWfOnTaskFailure']
+                return newTasks
+            }
         }
+        return resolvers[task.spec.type](task)
+    }
+
+    resolve(wf) {
+        return { tasks: wf.tasks.map(task => this.resolveTask(task)).flat() }
     }
 
     err(msg) {
@@ -541,11 +820,6 @@ class WorkflowBuilder {
         if (this.tasks.length == 0)
             this.tasks.push(this.newTask())
         this.graph.innerHTML = ''
-        render('wfbldr', {
-            ele: 'div', classList: 'wf-actions', children: [
-                { ele: 'button', classList: 'wf-action wf-action-run', attribs: { innerHTML: '&#x25B6;', title: 'Run' }, evnts: { click: () => this.runWf() } }
-            ]
-        }, () => 1, this.graph)
         this.tasks.forEach(task => {
             let taskUIElement = this.getTaskItem(task);
             task.uiElem = taskUIElement;
@@ -597,7 +871,8 @@ class PropsManager {
         extraInputs.forEach(ei => {
             if (obj.inputs.filter(x => x.name == ei.name).length == 0) {
                 obj.inputs.push(ei)
-                this.inputs[ei.name] = ei.default
+                if (!(ei.name in this.inputs))
+                    this.inputs[ei.name] = ei.default
             }
         })
 
@@ -673,7 +948,12 @@ class JobsUI {
                 tabulate(jobs, this.jobsTable, {
                     defaultSortKey: 'Start time',
                     keys: {
-                        Jobs: { vFunc: (x) => ({ ele: 'a', text: x.id, attribs: { href: '#' }, evnts: { click: () => this.wfm.openJob(x.id) } }), keyId: 'id', sortable: true },
+                        Jobs: {
+                            keyId: 'id', sortable: true,
+                            vFunc: (x) => {
+                                return { ele: 'a', text: x.id, attribs: { href: '#' }, evnts: { click: () => this.wfm.openJob(x.id) } }
+                            }
+                        },
                         State: {
                             vFunc: (x) => ({
                                 ele: 'span',
@@ -721,7 +1001,7 @@ class JobViewer {
     constructor(element, wfm) {
         this.wfm = wfm;
         this.container = element;
-        element.innerHTML = ''
+        element.innerHTML = 'Pick a job from Jobs panel to view it here'
     }
 
     show(job_id) {
@@ -809,31 +1089,31 @@ class JobViewer {
                     classList: 'task-container-parent',
                     children: [
                         {
-                            ele: 'span', classList: 'task-status', text: status,
-                            children: (status != 'running' ? [] : [{ ele: 'img', attribs: { src: '/wait.gif' }, styles: { 'vertical-align': 'middle', 'margin-left': '5px' } }])
-                        },
-                        {
                             ele: 'div',
                             classList: `task-container ${status}`,
                             children: [
-                                { ele: 'span', classList: 'task-name', html: task.displayName }
+                                { ele: 'span', classList: 'task-name', html: task.displayName },
+                                {
+                                    ele: 'div',
+                                    children: [
+                                        ...(!tstatus ? [] : [
+                                            {
+                                                ele: 'span', classList: 'task-status', text: status,
+                                                children: (status != 'running' ? [] : [{ ele: 'img', attribs: { src: '/wait.gif' }, styles: { 'vertical-align': 'middle', 'margin-left': '5px' } }])
+                                            },
+                                            { ele: 'a', attribs: { href: '#' }, classList: 'log-links', text: 'details', evnts: { click: (e) => { e.stopPropagation(); showSteps(task.displayName, tstatus.steps) } } },
+                                            { ele: 'a', attribs: { href: '#' }, classList: 'log-links', text: 'stdout', evnts: { click: (e) => { e.stopPropagation(); loadLog(task.stdout) } } },
+                                            { ele: 'a', attribs: { href: '#' }, classList: 'log-links', text: 'stderr', evnts: { click: (e) => { e.stopPropagation(); loadLog(task.stderr) } } }
+                                        ])
+                                    ]
+                                }
                             ],
                             evnts: {
                                 click: (e) => {
-                                    new PropsManager(this.props, task.automationSpec, task.inputs).showProps()
+                                    new PropsManager(this.props, task.spec, task.inputs).showProps()
                                     switchPanel('props')
                                 }
                             }
-                        },
-                        {
-                            ele: 'div', classList: 'task-log-links',
-                            children: [
-                                ...(!tstatus ? [] : [
-                                    { ele: 'a', attribs: { href: '#' }, classList: 'log-links', text: 'details', evnts: { click: (e) => { e.stopPropagation(); showSteps(task.displayName, tstatus.steps) } } },
-                                    { ele: 'a', attribs: { href: '#' }, classList: 'log-links', text: 'stdout', evnts: { click: (e) => { e.stopPropagation(); loadLog(task.stdout) } } },
-                                    { ele: 'a', attribs: { href: '#' }, classList: 'log-links', text: 'stderr', evnts: { click: (e) => { e.stopPropagation(); loadLog(task.stderr) } } }
-                                ])
-                            ]
                         }
                     ]
                 }
@@ -844,7 +1124,7 @@ class JobViewer {
         this.graphContainer.innerHTML = ''
 
         render('view-job', {
-            ele: 'div', children: [
+            ele: 'div', styles: { padding: '20px' }, children: [
                 { ele: 'h4', text: job.id, styles: { 'display': 'inline-block', 'margin-right': '10px' } },
                 { ele: 'span', text: statusOb.str },
                 {
@@ -866,39 +1146,61 @@ class JobViewer {
 
 class WfManager {
 
-    constructor(container) {
+    constructor(container, tasks) {
 
         this.WF_BUILDER = 'Workflow Builder'
         this.JOBS_UI = 'Jobs'
         this.JOB_VIEWER = 'View job'
 
+        let inst = Math.random()
+
         render('wfmanager', {
             ele: 'div', children: [
+                { ele: 'h3', text: 'Workflow manager' },
                 {
                     ele: 'div', classList: 'panel-title-bar', children: [
-                        { ele: 'h3', iden: 'panelTitle' },
-                        {
-                            ele: 'div', classList: 'panel-switcher', children: [
-                                { ele: 'a', classList: 'panel-switcher-btn', attribs: { href: '#' }, text: this.WF_BUILDER, evnts: { click: () => this.switchPanel(this.WF_BUILDER) } },
-                                { ele: 'a', classList: 'panel-switcher-btn', attribs: { href: '#' }, text: this.JOBS_UI, evnts: { click: () => this.switchPanel(this.JOBS_UI) } }
-                            ]
-                        }
+                        { ele: 'input', attribs: { type: 'radio', name: `tab-chooser-${inst}`, checked: true }, classList: 'panel-switcher-btn', postlabel: this.WF_BUILDER, evnts: { click: () => this.switchPanel(this.WF_BUILDER) } },
+                        { ele: 'input', attribs: { type: 'radio', name: `tab-chooser-${inst}` }, classList: 'panel-switcher-btn', postlabel: this.JOBS_UI, evnts: { click: () => this.switchPanel(this.JOBS_UI) } },
+                        { ele: 'input', attribs: { type: 'radio', name: `tab-chooser-${inst}` }, classList: 'panel-switcher-btn', postlabel: this.JOB_VIEWER, evnts: { click: () => this.switchPanel(this.JOB_VIEWER) } }
                     ]
                 },
                 {
                     ele: 'div', iden: 'contentPanel', children: [
-                        { ele: 'div', iden: this.WF_BUILDER },
+                        {
+                            ele: 'div', iden: this.WF_BUILDER, styles: { position: 'relative' }, children: [
+                                {
+                                    ele: 'div', classList: 'actions-panel', children: [
+                                        { ele: 'button', classList: 'wf-action wf-action-run', attribs: { innerHTML: '&#x25B6;', title: 'Run' }, evnts: { click: () => this.runWf() } }
+                                    ]
+                                }
+                            ]
+                        },
                         { ele: 'div', classList: 'jobs-ui', iden: this.JOBS_UI },
-                        { ele: 'div', classList: 'view-job', iden: this.JOB_VIEWER },
+                        { ele: 'div', classList: 'view-job', iden: this.JOB_VIEWER, text: 'Pick a job from Jobs panel to view it here' },
                     ]
                 }
             ]
         }, (id, ele) => this[id] = ele, container)
         this.objs = {}
-        this.objs[this.WF_BUILDER] = this.wfBuilder = new WorkflowBuilder(this[this.WF_BUILDER], this)
+        this.objs[this.WF_BUILDER] = this.wfBuilder = new WorkflowBuilder(this[this.WF_BUILDER], this, tasks, ['automation', 'workflow'])
         this.objs[this.JOBS_UI] = this.jobsUI = new JobsUI(this[this.JOBS_UI], this)
         this.objs[this.JOB_VIEWER] = this.jobViewer = new JobViewer(this[this.JOB_VIEWER], this)
         this.switchPanel(this.WF_BUILDER)
+    }
+
+    runWf() {
+        let runnableWf = this.wfBuilder.getRunnableWf()
+        console.log(runnableWf)
+        post(
+            '/nocors',
+            {
+                method: 'POST',
+                url: `http://inedctst01:5000/wf/${getCurrentUser()}`,
+                data: JSON.stringify(runnableWf),
+                headers: { 'Content-Type': 'application/json' }
+            },
+            { 'Content-Type': 'application/json' }
+        ).then(() => this.listJobs())
     }
 
     openJob(job_id) {
@@ -909,10 +1211,11 @@ class WfManager {
         this.switchPanel(this.JOBS_UI)
     }
 
+    getPropsManagerClass() { return PropsManager; }
+
     switchPanel(pName, arg) {
         [this.WF_BUILDER, this.JOBS_UI, this.JOB_VIEWER].filter(x => x != pName).forEach(p => { this[p].style.display = 'none'; this.objs[p].destroy() })
         this.objs[pName].show(arg)
         this[pName].style.display = 'block'
-        this.panelTitle.innerHTML = pName
     }
 }

@@ -103,6 +103,7 @@ public abstract class DataService extends Observable {
         List<Document> results;
         Map<String, Map<String, Long>> facetResults;
         long totalResults;
+        Object debugInfo;
     }
 
     @Autowired
@@ -132,7 +133,7 @@ public abstract class DataService extends Observable {
 
         US.registerPostEvent(UserGroupService.Events.USER_SEARCH, ed -> {
             UserInfo userInfo = (UserInfo) ed.get("userInfo");
-            userInfo.addExtraInfo("postCount", getUserPostsFacets());
+            userInfo.addExtraInfo("postCount", getUserPostsFacets(userInfo.getBasic().getUserName()));
         });
 
         for (String klassName : KS.getRegisteredKlasses()) {
@@ -296,8 +297,10 @@ public abstract class DataService extends Observable {
 
     protected abstract void _putData(Document doc) throws IOException;
 
-    public Map<String, Long> getUserPostsFacets() throws Exception {
-        return search(SearchQuery.builder().q("*").fq(Collections.singletonList("type")).fqLimit(Integer.MAX_VALUE).build()).getFacetResults().get("type");
+    protected abstract Map<String, Long> _getUserPostsFacets(String user) throws Exception;
+
+    public Map<String, Long> getUserPostsFacets(String user) throws Exception {
+        return _getUserPostsFacets(user);
     }
 
     public void iterateAllDocs(String q, Consumer<Document> consumer) throws Exception {

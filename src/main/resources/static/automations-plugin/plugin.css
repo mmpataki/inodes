@@ -48,8 +48,6 @@
     flex-flow: column;
     align-items: center;
     justify-content: center;
-    max-height: 500px;
-    overflow: auto;
     position: relative;
     padding-top: 30px;
 }
@@ -122,7 +120,7 @@
 }
 
 .s-and-s-btn-content {
-    padding: 10px 30px;
+    padding: 10px 10px;
 }
 
 .s-and-s-btn-action {
@@ -214,6 +212,7 @@
 
 .wfbldr-wf-action-run {
     color: green;
+    z-index: 1;
 }
 
 .wfbldr-wf-action-stop {
@@ -230,14 +229,29 @@
 }
 
 .wfmanager-panel-switcher-btn {
-    margin-right: 10px;
-    font-size: 0.9em;
+    display: none;
 }
 
-.wfmanager-panel-switcher {
+.wfmanager-panel-switcher-btn + label {
+    border: solid 1px lightgray;
+    font-size: 0.8em;
+    padding: 10px 10px;
+    display: inline-block;
+    border-radius: 5px;
+    border-bottom: none;
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 0px;
+}
+
+.wfmanager-panel-switcher-btn:checked + label {
+    font-weight: bold;
+}
+
+.wfmanager-actions-panel {
     position: absolute;
     top: 0px;
     right: 0px;
+    z-index: 1;
 }
 
 .wfmanager-panel-title-bar {
@@ -246,7 +260,7 @@
 
 .wfmanager-jobs-ui {
     position: relative;
-    padding-top: 20px;
+    padding: 20px;
 }
 
 .jobs-ui-actions {
@@ -342,19 +356,32 @@
     font-weight: bolder;
 }
 
-.view-job-task-status, .view-job-task-log-links {
-    font-style: italic;
-    background-color: #f0f0f0;
-    padding: 10px;
-}
-
-.view-job-task-status {
-    border-top-left-radius: 5px;
-    border-bottom-left-radius: 5px;
-}
-
 .view-job-task-log-links {
     visibility: hidden;
     border-top-right-radius: 5px;
     border-bottom-right-radius: 5px;
+}
+
+.wfbldr-graph-container {
+    max-height: 400px;
+    overflow: auto;
+}
+
+.wfbldr-wf-editor, .wfmanager-jobs-ui, .wfmanager-view-job {
+    border: dotted 1px black;
+    min-height: 100px;
+}
+
+.automation-i-and-s-wbfbldr {
+    padding: 10px 20px;
+}
+
+.automation-sr-container {
+    display: flex;
+    align-items: center;
+}
+
+.automation-sr-ico {
+    margin: 5px;
+    margin-right: 10px;
 }
