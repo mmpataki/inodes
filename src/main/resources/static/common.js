@@ -6,7 +6,7 @@ function getBaseUrl() {
     return baseUrl;
 }
 
-function ajax(method, url, data, hdrs, cancelToken) {
+function _ajax(method, url, data, hdrs, cancelToken) {
     if (getCurrentUser()) {
         if (!hdrs) hdrs = {}
         hdrs['AuthInfo'] = `${getCurrentUser()}:${getCookie(TOK_KEY)}`
@@ -33,10 +33,14 @@ function ajax(method, url, data, hdrs, cancelToken) {
         xhttp.onerror = function () {
             reject({ message: JSON.parse(this.responseText).message, code: this.status });
         }
-        xhttp.open(method, `${baseUrl}${url}`, true);
+        xhttp.open(method, url, true);
         hdrs && Object.keys(hdrs).forEach(key => xhttp.setRequestHeader(key, hdrs[key]))
         xhttp.send(data);
     });
+}
+
+function ajax(method, url, data, hdrs, cancelToken) {
+    return _ajax(method, `${baseUrl}${url}`, data, hdrs, cancelToken)
 }
 
 function makeHMap(headers) {
@@ -77,6 +81,48 @@ function postFile(url, data, hdrs) {
 
 function delet(url) {
     return ajax('DELETE', url);
+}
+
+// WYSIWYG
+function _get(url, token) {
+    return _ajax("GET", url, undefined, {}, token);
+}
+
+function _post(url, data, hdrs) {
+    return _ajax('POST', url, JSON.stringify(data), hdrs);
+}
+
+function _postFile(url, data, hdrs) {
+    return _ajax('POST', url, data, hdrs);
+}
+
+function _delet(url) {
+    return _ajax('DELETE', url);
+}
+//
+
+function ncors_get(url, data, hdrs) {
+    return nocors('GET', url, data, hdrs)
+}
+
+function ncors_post(url, data, hdrs) {
+    return nocors('POST', url, data, hdrs)
+}
+
+function ncors_delete(url, data, hdrs) {
+    return nocors('DELETE', url, data, hdrs)
+}
+
+function ncors_put(url, data, hdrs) {
+    return nocors('PUT', url, data, hdrs)
+}
+
+function nocors(method, url, data, headers) {
+    return post(
+        `/nocors`, 
+        { method: method, data, headers, url: url },
+        { "Content-Type": "application/json" }
+    )
 }
 
 function setCookie(name, value, days) {
