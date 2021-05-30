@@ -107,8 +107,8 @@
                         return resolve(klass.obj)
                     }
                     let proms = [];
-                    klass.jsPaths.forEach(s => proms.push(this.loadScript(s)))
-                    klass.cssPaths.forEach(s => proms.push(this.loadCss(s)))
+                    klass.jsPaths.forEach(s => proms.push(this.loadScript("/p/" + s)))
+                    klass.cssPaths.forEach(s => proms.push(this.loadCss("/p/" + s)))
                     Promise.all(proms).then(x => {
                         let k = eval(klass.name)
                         klass.obj = new k();
