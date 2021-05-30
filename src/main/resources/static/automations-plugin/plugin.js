@@ -607,7 +607,8 @@ class WorkflowBuilder {
                                 (v) => {
                                     task.spec = v ? JSON.parse(v.content) : v;
                                     if (v == undefined) {
-                                        task.propsManager.destroy();
+                                        if(task.propsManager)
+                                            task.propsManager.destroy();
                                         task.propsManager = undefined;
                                     } else {
                                         this.showProps(task)
@@ -1098,7 +1099,7 @@ class JobViewer {
                                     children: [
                                         ...(!tstatus ? [] : [
                                             {
-                                                ele: 'span', classList: 'task-status', text: status,
+                                                ele: 'b', classList: 'task-status', text: status,
                                                 children: (status != 'running' ? [] : [{ ele: 'img', attribs: { src: '/wait.gif' }, styles: { 'vertical-align': 'middle', 'margin-left': '5px' } }])
                                             },
                                             { ele: 'a', attribs: { href: '#' }, classList: 'log-links', text: 'details', evnts: { click: (e) => { e.stopPropagation(); showSteps(task.displayName, tstatus.steps) } } },

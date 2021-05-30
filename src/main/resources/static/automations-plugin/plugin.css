@@ -326,6 +326,10 @@
     right: 0px;
 }
 
+.view-job-steps {
+    padding: 20px;
+}
+
 .view-job-task-step-name {
     margin-left: 10px;
     font-weight: bolder;
