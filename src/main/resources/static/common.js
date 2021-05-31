@@ -21,8 +21,11 @@ function _ajax(method, url, data, hdrs, cancelToken) {
         }
         xhttp.onreadystatechange = function () {
             if (this.readyState == 4 && this.status == 200) {
+                let json;
+                try { json = JSON.parse(this.responseText); } catch (e) {}
                 resolve({
                     response: this.responseText,
+                    json,
                     headers: makeHMap(xhttp.getAllResponseHeaders())
                 })
             }
