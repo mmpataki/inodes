@@ -36,7 +36,7 @@ public class FileSystemStorageService extends WebMvcConfigurerAdapter implements
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/u/**").addResourceLocations("file:" + conf.getProperty("storageservice.root.dir"));
+        //registry.addResourceHandler("/u/**").addResourceLocations("file:" + conf.getProperty("storageservice.root.dir"));
     }
 
     @PostConstruct

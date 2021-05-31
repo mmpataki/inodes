@@ -17,22 +17,10 @@ import java.util.List;
 @RestController
 @CrossOrigin
 @Log4j
-public class KlassController extends WebMvcConfigurerAdapter {
+public class KlassController {
 
     @Autowired
     KlassService KS;
-
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String plugDir = System.getenv("PLUGINS_DIR");
-        String arg[] = {"file:./src/main/resources/static"};
-        if (plugDir != null && !plugDir.isEmpty() && new File(plugDir).exists()) {
-            arg = new String[]{"file:./src/main/resources/static", "file:" + plugDir};
-        } else {
-            log.warn("PLUGINS_DIR environment variable is not set, user plugins won't be available");
-        }
-        registry.addResourceHandler("/p/**").addResourceLocations(arg);
-    }
 
     @GetMapping("/klass/{id}")
     public Klass get(@PathVariable String id) throws Exception {
