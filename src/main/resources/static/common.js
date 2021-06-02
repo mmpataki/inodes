@@ -123,7 +123,7 @@ function ncors_put(url, data, hdrs) {
 function nocors(method, url, data, headers) {
     return post(
         `/nocors`, 
-        { method: method, data, headers, url: url },
+        { method: method, data: JSON.stringify(data), headers, url: url },
         { "Content-Type": "application/json" }
     )
 }
