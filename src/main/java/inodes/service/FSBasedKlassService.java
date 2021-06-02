@@ -22,9 +22,10 @@ public class FSBasedKlassService extends KlassService {
         Files.createDirectories(Paths.get(basePath));
     }
 
-    String makePath(String kName) throws IOException {
+    String makePath(String kName, boolean createIfNotExist) throws IOException {
         String ret = basePath + "/" + kName;
-        Files.createDirectories(Paths.get(ret));
+        if(createIfNotExist)
+            Files.createDirectories(Paths.get(ret));
         return ret;
     }
 
@@ -34,14 +35,14 @@ public class FSBasedKlassService extends KlassService {
 
     @Override
     public Klass getKlass(String name) throws Exception {
-        try (FileReader fr = new FileReader(makePath(name) + "/class.json")) {
+        try (FileReader fr = new FileReader(makePath(name, false) + "/class.json")) {
             return new Gson().fromJson(fr, Klass.class);
         }
     }
 
     @Override
     public void _putKlass(Klass klass) throws Exception {
-        try (FileWriter fw = new FileWriter(makePath(klass.getName())+ "/class.json")) {
+        try (FileWriter fw = new FileWriter(makePath(klass.getName(), true)+ "/class.json")) {
             new Gson().toJson(klass, fw);
         }
     }

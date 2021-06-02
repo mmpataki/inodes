@@ -17,6 +17,7 @@ import javax.annotation.PostConstruct;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @Log4j
@@ -78,44 +79,48 @@ public class EventService {
     }
 
     interface EventToAppNotificationTransfomer {
-        AppNotification transform(EventData payload);
+        AppNotification.NotificationData transform(EventData payload);
     }
 
     enum Type {
 
         REGISTER_USER
-                (es.getUserResolver(), es.getRegisterEmailTemplateBuilder(), null, null),
+                (EnumSet.of(NotificationType.EMAIL), es.getUserResolver(), es.getRegisterEmailTemplateBuilder(), null, null),
 
         USER_ADD_TO_GROUP
-                (es.getUserResolver(), es.getUserAddedToGroupEmailBuilder(), null, null),
+                (EnumSet.of(NotificationType.EMAIL), es.getUserResolver(), es.getUserAddedToGroupEmailBuilder(), null, null),
 
         NEW_DOC
-                (es.getDocWatcherResolver(), es.getNewDocEmailBuilder(), es.getNewDocTeamsNBuilder(), null),
+                (EnumSet.of(NotificationType.EMAIL, NotificationType.APP_NOTIFICATION, NotificationType.TEAMS_NOTIFICATION), es.getDocWatcherResolver(), es.getNewDocEmailBuilder(), es.getNewDocTeamsNBuilder(), null),
 
         NEW_COMMENT
-                (es.getNewCommentWatcherResolver(), es.getNewCommentEmailBuilder(), null, null),
+                (EnumSet.of(NotificationType.EMAIL, NotificationType.APP_NOTIFICATION), es.getNewCommentWatcherResolver(), es.getNewCommentEmailBuilder(), null, null),
 
         ADMIN
-                (o -> Collections.singleton(new Reciepient().withId(UserGroupService.ADMIN).withTyp(RecipientType.GROUP)), null, null, null),
+                (EnumSet.of(NotificationType.EMAIL), o -> Collections.singleton(new Reciepient().withId(UserGroupService.ADMIN).withTyp(RecipientType.GROUP)), null, null, null),
 
         APPROVAL_NEEDED
-                (o -> Collections.singleton(new Reciepient().withId(UserGroupService.SECURITY).withTyp(RecipientType.GROUP)), es.getApprovalNeededEmailBuilder(), null, null),
+                (EnumSet.of(NotificationType.EMAIL, NotificationType.APP_NOTIFICATION), o -> Collections.singleton(new Reciepient().withId(UserGroupService.SECURITY).withTyp(RecipientType.GROUP)), es.getApprovalNeededEmailBuilder(), null, null),
 
         PERMISSION_NEEDED
-                (es.getPermissionProviderResolver(), null, null, es.getPermissionNeededAppNotificationBuilder()),
+                (EnumSet.of(NotificationType.EMAIL, NotificationType.APP_NOTIFICATION), es.getPermissionProviderResolver(), null, null, es.getPermissionNeededAppNotificationBuilder()),
 
         PERMISSION_GIVEN
-                (es.getPermissionGivenWatcherResolver(), null, null, es.getPermissionGivenAppNotificationBuilder()),
+                (EnumSet.of(NotificationType.EMAIL, NotificationType.APP_NOTIFICATION), es.getPermissionGivenWatcherResolver(), null, null, es.getPermissionGivenAppNotificationBuilder()),
 
         NEW_SUBSCRIPTION
-                (es.getNewSubscriptionRecptResolver(), es.getNewSubscriptionEmailBuilder(), null, null);
+                (EnumSet.of(NotificationType.EMAIL), es.getNewSubscriptionRecptResolver(), es.getNewSubscriptionEmailBuilder(), null, null);
+
+        EnumSet<NotificationType> notifTypes;
+
 
         RecipientResolver ur;
         EventToEmailNotificationTransformer eet;
         EventToTeamsNotificationTransformer ett;
         EventToAppNotificationTransfomer eat;
 
-        Type(RecipientResolver ur, EventToEmailNotificationTransformer eet, EventToTeamsNotificationTransformer ett, EventToAppNotificationTransfomer eat) {
+        Type(EnumSet<NotificationType> notifTypes, RecipientResolver ur, EventToEmailNotificationTransformer eet, EventToTeamsNotificationTransformer ett, EventToAppNotificationTransfomer eat) {
+            this.notifTypes = notifTypes;
             this.ur = ur;
             this.eet = eet;
             this.ett = ett;
@@ -138,39 +143,142 @@ public class EventService {
             return null;
         }
 
-        public AppNotification getAppNotificationPayload(EventData payLoad) {
+        public AppNotification.NotificationData getAppNotificationPayload(EventData payLoad) {
             if (eat != null)
                 return eat.transform(payLoad);
             return null;
+        }
+
+        public EnumSet<NotificationType> getNotifTypes() {
+            return notifTypes;
         }
     }
 
     @Data
     @Builder
     public static class Event {
+
         Type typ;
-        EventData payLoad;
+        EventData eventData;
+
+        public Set<Reciepient> getReciepients() throws Exception {
+            return typ.resolveRecipients(eventData);
+        }
     }
 
     interface EventToPayloadTransformer {
         NotificationPayLoad generate(Event e);
     }
 
+    interface NotificationSender {
+        void send(NotificationPayLoad payload, Set<Reciepient> rcpnts);
+    }
+
+    static class EmailNotificationSender implements NotificationSender {
+
+        @Override
+        public void send(NotificationPayLoad payload, Set<Reciepient> rcpnts) {
+            for (Reciepient r : rcpnts) {
+                try {
+                    String emailList = "";
+                    if (r.getTyp() == RecipientType.GROUP) {
+                        Group group = es.US.getGroup(r.getId());
+                        if (group != null) {
+                            if (group.getEmail() != null) {
+                                emailList = group.getEmail();
+                            } else {
+                                emailList = group.getUsers().stream().map(uid -> {
+                                    try {
+                                        return es.US.getUser(uid);
+                                    } catch (Exception e) {
+                                        log.error("error while fetching users to send notifications ", e);
+                                    }
+                                    return null;
+                                }).filter(x -> x != null).map(u -> u.getEmail()).filter(e -> e != null).collect(Collectors.joining(","));
+                            }
+                        }
+                    } else {
+                        User user = es.US.getUser(r.getId());
+                        if (user != null)
+                            emailList = user.getEmail();
+                    }
+                    if (!emailList.isEmpty())
+                        es.ES.send(emailList, (EmailService.EmailObject) payload);
+                } catch (Exception e) {
+                    log.error("error while sending notification email for " + payload.toString() + " to " + r.getId(), e);
+                }
+            }
+        }
+    }
+
+    static class TeamsNotificationSender implements NotificationSender {
+
+        @Override
+        public void send(NotificationPayLoad payload, Set<Reciepient> rcpnts) {
+            for (Reciepient r : rcpnts) {
+                try {
+                    String url = null;
+                    if (r.getTyp() == RecipientType.GROUP) {
+                        Group group = es.US.getGroup(r.getId());
+                        if (group != null) {
+                            url = group.getTeamsUrl();
+                        }
+                    } else {
+                        User usr = es.US.getUser(r.getId());
+                        if (usr != null) {
+                            url = usr.getTeamsUrl();
+                        }
+                    }
+                    if (url != null) {
+                        es.TS.send(url, (TeamsNotificationSenderService.TeamsNotification) payload);
+                    }
+                } catch (Exception e) {
+                    log.error("error while sending notification email for " + payload.toString() + " to " + r.getId(), e);
+                }
+            }
+        }
+    }
+
+    static class AppNotificationSender implements NotificationSender {
+
+        @Override
+        public void send(NotificationPayLoad payload, Set<Reciepient> rcpnts) {
+            AppNotification.NotificationData anotif = (AppNotification.NotificationData) payload;
+            try {
+                es.ANS.postNotification(
+                        rcpnts.stream().map(x -> x.getTyp() == RecipientType.GROUP
+                                                ? DataService.getGroupTag(x.getId())
+                                                : DataService.getUserTag(x.getId())
+                                            ).collect(Collectors.toList()),
+                        anotif
+                );
+            } catch (Exception e) {
+                log.error("error while sending appnotification", e);
+            }
+        }
+    }
+
 
     public enum NotificationType {
 
-        EMAIL(e -> e.getTyp().getEmailPayload(e.getPayLoad())),
-        TEAMS_NOTIFICATION(e -> e.getTyp().getTeamsNotificationPayload(e.getPayLoad())),
-        APP_NOTIFICATION(e -> e.getTyp().getAppNotificationPayload(e.getPayLoad()));
+        EMAIL(e -> e.getTyp().getEmailPayload(e.getEventData()), new EmailNotificationSender()),
+        TEAMS_NOTIFICATION(e -> e.getTyp().getTeamsNotificationPayload(e.getEventData()), new TeamsNotificationSender()),
+        APP_NOTIFICATION(e -> e.getTyp().getAppNotificationPayload(e.getEventData()), new AppNotificationSender());
 
+        private NotificationSender sender;
         private final EventToPayloadTransformer pg;
 
-        NotificationType(EventToPayloadTransformer pg) {
+        NotificationType(EventToPayloadTransformer pg, NotificationSender sender) {
             this.pg = pg;
+            this.sender = sender;
         }
 
         public NotificationPayLoad getPayload(Event e) {
             return pg.generate(e);
+        }
+
+        public NotificationSender getSender() {
+            return this.sender;
         }
     }
 
@@ -180,11 +288,10 @@ public class EventService {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Notification {
-        String channelInfo;
+        Object channelInfo;
         NotificationType typ;
         Event event;
     }
-
 
     private RecipientResolver getPermissionProviderResolver() {
         return o -> {
@@ -306,9 +413,8 @@ public class EventService {
             PermissionRequest pr = (PermissionRequest) ed.get("req");
             String aGuy = pr.getReqBy();
             String docId = pr.getDocId();
-            return AppNotification.builder()
+            return AppNotification.NotificationData.builder()
                     .nFrom("permission service")
-                    .nFor("")
                     .ntext(String.format(
                             "<a href=\"%s\"><b>%s</b></a> wants permission to access <a href=\"%s\" target=\"_blank\">this</a> object. " +
                                     "Click <a href=\"#\" onclick=\"post(`%s`).then(x => showSuccess('Done')).catch(e => showError(e.msg))\"><b>this</b></a> link, if you want to approve this request",
@@ -322,9 +428,8 @@ public class EventService {
     private EventToAppNotificationTransfomer getPermissionGivenAppNotificationBuilder() {
         return ed -> {
             String docId = (String) ed.get("docId");
-            return AppNotification.builder()
+            return AppNotification.NotificationData.builder()
                     .nFrom("permission service")
-                    .nFor("")
                     .ntext(String.format(
                             "Your permission request for <a href=\"%s\">this</a> object is approved. Try accessing it now",
                             UrlUtil.getDocUrl(docId)
@@ -397,7 +502,7 @@ public class EventService {
     }
 
     public void post(Type typ, EventData content) {
-        EQ.enqueue(Event.builder().typ(typ).payLoad(content).build());
+        EQ.enqueue(Event.builder().typ(typ).eventData(content).build());
     }
 
     @PostConstruct
@@ -421,80 +526,28 @@ public class EventService {
                 try {
 
                     Event e = EQ.deque();
+
                     e.getTyp()
-                            .resolveRecipients(e.getPayLoad())
-                            .stream()
-                            .flatMap(r -> {
-                                List<Notification> notifications = new LinkedList<>();
-                                if (r.getTyp() == RecipientType.GROUP) {
-                                    try {
-                                        notifications.addAll(getNotifications(e, US.getGroup(r.getId())));
-                                    } catch (Exception exception) {
-                                        log.error("error while creating group notifications", exception);
-                                    }
-                                } else {
-                                    try {
-                                        notifications.addAll(getNotifications(e, US.getUser(r.getId())));
-                                    } catch (Exception exception) {
-                                        log.error("error while creating user notifications", exception);
-                                    }
-                                }
-                                return notifications.stream();
-                            })
-                            .forEach(n -> {
-                                switch (n.getTyp()) {
-                                    case EMAIL:
-                                        try {
-                                            ES.send(n.getChannelInfo(), (EmailService.EmailObject) n.getTyp().getPayload(n.getEvent()));
-                                        } catch (Throwable ex) {
-                                            log.error("error while sending email notifications", ex);
-                                        }
-                                        break;
-                                    case TEAMS_NOTIFICATION:
-                                        try {
-                                            TS.send(n.getChannelInfo(), (TeamsNotificationSenderService.TeamsNotification) n.getTyp().getPayload(n.getEvent()));
-                                        } catch (Throwable ex) {
-                                            log.error("error while sending teams notifications", ex);
-                                        }
-                                        break;
-                                    case APP_NOTIFICATION:
-                                        try {
-                                            AppNotification payload = (AppNotification) n.getTyp().getPayload(n.getEvent());
-                                            payload.setNFor(n.getChannelInfo());
-                                            ANS.postNotification(payload);
-                                        } catch (Throwable t) {
-                                            log.error("Error while sending app notifications: ", t);
-                                        }
-                                }
-                            });
+                        .getNotifTypes()
+                        .forEach(notificationType -> {
+                            try {
+
+                                NotificationPayLoad payload = notificationType.getPayload(e);
+
+                                Set<Reciepient> recipients = e.getReciepients();
+
+                                notificationType.getSender().send(payload, recipients);
+
+                            } catch (Exception ex) {
+                                log.error("error while sending notification : " + e.toString(), ex);
+                            }
+                        });
 
                 } catch (Throwable t) {
                     log.error("error in notification sender thread: ", t);
                 }
             }
         }).start();
-    }
-
-    private List<? extends Notification> getNotifications(Event e, Group grp) {
-        if (grp == null) return Collections.EMPTY_LIST;
-        List<Notification> notifications = new LinkedList<>();
-        if (grp.getEmail() != null && !grp.getEmail().isEmpty())
-            notifications.add(new Notification().withChannelInfo(grp.getEmail()).withTyp(NotificationType.EMAIL).withEvent(e));
-        if (grp.getTeamsUrl() != null && !grp.getTeamsUrl().isEmpty())
-            notifications.add(new Notification().withChannelInfo(grp.getTeamsUrl()).withTyp(NotificationType.TEAMS_NOTIFICATION).withEvent(e));
-        notifications.add(new Notification().withChannelInfo(DataService.getGroupTag(grp.getGroupName())).withTyp(NotificationType.APP_NOTIFICATION).withEvent(e));
-        return notifications;
-    }
-
-    private List<? extends Notification> getNotifications(Event e, User user) {
-        if (user == null) return Collections.EMPTY_LIST;
-        List<Notification> notifications = new LinkedList<>();
-        if (user.getEmail() != null && !user.getEmail().isEmpty())
-            notifications.add(new Notification().withChannelInfo(user.getEmail()).withTyp(NotificationType.EMAIL).withEvent(e));
-        if (user.getTeamsUrl() != null && !user.getTeamsUrl().isEmpty())
-            notifications.add(new Notification().withChannelInfo(user.getTeamsUrl()).withTyp(NotificationType.TEAMS_NOTIFICATION).withEvent(e));
-        notifications.add(new Notification().withChannelInfo(DataService.getUserTag(user.getUserName())).withTyp(NotificationType.APP_NOTIFICATION).withEvent(e));
-        return notifications;
     }
 
 }

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Log4j
 @RestController
@@ -17,6 +18,11 @@ public class AppNotificationController {
 
     @Autowired
     AppNotificationService ANS;
+
+    @GetMapping("/all")
+    public List<AppNotification> getAllNotifs() {
+        return ANS.getAllNotifs();
+    }
 
     @GetMapping("")
     public List<AppNotification> getMyNotifications(
@@ -27,14 +33,8 @@ public class AppNotificationController {
 
     @PostMapping("")
     public void postNotification(@RequestParam("ugids") ArrayList<String> ugids, @RequestParam("txt") String txt) throws Exception {
-        for (String ugid : ugids) {
-            AppNotification nnotif = AppNotification.builder().nFrom(SecurityUtil.getCurrentUser()).nFor(ugid).ntext(txt).ptime(System.currentTimeMillis()).build();
-            try {
-                ANS.postNotification(nnotif);
-            } catch (Exception e) {
-                log.error("error while sending notifications", e);
-            }
-        }
+        AppNotification.NotificationData ndata = AppNotification.NotificationData.builder().nFrom(SecurityUtil.getCurrentUser()).ntext(txt).ptime(System.currentTimeMillis()).build();
+        ANS.postNotification(ugids, ndata);
     }
 
     @GetMapping("/unseen")
@@ -43,17 +43,8 @@ public class AppNotificationController {
     }
 
     @PostMapping("/markasseen")
-    public void markAsSeen(@RequestParam("for") String nFor,
-                           @RequestParam("from") String nFrom,
-                           @RequestParam("ptime") long ptime) {
-        ANS.markAsSeen(nFor, nFrom, ptime);
-    }
-
-    @DeleteMapping("/delete")
-    public void deleteNotification(@RequestParam("for") String nFor,
-                           @RequestParam("from") String nFrom,
-                           @RequestParam("ptime") long ptime) {
-        ANS.deleteNotification(nFor, nFrom, ptime);
+    public void markAsSeen(@RequestParam("id") Long id) {
+        ANS.markAsSeen(id);
     }
 
 }

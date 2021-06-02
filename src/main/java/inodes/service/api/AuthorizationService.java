@@ -7,7 +7,7 @@ import inodes.util.SecurityUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.print.Doc;
+import java.util.List;
 
 @Service
 public class AuthorizationService {
@@ -155,21 +155,23 @@ public class AuthorizationService {
         throw new UnAuthorizedException(SecurityUtil.getCurrentUser() + " has no permission to " + action);
     }
 
-    public void checkNotificationSendPermission(AppNotification notification) throws Exception {
-        String uid = DataService.getUFromUtag(notification.getNFor());
+    public void checkNotificationSendPermission(List<String> ugids) throws Exception {
         String cuid = SecurityUtil.getCurrentUser();
-        if(uid != null && AS.getUser(uid) != null) {
-            return;
-        }
-        String gid = DataService.getGFromGtag(notification.getNFor());
-        if(gid != null) {
-            if(gid.equals(UserGroupService.PUBLIC)) {
-                if(!AS.amIAdmin() && !AS.getGroupsOf(cuid).contains(UserGroupService.SECURITY)) {
-                    reject("send notifications to " + gid);
-                }
-            } else {
-                if(!AS.getGroupsOf(cuid).contains(gid)) {
-                    reject("send notifications to " + gid + " (" + cuid + " not in " + gid + ")");
+        for (String u : ugids) {
+            String uid = DataService.getUFromUtag(u);
+            if(uid != null && AS.getUser(uid) != null) {
+                continue;
+            }
+            String gid = DataService.getGFromGtag(u);
+            if(gid != null) {
+                if(gid.equals(UserGroupService.PUBLIC)) {
+                    if(!AS.amIAdmin() && !AS.getGroupsOf(cuid).contains(UserGroupService.SECURITY)) {
+                        reject("send notifications to " + gid);
+                    }
+                } else {
+                    if(!AS.getGroupsOf(cuid).contains(gid)) {
+                        reject("send notifications to " + gid + " (" + cuid + " not in " + gid + ")");
+                    }
                 }
             }
         }

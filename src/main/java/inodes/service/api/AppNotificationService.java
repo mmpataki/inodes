@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Log4j
 @Service
@@ -25,37 +26,24 @@ public class AppNotificationService {
     @Autowired
     AuthorizationService AS;
 
+    public List<AppNotification> getAllNotifs() {
+        return StreamSupport.stream(ANR.findAll().spliterator(), false).collect(Collectors.toList());
+    }
 
     public List<AppNotification> getNotificationsFor(String userId, int start, int size) throws Exception {
         List<String> grps = new ArrayList<>(UGS.getGroupsOf(userId)).stream().map(DataService::getGroupTag).collect(Collectors.toList());
         if (userId != null)
             grps.add(DataService.getUserTag(userId));
-        return ANR.findByNForInOrderByPtimeDesc(grps, new PageRequest(start, size));
+        return ANR.findByNForInOrderByData_PtimeDesc(grps, new PageRequest(start, size));
     }
 
-    public void postNotification(AppNotification notif) throws Exception {
-        AS.checkNotificationSendPermission(notif);
-        String gid = DataService.getGFromGtag(notif.getNFor());
-        if (gid == null) {
-            notif.setSeen(false);
-            ANR.save(notif);
-        } else {
-            ANR.save(
-                    UGS.getGroup(gid).getUsers().stream()
-                            .map(user -> AppNotification.builder()
-                                    .nFor(DataService.getUserTag(user))
-                                    .nFrom(notif.getNFrom())
-                                    .ptime(notif.getPtime())
-                                    .ntext(notif.getNtext())
-                                    .seen(false)
-                                    .build()
-                            ).collect(Collectors.toList())
-            );
-        }
+    public void postNotification(List<String> ugids, AppNotification.NotificationData ndata) throws Exception {
+        AS.checkNotificationSendPermission(ugids);
+        ANR.save(ugids.stream().map(u -> AppNotification.builder().nFor(u).data(ndata).seen(false).build()).collect(Collectors.toList()));
     }
 
-    public void markAsSeen(String nFor, String nFrom, long ptime) {
-        AppNotification notification = ANR.findOne(AppNotification.NID.builder().nFrom(nFrom).nFor(nFor).ptime(ptime).build());
+    public void markAsSeen(Long id) {
+        AppNotification notification = ANR.findOne(id);
         notification.setSeen(true);
         ANR.save(notification);
     }
@@ -68,7 +56,4 @@ public class AppNotificationService {
         return ANR.countByNForInAndSeenFalse(grps);
     }
 
-    public void deleteNotification(String nFor, String nFrom, long ptime) {
-        ANR.delete(AppNotification.NID.builder().nFor(nFor).nFrom(nFrom).ptime(ptime).build());
-    }
 }
