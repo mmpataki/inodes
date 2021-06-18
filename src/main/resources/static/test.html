@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="en" ng-app="inodes">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>i-nodes</title>
+    <link rel="stylesheet" href="./index.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+        integrity="sha512-iBBXm8fW90+nuLcSKlbmrPcLa0OT92xO1BIsZ+ywDWZCvqsWgccV3gFoRBv0z+8dLJgyAHIhR35VZc2oM/gI1w=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="/common.js"></script>
+    <script src="./tagify.min.js"></script>
+    <link rel="stylesheet" href="./tagify.css">
+
+    <script src="./vue.js"></script>
+    <script src="./vuex.js"></script>
+
+    <script type="text/x-template" id="tag-facets">
+        <div>
+            <h4>{{title}}</h4>
+            <div class="sidebar-item">
+                <tag-elem v-for="t in tags" :type="t.type" :tag="t.tag" :hits="t.hits" ></tag-elem>
+            </div>
+        </div>
+    </script>
+
+    <script type="text/x-template" id="tag-editor">
+        <input :placeholder="placeholder"/>
+    </script>
+
+    <script type="text/x-template" id="post-editor">
+        <div v-show="showEditor" class="editor-pane">
+
+            <span class="closebtn">&#10006;</span>
+            
+            Post type: 
+            <select v-model="editorDoc.type" :disabled="editorDoc.content" @change="updateEditor">
+                <option v-for="kn in klassNames" :value="kn" :selected="kn == editorDoc.type" @change="updateEditor">{{kn}}</option>
+            </select>
+            <br/>
+
+            <div ref="editorContainer">
+                <component v-if="editorComponent" :is="editorComponent" :obj="JSON.parse(editorDoc.content) || {}" :doc="editorDoc"></component>
+            </div>
+            
+            Tags : <tag-editor type="tag" placeholder="start typing a tag name. eg edc hack"/>
+            <br/>
+
+            Visibility: <tag-editor type="user" placeholder="start typing a user or group name"/>
+            <br/>
+
+            What did you change:  <input class="post-editor-input" placeholder="describe what changed in this version"/>
+            <br/>
+
+            <button @click="submit">Post</button>
+
+        </div>
+    </script>
+
+    <script type="text/x-template" id="search-bar-full">
+        <div class="search-wrapper">
+            <input class="search-input searchbox" v-model="query" placeholder="search" @input="searchQueryChanged">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor"
+                stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="feather feather-search"
+                viewBox="0 0 24 24">
+                <defs></defs>
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="M21 21l-4.35-4.35"></path>
+            </svg>
+        </div>
+    </script>
+
+    <script type="text/x-template" id="notification-btn">
+        <button class="notification-btn" style="position:relative" onclick="inodes.openNotifications()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                class="feather feather-bell">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <b v-if="notifCount > 0" style="position: absolute; top: 0px; right: 0px; background: orange; color: white; padding: 3px 5px; border-radius: 50%; font-size: 0.8em">{{notifCount}}</b>
+        </button>
+    </script>
+
+    <script type="text/x-template" id="tag-elem">
+        <span class="tag-has-tooltip" @click="tagClicked">
+            <span class="tag-container">
+                <span>{{(hits ? "" : type) + tag}}</span>
+            </span>
+            <span v-if="hits" class="tag-hits">{{ " x " + hits}}</span>
+            <div class="tag-tooltip">
+                <div class="tag-title-container">
+                    <b class="tag-tt-title">{{tag}}</b>
+                    <span style="font-size: 0.8em"> (pseudo tag)</span>
+                </div>
+                <div class="tag-desc"></div>
+                <div>
+                    <span @click="subscribeTag">watch</span>
+                    <span @click="viewTag">view</span>
+                </div>
+            </div>
+        </span>
+        <br v-if="hits != undefined">
+    </script>
+
+    <script type="text/x-template" id="search-results-panel">
+        <div class="posts">
+            <search-result v-for="sr in searchResults" :doc="sr" :key="sr.id"></search-result>
+        </div>
+    </script>
+
+    <script type="text/x-template" id="search-result">
+        <div class="inode-container" :style="{'border-left': randColor}">
+            <!-- context buttons -->
+            <div class="inode-context-btns">
+                <span v-if="doc.visibility == 'g-public'" title="Limited people can access this doc">&#128274;</span>
+                <i class="fas fa-thumbtack"></i>
+                <span class="inode-context-btn" title="Full screen" @click="goFullScreen">
+                    <i class="fas fa-expand-alt"></i>
+                </span>
+            </div>
+
+            <div class="inode-container-parent" ref="cardContainer">
+                <component v-if="vueComp" :is="vueComp" :doc="doc" :obj="JSON.parse(doc.content)"></component>
+            </div>
+
+            <!-- tags, owner, actions -->
+            <div class="inode-tag-owner-actions">
+                <div class="inode-tag-owner">
+                    <div class="tags-container">
+                        <tag-elem v-for="tag in tags" :tag="tag" :type="'#'"></tag-elem>
+                        <tag-elem :tag="doc.type" :type="'%'"></tag-elem>
+                        <tag-elem :tag="doc.owner" :type="'~'"></tag-elem>
+                    </div>
+                    <div class="inode-user-time" style="float:right">
+                        <span class="inode-user" @click="searchUser(doc.owner)">{{doc.owner}}</span>
+                        <span class="inode-time" style="font-size: 0.7em;">{{(new Date(doc.postTime)).toLocaleDateString()}}</span>
+                    </div>
+                </div>
+                <div class="inode-actions-list">
+                    <div class="inodes-actions">
+                        <span title="upvote" class="inode-action-upvote" @click="upvoteInode" >&#x25B2; {{doc.votes || 0}}</span>
+                        <span title="downvote" class="inode-action-downvote" @click="downvoteInode" >&#x25BC;</span>
+                        <span title="edit" class="inode-action" @click="editInode">edit</span>
+                        <span title="delete" class="inode-action" @click="deleteInode">delete</span>
+                        <span title="comments" class="inode-action" @click="showComments">comments</span>
+                        <span title="share" class="inode-action">
+                            <div class="inodes-share-tooltip">
+                                <b>
+                                    copy <a href="{{getPermalink(obj.id)}}" target="_blank">url</a>
+                                </b>
+                                <div>
+                                    <input readonly value="{{getPermalink(obj.id)}}">
+                                    <button @click="copyFormatted">copy</button>
+                                </div>
+                                <div v-if="canContentBeCopied">
+                                    <b style="display: block; margin-top: 10px"> or copy the content</b>
+                                    <button @click="copyFormatted">copy content</button>
+                                </div>
+                            </div>
+                        </span>
+                        <span title="watch the doc" class="inode-action" @click="watchDoc">watch</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </script>
+
+    <script>
+        class INodes {
+            klassChanged(klassName) {
+                let self = this;
+                this.loadKlass(klassName).then(d => {
+                    this.renderInput(d.name, undefined, false)
+                });
+            }
+
+            renderInput(klassName, obj, force) {
+                let self = this;
+                this.currentPost = obj
+                this.loadKlass(klassName)
+                    .then(klass => this.loadKlassScripts(klass))
+                    .then(klassObj => {
+                        let e = g('editor');
+                        e.innerHTML = '';
+                        if (!klassObj.inodes_editor || force || obj) {
+                            try {
+                                klassObj.inodes_editor = klassObj.getEditor(obj)
+                            } catch (e) {
+                                console.error(e)
+                                showError("You don't have permissions to edit this object")
+                                throw e
+                            }
+                        }
+                        e.appendChild(klassObj.inodes_editor)
+                        g('changenoteeditor').style.display = obj ? 'block' : 'none'
+                    });
+            }
+
+            loggedIn() {
+                return getCookie(USER_KEY)
+            }
+
+            createGroup() {
+                this.triggerSearch('#inodesapp #creategroup')
+            }
+            openSignInPage() {
+                this.triggerSearch('#inodesapp #login')
+            }
+            post() {
+                let self = this;
+                let currentClass = g('kclasses').value
+                let obj = this.klasses[currentClass].obj
+                let content = ''
+                try {
+                    content = JSON.stringify(obj.getContent());
+                } catch (err) {
+                    showError(err);
+                    return
+                }
+                let changeNote = this.currentPost ? g('changenote-editor').value : "initial version";
+                post(
+                    `/data?changeNote=${encodeURIComponent(changeNote)}`,
+                    {
+                        content,
+                        type: currentClass,
+                        tags: JSON.parse(g('tags-editor').value).map(t => t.value).concat(obj.getTags ? obj.getTags() : []),
+                        visibility: JSON.parse(g('visibility-editor').value).map(u => u.value),
+                        savedVisibility: this.currentPost ? (this.currentPost.savedVisibility || ['none']) : ['none'],
+                        id: this.currentPost ? this.currentPost.id : undefined
+                    },
+                    {
+                        "Content-Type": "application/json"
+                    }
+                )
+                    .then(e => { showSuccess('Posted successfully'); self.closeEditor(); })
+                    .catch(e => showError(e.message))
+            }
+
+            search(str, offset = 0, pageSize = 10) {
+                str = str ? str : ""
+                str = str.replace(/\![-\w]+/, "")
+                return getLast(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}&fq=tags&fq=type&fq=owner`)
+            }
+
+            showResults() {
+                let d = g('posts');
+                d.innerHTML = ''
+                let self = this
+                let proms = []
+                let itemsByClass = {};
+                this.results.results.forEach(r => {
+                    if (!itemsByClass[r.type]) {
+                        itemsByClass[r.type] = []
+                    }
+                    itemsByClass[r.type].push(r)
+                    proms.push(self.showCard(d, r));
+                })
+                return new Promise(resolve => {
+                    Promise.all(proms)
+                        .then(() => {
+                            if (this.results.results.length < this.results.totalResults) {
+                                d.appendChild(this.getPaginationItem(this.results));
+                            }
+                            // call the post display hook
+                            Object.keys(itemsByClass).forEach(key => {
+                                self.loadKlass(key).then(klassMeta => {
+                                    self.loadKlassScripts(klassMeta).then(klass => {
+                                        if (klass.postDisplay) {
+                                            klass.postDisplay(itemsByClass[key])
+                                        }
+                                    })
+                                })
+                            })
+                        })
+                        .then(() => {
+                            resolve();
+                        });
+                });
+            }
+
+            getSearchQuery() {
+                return istore.dispatch('getSearchQuery')
+            }
+
+            getPaginationItem(results) {
+                let self = this;
+                let resp = function () {
+                    let container = {
+                        ele: 'div',
+                        classList: 'pages',
+                        children: []
+                    }
+                    for (let i = 0; i < results.totalResults; i += self.pageSize) {
+                        container.children.push(
+                            {
+                                ele: 'span',
+                                classList: `page-btn ${(i / self.pageSize) == self.pageNum ? "selected" : ""}`,
+                                text: i / self.pageSize + 1,
+                                evnts: {
+                                    click: function (e) {
+                                        self.pageNum = i / self.pageSize
+                                        self.doSearch(self.getSearchQuery(), i, self.pageSize)
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    return container;
+                }
+                return render('paginator', resp());
+            }
+
+            refresh() {
+                this.triggerSearch(this.getSearchQuery())
+            }
+
+            deleteInode(id) {
+                if (!this.loggedIn()) {
+                    return showError('Login to delete content')
+                }
+                if (!confirm('Are you sure to delete this content?')) {
+                    return;
+                }
+                delet(`/data/${id}`)
+                    .then(e => showSuccess(e.response))
+                    .then(e => this.refresh())
+                    .catch(c => showError(c));
+            }
+
+            editInode(obj) {
+                if (!this.loggedIn()) {
+                    return showError('Login to post / update content')
+                }
+                g('tags-editor').value = obj.tags.join(' ')
+                let tags = obj.tags.map(t => {
+                    return { name: t, id: t, value: t, description: "" }
+                })
+                tagifyTags.settings.whitelist.splice(0, tags.length, ...tags);
+                tagifyTags.removeAllTags();
+                tagifyTags.addTags(tags);
+
+                g('kclasses').value = obj.type
+                this.openEditor(obj, true)
+            }
+
+            downvoteInode(id) {
+                post(`/posts/downvote/${id}`, {})
+                    .then(a => showSuccess(a.response))
+                    .catch(m => showError(m));
+            }
+
+            upvoteInode(id) {
+                post(`/posts/upvote/${id}`, {})
+                    .then(a => showSuccess(a.response))
+                    .catch(m => showError(m));
+            }
+
+            showCard(d, obj) {
+                let self = this;
+                let template = function (klass, obj) {
+                    let card;
+                    try {
+                        if (obj.needsApproval && getCurrentUser() && getCurrentUser() != obj.owner) {
+                            card = klass.getSafeCard(obj);
+                        } else {
+                            if (obj.content == '') {
+                                klass = new NoPermissionKlass()
+                            }
+                            card = klass.getCard(obj)
+                        }
+                    } catch (e) {
+                        if (obj.content) {
+                            obj.content = JSON.parse(obj.content)
+                        }
+                        card = render('inodes', {
+                            ele: 'pre',
+                            styles: {
+                                width: "95%",
+                                'background-color': 'red',
+                                color: 'white',
+                                padding: "10px",
+                                'overflow-y': 'auto'
+                            },
+                            text: `Error while processing \n${JSON.stringify(obj, null, '\t')}\n\nException: \n${e.stack}`
+                        })
+                    }
+                    let getApproveIcon = () => obj.needsApproval ? [{ ele: 'span', classList: 'action', text: 'approve', evnts: { click: () => self.approveInode(obj.id) } }] : [];
+                    return {
+                        ele: 'div',
+                        classList: 'container',
+                        styles: {
+                            borderLeft: `solid 4px ${self.randColor()}`
+                        },
+                        children: [
+                            self.getContextButtons(klass, obj),
+                            {
+                                ele: 'div',
+                                classList: 'container-parent',
+                                children: [
+                                    {
+                                        preBuilt: true,
+                                        ele: card
+                                    }
+                                ]
+                            },
+                            {
+                                ele: 'div',
+                                classList: 'tag-owner-actions',
+                                children: [
+                                    {
+                                        ele: 'div',
+                                        classList: 'tag-owner',
+                                        children: [
+                                            {
+                                                preBuilt: true,
+                                                ele: self.getTagsElement(obj.tags, obj.owner, obj.type)
+                                            },
+                                            {
+                                                ele: 'div',
+                                                classList: 'user-time',
+                                                styles: { float: 'right' },
+                                                children: [
+                                                    {
+                                                        ele: 'span',
+                                                        classList: 'postowner',
+                                                        text: `${obj.owner}`,
+                                                        evnts: {
+                                                            click: function (e) {
+                                                                self.searchUser(obj.owner);
+                                                            }
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        classList: 'posttime',
+                                                        styles: {
+                                                            'font-size': '0.7em'
+                                                        },
+                                                        text: `${self.getLocalDateTime(obj.postTime)}`
+                                                    }
+                                                ]
+                                            },
+
+                                        ]
+                                    },
+                                    {
+                                        ele: 'div',
+                                        classList: 'actions-list',
+                                        children: [
+                                            {
+                                                ele: 'div',
+                                                classList: 'actions',
+                                                children: [
+                                                    {
+                                                        ele: 'span',
+                                                        title: 'upvote',
+                                                        html: `&#x25B2 ${obj.votes || 0}`,
+                                                        classList: 'action-upvote',
+                                                        evnts: {
+                                                            click: function (e) { self.upvoteInode(obj.id) }
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        title: 'downvote',
+                                                        html: `&#x25BC`,
+                                                        classList: 'action-downvote',
+                                                        evnts: {
+                                                            click: function (e) { self.downvoteInode(obj.id) }
+                                                        }
+                                                    },
+                                                    ...(!getCurrentUser() ? [] : [{
+                                                        ele: 'span',
+                                                        text: 'edit',
+                                                        classList: 'action',
+                                                        evnts: {
+                                                            click: function (e) { self.editInode(obj) }
+                                                        }
+                                                    }]),
+                                                    ...(!getCurrentUser() ? [] : [{
+                                                        ele: 'span',
+                                                        text: 'delete',
+                                                        classList: 'action',
+                                                        evnts: {
+                                                            click: function (e) { self.deleteInode(obj.id) }
+                                                        }
+                                                    }]),
+                                                    {
+                                                        ele: 'span',
+                                                        text: 'comment(s)',
+                                                        classList: 'action',
+                                                        evnts: {
+                                                            click: function (e) { self.commentInode(obj) }
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        text: 'share',
+                                                        classList: 'action share-has-tooltip',
+                                                        evnts: {
+                                                            mouseenter: function (e) { this.children[0].style.display = 'block' },
+                                                            mouseleave: function (e) { this.children[0].style.display = 'none' }
+                                                        },
+                                                        children: [
+                                                            {
+                                                                ele: 'div', classList: 'share-tooltip', children: [
+                                                                    {
+                                                                        ele: 'b', text: 'copy ', children: [
+                                                                            { ele: 'a', attribs: { href: self.getPermalink(obj.id), target: '_blank' }, text: 'url' }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        ele: 'div', children: [
+                                                                            { ele: 'input', attribs: { readOnly: true, value: self.getPermalink(obj.id), style: 'width: 180px' } },
+                                                                            {
+                                                                                ele: 'button', text: 'copy', evnts: {
+                                                                                    click: function () { self.copyFormatted(this.previousElementSibling.value) }
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    ...(!klass.getCopyContent ? [] : [
+                                                                        { ele: 'b', styles: { display: 'block', 'margin-top': '10px' }, text: 'or copy the content' },
+                                                                        {
+                                                                            ele: 'button',
+                                                                            text: 'copy content',
+                                                                            evnts: {
+                                                                                click: () => self.copyFormatted(klass.getCopyContent(obj)),
+                                                                                rendered: e => e.removeAttribute('tabindex')
+                                                                            }
+                                                                        }
+                                                                    ])
+                                                                ]
+                                                            }
+                                                        ]
+                                                    },
+                                                    ...(!getCurrentUser() ? [] : [{
+                                                        ele: 'span',
+                                                        text: 'watch',
+                                                        classList: 'action',
+                                                        evnts: {
+                                                            click: function (e) { self.watchDoc(obj.id) }
+                                                        }
+                                                    }])
+                                                ]
+                                            },
+                                            {
+                                                ele: 'div',
+                                                classList: 'actions',
+                                                styles: { float: 'right' },
+                                                children: [
+                                                    {
+                                                        ele: 'span',
+                                                        classList: 'action',
+                                                        text: 'history',
+                                                        evnts: { click: () => self.triggerSearch(`#inodesapp #history !${obj.id}`) }
+                                                    },
+                                                    ...(!getCurrentUser() ? [] : [{
+                                                        ele: 'span',
+                                                        classList: 'action',
+                                                        text: 'flag',
+                                                        evnts: { click: () => self.flagInode(obj.id) }
+                                                    }]),
+                                                    ...getApproveIcon(),
+                                                    ...(getCurrentUser() != 'admin' ? [] : [{
+                                                        ele: 'span',
+                                                        text: 'trust',
+                                                        classList: 'action',
+                                                        evnts: {
+                                                            click: function (e) { self.trustInode(obj.id); }
+                                                        }
+                                                    }])
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                ele: 'div',
+                                classList: 'comments-pane',
+                                attribs: {
+                                    id: `comment-pane-${obj.id}`
+                                },
+                                children: [
+                                    {
+                                        ele: 'div',
+                                        styles: {
+                                            display: 'flex',
+                                            marginBottom: '10px'
+                                        },
+                                        children: [
+                                            {
+                                                ele: 'textarea',
+                                                attribs: {
+                                                    id: `comment-${obj.id}`,
+                                                    rows: 2
+                                                },
+                                                styles: {
+                                                    width: '90%',
+                                                    border: 'solid 1px gray',
+                                                    resize: 'none'
+                                                }
+                                            },
+                                            {
+                                                ele: 'button',
+                                                text: 'Post',
+                                                styles: {
+                                                    width: '10%'
+                                                },
+                                                evnts: {
+                                                    click: function (e) {
+                                                        post(
+                                                            `/posts/comment/${obj.id}`,
+                                                            g(`comment-${obj.id}`).value
+                                                        ).then(x => self.addCommentToList(`oldcomments-${obj.id}`, JSON.parse(x.response)))
+                                                            .catch(e => showError(e.message))
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        ele: 'div',
+                                        attribs: {
+                                            id: `oldcomments-${obj.id}`
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    };
+                }
+                if (!obj.type || obj.type == "") {
+                    d.appendChild(render('inode', template(undefined, obj)));
+                    return;
+                }
+                return new Promise(function (resolve, reject) {
+                    self.loadKlass(obj.type).then(klassMeta => {
+                        self.loadKlassScripts(klassMeta).then(klass => {
+                            d.appendChild(render('inode', template(klass, obj)));
+                            resolve()
+                        })
+                    })
+                });
+            }
+
+            getPermalink(id) {
+                let u = new URL(window.location.href)
+                return `${u.protocol}//${u.host}?q=@${id}`
+            }
+
+            copyFormatted(html) {
+                let clipboardDiv;
+                if (!this.copyClipBoardSet) {
+                    clipboardDiv = document.createElement('div');
+                    clipboardDiv.style.fontSize = '12pt'; // Prevent zooming on iOS
+                    // Reset box model
+                    clipboardDiv.style.border = '0';
+                    clipboardDiv.style.padding = '0';
+                    clipboardDiv.style.margin = '0';
+                    // Move element out of screen 
+                    clipboardDiv.style.position = 'fixed';
+                    clipboardDiv.style['right'] = '-9999px';
+                    clipboardDiv.style.top = (window.pageYOffset || document.documentElement.scrollTop) + 'px';
+                    // more hiding
+                    clipboardDiv.setAttribute('readonly', '');
+                    clipboardDiv.style.opacity = 0;
+                    clipboardDiv.style.pointerEvents = 'none';
+                    clipboardDiv.style.zIndex = -1;
+                    clipboardDiv.setAttribute('tabindex', '0'); // so it can be focused
+                    clipboardDiv.innerHTML = '';
+                    document.body.appendChild(clipboardDiv);
+                    this.copyClipBoardSet = true;
+                    this.clipboardDiv = clipboardDiv;
+                }
+                clipboardDiv = this.clipboardDiv;
+
+                clipboardDiv.innerHTML = html;
+
+                var focused = document.activeElement;
+                clipboardDiv.focus();
+
+                window.getSelection().removeAllRanges();
+                var range = document.createRange();
+                range.setStartBefore(clipboardDiv.firstChild);
+                range.setEndAfter(clipboardDiv.lastChild);
+                window.getSelection().addRange(range);
+
+                var ok = false;
+                try {
+                    if (document.execCommand('copy')) ok = true; else console.log('execCommand returned false !');
+                } catch (err) {
+                    console.log('execCommand failed ! exception ' + err);
+                }
+
+                focused.focus();
+            }
+
+            watchDoc(id) {
+                post(
+                    `/subscribe?subscriberType=USER&subscriberId=${getCurrentUser()}&objTyp=DOC&objId=${id}&event=ALL`,
+                    "",
+                    {}
+                ).then(r => showSuccess('Subscribed'))
+                    .catch(r => showError(r.message))
+            }
+
+            trustInode(id) {
+                post(`/trust/${id}`)
+                    .then(r => showSuccess('Trusted'))
+                    .catch(r => showError(r.message))
+            }
+
+            approveInode(docId) {
+                post(`/data/${docId}/approve`, {}, {})
+                    .then(x => showSuccess('Approved'))
+                    .catch(x => showError(x.message))
+            }
+
+            flagInode(docId) {
+                post(`/data/${docId}/flag`, {}, {})
+                    .then(x => showSuccess('Flagged, a notification is sent to owner and security team'))
+                    .catch(x => showError(x.message))
+            }
+
+            searchUser(user) {
+                this.triggerSearch(`#user !${user}`)
+            }
+
+            commentInode(obj) {
+                let self = this;
+                g(`comment-pane-${obj.id}`).style.display = "block";
+                let container = g(`oldcomments-${obj.id}`);
+                container.innerHTML = ""
+                get(`/posts/comments/${obj.id}`).then(comments => {
+                    comments = JSON.parse(comments.response)
+                    comments.sort((a, b) => a.time - b.time).forEach(comment => {
+                        self.addCommentToList(`oldcomments-${obj.id}`, comment)
+                    })
+                })
+            }
+
+            addCommentToList(parentId, comment) {
+                let container = g(parentId);
+                let c = document.createElement('div')
+                c.classList = "inode-comment-card"
+                c.innerHTML = `${JSON.parse(comment.txt).replaceAll(/@([0-9A-Za-z]+)/g, '<a href="/?q=%23user !$1" target="_blank" >$1</a>')} - <a href="/?q=%23user !${comment.userid}">${comment.userid}</a> ${this.getCommentContextButtons(comment)}`
+                container.appendChild(c)
+            }
+
+            getCommentContextButtons(c) {
+                if (c.userid == getCurrentUser()) {
+                    return `<span onclick='inodes.deleteComment("${c.postid}/${c.userid}/${c.itime}", this.parentElement)' class='comment-action-btn'>delete</span>`
+                }
+                return ''
+            }
+
+            deleteComment(id, parEle) {
+                delet(`/posts/comment/${id}`).then(parEle.remove())
+            }
+
+            getLocalDateTime(ep) {
+                var d = new Date(ep);
+                return `${d.toLocaleDateString()}`
+            }
+
+            randColor() {
+                var letters = '0123456789ABCDEF';
+                var color = '#';
+                for (var i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * 16)];
+                }
+                return color;
+            }
+
+            getTagsElement(tags, user, type) {
+                let x = document.createElement('div')
+                x.classList = "tags-container"
+                if (!tags) return x;
+                let self = this;
+                tags.forEach(tag => {
+                    x.appendChild(this.createTagElement(tag, '#'));
+                });
+                user && x.appendChild(this.createTagElement(user, '~'))
+                type && x.appendChild(this.createTagElement(type, '%'))
+                return x;
+            }
+
+            getTagDetails(tag) {
+                get(`/tags/${tag}`)
+                    .then(x => console.log(x.response))
+            }
+
+            getTagToolTip(tag, char, hits) {
+                if (!this._tagCache) {
+                    this._tagCache = {};
+                }
+                let tagCache = this._tagCache;
+                return new Promise((resolve, reject) => {
+                    let dprom;
+                    if (char != '#') {
+                        dprom = new Promise((res, rej) => {
+                            res({
+                                ele: 'span',
+                                classList: 'desc',
+                                text: char != '%' ? `Content created by ${tag}` : `Content of type ${tag}`
+                            })
+                        })
+                    } else {
+                        dprom = new Promise((res, rej) => {
+                            if (tagCache[tag]) {
+                                res(tagCache[tag])
+                                return;
+                            }
+                            get(`/tags/${tag}`)
+                                .then(r => JSON.parse(r.response))
+                                .then(r => {
+                                    tagCache[tag] = {
+                                        ele: 'div',
+                                        children: [
+                                            {
+                                                ele: 'div',
+                                                classList: 'doccount',
+                                                text: `${Object.values(r.extra.docCount).reduce((x, z) => x + z, 0)} doc(s)`
+                                            },
+                                            {
+                                                ele: 'span',
+                                                classList: 'desc',
+                                                text: r.basic.description || "No description avaialable. Edit and add a description"
+                                            }
+                                        ]
+                                    }
+                                    res(tagCache[tag])
+                                })
+                        })
+                    }
+                    dprom.then(x => {
+                        resolve(render('tag-ttc', x))
+                    })
+                })
+            }
+
+            createTagElement(tag, char, hits) {
+                let self = this;
+                let icon = (tag, char) => char == '%' ? tag + ".png" : 'tag.png';
+                return render('tag', {
+                    ele: 'span',
+                    classList: 'has-tooltip',
+                    children: [
+                        {
+                            ele: 'span',
+                            classList: 'container',
+                            children: [
+
+                                { ele: 'span', text: (hits ? "" : char) + tag }
+                            ]
+                        },
+                        ...(hits ? [{ ele: 'span', classList: 'hits', text: ` x ${hits}` }] : []),
+                        {
+                            ele: 'div',
+                            classList: 'tooltip',
+                            children: [
+                                {
+                                    ele: 'div',
+                                    classList: 'tt-title-container',
+                                    children: [
+                                        {
+                                            ele: 'b',
+                                            classList: 'tt-title',
+                                            text: tag
+                                        },
+                                        ...(char == '#' ? [] : [
+                                            {
+                                                ele: 'span', text: ' (pseudo tag)', attribs: { style: 'font-size: 0.8em;' }
+                                            }
+                                        ]),
+                                    ]
+                                },
+                                {
+                                    ele: 'div',
+                                    classList: 'desc'
+                                },
+                                ...(char == '#' ? [{
+                                    ele: 'div',
+                                    children: [
+                                        ...(getCurrentUser() ? [{
+                                            ele: 'span',
+                                            text: 'watch',
+                                            classList: 'tt-btn',
+                                            evnts: {
+                                                click: function () {
+                                                    post(`/subscribe?subscriberType=USER&subscriberId=${getCurrentUser()}&objTyp=TAG&objId=${tag}&event=ALL`)
+                                                        .then(e => showSuccess(`You have subscribed to tag: ${tag}`))
+                                                        .catch(e => showError(e.message))
+                                                }
+                                            }
+                                        }] : []
+                                        ),
+                                        {
+                                            ele: 'span',
+                                            text: 'view',
+                                            classList: 'tt-btn',
+                                            evnts: {
+                                                click: function () {
+                                                    self.triggerSearch(`#inodesapp #viewtag !${tag}`)
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }] : []
+                                )
+                            ],
+                            evnts: {
+                                click: e => e.stopPropagation()
+                            }
+                        }
+                    ],
+                    evnts: {
+                        click: function (e) {
+                            let q = ""
+                            if (e.ctrlKey) {
+                                q = c('searchbox').value + " "
+                            }
+                            q += `${char}${tag}`
+                            self.triggerSearch(q)
+                        },
+                        mouseenter: function (e) {
+                            this.setAttribute('data-intime', + new Date());
+                            let ltim = setTimeout(() => {
+                                let lt = this.getAttribute('data-intime');
+                                if (!lt) return;
+                                lt = +lt;
+                                let ttc = this.querySelector('.tag-tooltip');
+                                let tt = this.querySelector('.tag-desc');
+                                if (!tt.getAttribute('desc-resolved')) {
+                                    self.getTagToolTip(tag, char)
+                                        .then(x => {
+                                            tt.appendChild(x);
+                                            tt.setAttribute('desc-resolved', true)
+                                        })
+                                }
+                                ttc.style.visibility = 'visible';
+                            }, 600)
+                            this.setAttribute('ltimer', ltim)
+                        },
+                        mouseleave: function (e) {
+                            this.querySelector('.tag-tooltip').style.visibility = 'hidden'
+                            this.setAttribute('data-intime', undefined);
+                            clearTimeout(this.getAttribute('ltimer'))
+                        }
+                    }
+                })
+            }
+
+            openEditor(obj, force) {
+                this.renderInput(obj ? obj.type : g('kclasses').value, obj, true)
+                g('editor-pane').style.display = 'block';
+                g('kclasses').disabled = obj ? true : false
+
+                let visibility = obj ? (obj.needsApproval ? obj.savedVisibility : obj.visibility) : ['g-public'];
+                visibility = visibility.map(v => {
+                    return { name: v.substring(2), id: v, value: v, type: v[0] == 'g' ? 'group' : 'user' }
+                });
+                tagifyUsers.settings.whitelist.splice(0, visibility.length, ...visibility)
+                tagifyUsers.removeAllTags();
+                tagifyUsers.addTags(visibility)
+            }
+            closeEditor() {
+                g('editor-pane').style.display = 'none';
+            }
+            logout(e) {
+                post(
+                    '/auth/logout',
+                    {},
+                    { 'Content-Type': 'application/json' }
+                )
+                eraseCookie(USER_KEY)
+                eraseCookie(TOK_KEY)
+                this.showUserInfo()
+            }
+            register() {
+                post(
+                    '/auth/register',
+                    {
+                        user: c('usernamebox').value,
+                        password: c('passwordbox').value
+                    },
+                    {
+                        'Content-Type': 'application/json'
+                    }
+                )
+                    .then(() => showSuccess('registration successful. verify your email address by clicking on the link in the email sent to you'))
+                    .catch(m => showError(`registration failed. reason: ${m}`))
+            }
+            triggerSearch(q) {
+                c('searchbox').value = q;
+                this.doSearch(q)
+            }
+            openAccount() {
+                this.triggerSearch(`#user !${getCurrentUser()}`)
+            }
+            openMyPosts() {
+                this.triggerSearch(`~${getCurrentUser()}`)
+            }
+            openNotifications() {
+                this.triggerSearch(`#inodesapp #notifications`)
+            }
+            openPRs() {
+                this.triggerSearch(`#inodesapp #mypermissionrequests`)
+            }
+            announceApp() {
+                this.triggerSearch(`#inodesapp #notifier`)
+            }
+            openRegisterPage() {
+                this.triggerSearch('#register #inodesapp')
+            }
+            lock() { this._lock = true }
+            locked() { return this._lock }
+            unlock() { this._lock = false }
+        }
+
+        let inodes = new INodes()
+
+        class NoPermissionKlass {
+            getCard(obj) {
+                let noPermSpec = {
+                    ele: 'div',
+                    attribs: { style: 'padding: 50px' },
+                    children: [
+                        { ele: 'span', text: "You are not logged in or dont' have permissions to access this info. But you can " },
+                        { ele: 'button', text: 'request', evnts: { click: () => { this.requestAccess(obj.id) } } },
+                        { ele: 'span', text: " for it" }
+                    ]
+                };
+                let permRequestedSpec = {
+                    ele: 'div',
+                    attribs: { style: 'padding: 50px' },
+                    children: [
+                        { ele: 'span', text: "Your request to get a permission on this object is still pending. You can track all your pending permission requests " },
+                        { ele: 'a', text: 'here', attribs: { href: '/?q=%23inodesapp %23mypermissionrequests' } }
+                    ]
+                }
+                return render('no-permission', obj.readState == 'PERM_REQUESTED' ? permRequestedSpec : noPermSpec)
+            }
+            getEditor() {
+                throw new Error("You don't have permissions to edit this object")
+            }
+            requestAccess(id) {
+                post(`/data/${id}/askPermission`, "", {})
+                    .then(() => showSuccess('Your request has been sent to team owning the object. Wait till someone approves it'))
+                    .catch(msg => showError(msg.message))
+            }
+        }
+
+        let buildCard = function (klass, obj) {
+            let card;
+            try {
+                if (obj.needsApproval && getCurrentUser() && getCurrentUser() != obj.owner) {
+                    card = klass.getSafeCard(obj.content ? JSON.parse(obj.content) : undefined, obj);
+                } else {
+                    if (obj.content == '') {
+                        klass = new NoPermissionKlass()
+                    }
+                    card = klass.getCard(obj.content ? JSON.parse(obj.content) : undefined, obj)
+                }
+            } catch (e) {
+                console.error(e)
+                let json = obj.content ? JSON.parse(obj.content) : {}
+                card = render('inodes', {
+                    ele: 'pre',
+                    styles: {
+                        width: "95%",
+                        'background-color': 'red',
+                        color: 'white',
+                        padding: "10px",
+                        'overflow-y': 'auto'
+                    },
+                    text: `Error while processing \n${JSON.stringify(json, null, '\t')}\n\nException: \n${e.stack}`
+                })
+            }
+            return card;
+        }
+
+        function loadScript(path, elem) {
+            return new Promise((resolve, reject) => {
+                var jsElm = document.createElement("script");
+                jsElm.type = "application/javascript";
+                jsElm.src = path;
+                jsElm.addEventListener('load', e => resolve())
+                elem = elem || document.body
+                elem.appendChild(jsElm);
+            });
+        }
+        function loadCss(path) {
+            return new Promise((resolve, reject) => {
+                var fileref = document.createElement("link");
+                fileref.rel = "stylesheet";
+                fileref.type = "text/css";
+                fileref.href = path;
+                fileref.addEventListener("load", e => resolve())
+                document.getElementsByTagName("head")[0].appendChild(fileref)
+            })
+        }
+        async function loadKlassScripts(klass) {
+            let name = klass.name
+            if (!this.scriptPromises)
+                this.scriptPromises = []
+            if (this.scriptPromises[name]) {
+                return this.scriptPromises[name]
+            }
+            this.scriptPromises[name] = new Promise((resolve, reject) => {
+                let proms = [];
+                klass.jsPaths.forEach(s => proms.push(loadScript(s)))
+                klass.cssPaths.forEach(s => proms.push(loadCss(s)))
+                Promise.all(proms).then(x => {
+                    let k = eval(klass.name)
+                    resolve(new k())
+                });
+            })
+            return await this.scriptPromises[name]
+        }
+
+        const istore = new Vuex.Store({
+            strict: true,
+            state: {
+                searchQuery: { q: "#homepage/*", offset: 0, pageSize: 10 },
+                searchResponse: { results: [] },
+                klasses: {},
+                notifCount: 0,
+                locked: false,
+                editorDoc: undefined
+            },
+            getters: {
+                searchQuery: state => state.searchQuery,
+                searchResults: state => state.searchResponse.results,
+                tagFacets: state => state.searchResponse.facetResults,
+                klassNames: state => Object.keys(state.klasses),
+                klasses: state => state.klasses,
+                notifCount: state => state.notifCount,
+                searchResponse: state => state.searchResponse,
+                locked: state => state.locked,
+                editorDoc: state => state.editorDoc
+            },
+            mutations: {
+                searchQuery: (state, q) => state.searchQuery.q = q,
+                searchResults: (state, resp) => state.searchResponse = resp,
+                klasses: (state, klasses) => klasses.forEach(k => state.klasses[k.name] = k),
+                setKlassLoading: (state, { kName, prom }) => state.klasses[kName].obj = prom,
+                notifCount: (state, count) => { state.notifCount = count },
+                editorDoc: (state, doc) => state.editorDoc = doc,
+                setLock: (state, lock) => state.lock = lock //true/false
+            },
+            actions: {
+                search: (context, sq) => {
+                    context.commit('searchQuery', sq)
+                    let sQuery = { ...context.state.searchQuery, q: sq }
+                    let offset = sQuery.offset || 0, pSize = sQuery.pageSize || 10, q = sQuery.q.replace(/\![-\w]+/, "") || "#homepage/*"
+                    inodes.search(sQuery.q, sQuery.offset, sQuery.pageSize)
+                        .then(resp => context.commit("searchResults", resp.json))
+                },
+
+                loadKlasses: (context) => {
+                    return get('/klasses').then((data) => context.commit('klasses', data.json))
+                },
+
+                getKlass: (context, kName) => {
+                    let kDef = context.getters.klasses[kName]
+                    if (!kDef) throw Error(`no such klass ${kName}`)
+
+                    if (!kDef.obj) {
+                        context.commit('setKlassLoading', { kName, prom: loadKlassScripts(kDef) })
+                    }
+                    return kDef.obj
+                },
+
+                loadNotifications: (context) => {
+                    get('/notifications/unseen').then(resp => {
+                        context.commit("notifCount", +resp.response)
+                    })
+                },
+                lock: ctxt => ctxt.commit('setLock', true),
+                unlock: ctxt => ctxt.commit('setLock', false),
+                openDoc: (ctxt, doc) => {
+                    ctxt.commit('editorDoc', doc)
+                }
+            }
+        });
+
+        const app = Vue.createApp({
+            computed: {
+                loggedIn() {
+                    return inodes.loggedIn()
+                }
+            },
+            methods: {
+                newDoc() {
+                    this.$store.dispatch('openDoc', { type: 'applets', content: '{}' })
+                }
+            }
+        })
+
+        app.use(istore)
+
+        app.component('notification-btn', {
+            name: 'notification-btn',
+            template: '#notification-btn',
+            computed: {
+                notifCount() {
+                    return this.$store.getters.notifCount
+                }
+            }
+        })
+
+        app.component('search-bar-full', {
+            name: 'search-bar',
+            template: '#search-bar-full',
+            computed: {
+                query() { return this.$store.getters.searchQuery.q; }
+            },
+            methods: {
+                searchQueryChanged(e) {
+                    if (this.$store.getters.locked) {
+                        if (!confirm('You might have some unsaved work on the page. Do you really want to continue?'))
+                            return;
+                        this.unlock()
+                    }
+                    this.$store.dispatch('search', e.target.value)
+                }
+            }
+        })
+
+        app.component('search-results', {
+            name: 'search-results',
+            template: '#search-results-panel',
+            computed: {
+                searchResults() {
+                    return this.$store.getters.searchResults;
+                },
+                searchResponse() {
+                    return this.$store.getters.searchResponse;
+                }
+            }
+        })
+
+        app.component('tag-editor', {
+            name: 'tag-editor',
+            template: '#tag-editor',
+            props: ['type', 'placeholder'],
+            mounted() {
+                tagify(this.$el, this.type)
+            }
+        })
+
+        app.component('post-editor', {
+            name: 'post-editor',
+            template: '#post-editor',
+            data() {
+                return {
+                    showEditor: false,
+                    editorDoc: {},
+                    editorComponent: undefined
+                }
+            },
+            computed: {
+                klassNames() {
+                    return this.$store.getters.klassNames
+                }
+            },
+            mounted() {
+                this.unwatch = this.$store.watch(
+                    (_, getters) => getters.editorDoc,
+                    (_, __) => {
+                        console.log(_, __)
+                        this.updateEditor()
+                    }
+                )
+            },
+            beforeDestroy() {
+                this.unwatch();
+            },
+            methods: {
+                submit() {
+                    console.log(this.editorDoc)
+                },
+                updateEditor() {
+                    this.showEditor = true
+                    this.editorDoc = { ...this.$store.getters.editorDoc }
+                    this.$refs.editorContainer.innerHTML = ''
+                    this.$store.dispatch('getKlass', this.editorDoc.type)
+                        .then(klass => {
+                            let obj = this.editorDoc.content ? JSON.parse(this.editorDoc.content) : undefined
+                            
+                            if(klass.vueEditorComponent) {
+                                let name = `${this.editorDoc.type}-editor-component`
+                                app.component(name, {
+                                    ...klass.vueEditorComponent(),
+                                    props: ['obj', 'doc'],
+                                    name
+                                })
+                                this.editorComponent = name
+                            } else {
+                                this.editorComponent = undefined
+                                this.$refs.editorContainer.appendChild(klass.getEditor(obj, this.editorDoc))
+                            }
+                            
+                            document.body.scrollIntoView()
+                        })
+                }
+            }
+        })
+
+        app.component('search-result', {
+            name: 'search-result',
+            template: '#search-result',
+            props: ['doc'],
+            data() {
+                return { vueComp: undefined }
+            },
+            computed: {
+                randColor() {
+                    var letters = '0123456789ABCDEF';
+                    var color = '#';
+                    for (var i = 0; i < 6; i++) {
+                        color += letters[Math.floor(Math.random() * 16)];
+                    }
+                    return `solid 5px ${color}`;
+                },
+                tags() {
+                    return this.doc.tags;
+                },
+            },
+            created() {
+                this.$store.dispatch('getKlass', this.doc.type)
+                    .then(klass => {
+                        if(klass.vueCardComponent) {
+                            let name = `${this.doc.type}-dynamic-view-component`
+                            app.component(name, {
+                                ...klass.vueCardComponent(),
+                                props: ['doc', 'obj'],
+                                name
+                            })
+                            this.vueComp = name
+                        } else {
+                            this.$refs.cardContainer.appendChild(buildCard(klass, this.doc))
+                        }
+                    })
+            },
+            methods: {
+                upvoteInode() {
+
+                },
+                downvoteInode() {
+
+                },
+                editInode() {
+                    this.$store.dispatch('openDoc', this.doc)
+                },
+                deleteInode() {
+
+                },
+                showComments() {
+
+                },
+                copyFormatted() {
+
+                },
+                canContentBeCopied() {
+
+                },
+                watchDoc() {
+
+                },
+                goFullScreen({ target }) {
+                    let x = document.createElement('div')
+                    x.classList = 'fullscreen-inode'
+                    document.body.appendChild(x)
+
+                    let cardEle = target.parentNode.parentNode.nextSibling.childNodes[0], cardParent = cardEle.parentNode;
+
+                    let closeBtn = document.createElement('span')
+                    closeBtn.classList = 'closefullscreen-btn'
+                    closeBtn.innerHTML = '&#x2715;'
+                    closeBtn.addEventListener('click', function () {
+                        cardEle.remove();
+                        cardParent.appendChild(cardEle)
+                        x.remove();
+                        document.querySelector('.content').style.display = 'block'
+                    })
+
+                    document.querySelector('.content').style.display = 'none'
+                    x.appendChild(cardEle)
+                    x.appendChild(closeBtn)
+                }
+            }
+        })
+
+        app.component('tag-elem', {
+            name: 'tag',
+            template: '#tag-elem',
+            props: ['tag', 'type', 'hits'],
+            methods: {
+                viewTag() { },
+                subscribeTag() { },
+                tagClicked({ ctrlKey }) {
+                    if(ctrlKey)
+                        this.$store.dispatch('search', this.type + this.tag + " " + this.$store.getters.searchQuery.q)
+                    else
+                        this.$store.dispatch('search', this.type + this.tag)
+                }
+            }
+        })
+
+        app.component('tag-facets', {
+            name: 'tag-facets',
+            template: '#tag-facets',
+            props: ['type', 'title'],
+            computed: {
+                tags() {
+                    let facets = this.$store.getters.tagFacets
+                    const chars = { "owner": "~", "type": "%", "tags": "#" }
+                    return !facets ? [] : Object.keys(facets[this.type])
+                        .map(k => ({ tag: k, hits: facets[this.type][k], type: chars[this.type] }))
+                        .filter(t => t.hits != 0)
+                        .sort((a, b) => b.hits - a.hits);
+                }
+            }
+        })
+
+        window.addEventListener('load', () => {
+            istore.dispatch("loadNotifications")
+            istore.dispatch('loadKlasses')
+                .then(_ => app.mount("#app"))
+                .then(_ => istore.dispatch('search', ""))
+        });
+    </script>
+
+</head>
+
+<body id="app">
+    <div class="title-bar">
+        <div class="maxwidth title-box">
+            <div class="title-left-panel">
+                <span class="title">i-nodes</span>
+            </div>
+            <div class="title-mid-panel">
+                <search-bar-full></search-bar-full>
+            </div>
+            <div v-if="loggedIn" class="title-right-panel">
+                <button class="add-btn new-has-tooltip" title="New">
+                    <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                        stroke-linejoin="round" class="feather feather-plus">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <div class="new-tooltip">
+                        <ul style="list-style-type: none; padding: 0px; text-align: right; margin: 0px">
+                            <li class="new-actions" @click="newDoc">&#128462; New Post</li>
+                            <li class="new-actions" @click="createGroup()">&#x1F465; New Group</li>
+                            <li class="new-actions" @click="announceApp()">&#x1F4E2; New Announcement</li>
+                        </ul>
+                    </div>
+                </button>
+                <notification-btn></notification-btn>
+                <button class="profile-btn new-has-tooltip">
+                    <span>&#x1F464;</span>
+                    <div class="new-tooltip">
+                        <ul style="list-style-type: none; padding: 0px; text-align: right; margin: 0px">
+                            <li class="new-actions" onclick="inodes.openAccount()" id='profilebtn'>Account</li>
+                            <li class="new-actions" onclick="inodes.openMyPosts()">My Posts</li>
+                            <li class="new-actions" onclick="inodes.openPRs()">My Pending PRs</li>
+                            <li class="new-actions" onclick="inodes.logout()">Logout</li>
+                        </ul>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="content maxwidth">
+        <post-editor></post-editor>
+        <div class="ppane">
+            <div class="posts-trending">
+                <div class="left-w85">
+                    <div class="posts-container">
+                        <search-results></search-results>
+                    </div>
+                </div>
+                <div class="right-w15">
+                    <div v-if="!loggedIn" class="actions sidebar-item">
+                        <a class="action-item" href="javascript:inodes.openSignInPage()">Sign In</a>
+                        <a class="action-item" href="javascript:inodes.openRegisterPage()">Sign Up</a>
+                    </div>
+                    <tag-facets type="type" title="Post types"></tag-facets>
+                    <tag-facets type="tags" title="Tags"></tag-facets>
+                    <tag-facets type="owner" title="Contributors"></tag-facets>
+                </div>
+            </div>
+
+        </div>
+        <hr />
+    </div>
+    <footer>
+        <center>
+            &copy; Madhusoodan P
+        </center>
+    </footer>
+</body>
+
+</html>

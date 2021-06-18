@@ -1,0 +1,33 @@
+.bulk-update-searchbar {
+    width: 50%;
+}
+.bulk-update-searchbar, .bulk-update-result-count {
+    display: inline-block;
+    margin: 5px;
+}
+
+.bulkupdate-input-inputs > .tagify {
+    flex-grow: 1;
+    margin: 0px 20px;
+}
+
+.bulk-update-input-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.bulk-update-field {
+    padding: 20px 0px;
+    display: inline-block;
+    border-bottom: solid 1px black;
+}
+
+.bulk-update-input-container {
+    margin: 0px;
+    margin-bottom: 20px;
+}
+
+.bulkupdate-input-inputs {
+    display: flex;
+    align-items: center;
+}

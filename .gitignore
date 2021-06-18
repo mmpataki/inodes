@@ -1,2 +1,7 @@
 target
 config.properties
+src/main/resources/static/kb-plugin
+src/main/resources/static/instances-plugin
+src/main/resources/static/edc-resource-config-plugin
+src/main/resources/static/automations-plugin
+klasses
