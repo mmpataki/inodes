@@ -3,6 +3,7 @@ package inodes.service;
 import com.google.gson.Gson;
 import inodes.models.Klass;
 import inodes.service.api.KlassService;
+import lombok.extern.log4j.Log4j;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -11,8 +12,10 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
+@Log4j
 public class FSBasedKlassService extends KlassService {
 
     String basePath = "./klasses";
@@ -38,6 +41,18 @@ public class FSBasedKlassService extends KlassService {
         try (FileReader fr = new FileReader(makePath(name, false) + "/class.json")) {
             return new Gson().fromJson(fr, Klass.class);
         }
+    }
+
+    @Override
+    public List<Klass> getAllKlasses() throws Exception {
+        return getRegisteredKlasses().stream().map(k -> {
+            try {
+                return getKlass(k);
+            } catch (Exception e) {
+                log.error("error while loading " + k, e);
+                return null;
+            }
+        }).filter(x -> x != null).collect(Collectors.toList());
     }
 
     @Override

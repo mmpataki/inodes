@@ -4,10 +4,7 @@ import inodes.models.Klass;
 import lombok.extern.log4j.Log4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
-import java.io.File;
 import java.util.List;
 
 @Log4j
@@ -18,6 +15,8 @@ public abstract class KlassService {
     AuthorizationService AS;
 
     public abstract Klass getKlass(String name) throws Exception;
+
+    public abstract List<Klass> getAllKlasses() throws Exception;
 
     public void putKlass(Klass klass) throws Exception {
         AS.checkKlassCreatePermission();

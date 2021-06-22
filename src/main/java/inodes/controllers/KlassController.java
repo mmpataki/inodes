@@ -22,18 +22,13 @@ public class KlassController {
     @Autowired
     KlassService KS;
 
-    @GetMapping("/klass/{id}")
-    public Klass get(@PathVariable String id) throws Exception {
-        return KS.getKlass(id);
-    }
-
     @PostMapping("/klass")
     public void register(@RequestBody Klass klass) throws Exception {
         KS.putKlass(klass);
     }
 
     @GetMapping(value = "/klasses")
-    public List<String> getRegisteredKlasses() throws Exception {
-        return KS.getRegisteredKlasses();
+    public List<Klass> getRegisteredKlasses() throws Exception {
+        return KS.getAllKlasses();
     }
 }

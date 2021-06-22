@@ -194,6 +194,12 @@ function showMessage(x, col) {
     setTimeout(() => d.remove(), 8000)
 }
 
+function trender(template, obj, methods) {
+    let d = document.createElement('div')
+    d.innerHTML = Sqrl.render(template.trim(), obj)
+    return d.childNodes[0]
+}
+
 function render(name, spec, elemCreated, container) {
     let x = _render(name, spec, elemCreated, container);
     _fireRenderedCallBacks(spec);

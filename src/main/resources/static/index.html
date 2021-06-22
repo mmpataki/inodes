@@ -7,6 +7,7 @@
     <title>i-nodes</title>
     <link rel="stylesheet" href="./index.css">
     <script src="/common.js"></script>
+    <script src="/squirrelly.min.js"></script>
     <script src="./tagify.min.js"></script>
     <link rel="stylesheet" href="./tagify.css">
     <script>
@@ -49,33 +50,18 @@
             populateClassTypes(data) {
                 let select = g('kclasses');
                 select.addEventListener('change', e => this.klassChanged(e.target.value));
-                data.forEach(klassName => {
-                    select.innerHTML += `<option name='${klassName}'>${klassName}</option>`
-                });
                 this.klasses = {}
+                data.forEach(klass => {
+                    select.innerHTML += `<option name='${klass.name}'>${klass.name}</option>`
+                    this.klasses[klass.name] = klass
+                });
                 this.klassChanged(data[0])
             }
             loadKlass(klassName) {
-                if (this.klassPromises[klassName]) {
-                    return this.klassPromises[klassName];
-                }
-                let self = this;
-                this.klassPromises[klassName] = new Promise((resolve, reject) => {
-                    if (self.klasses[klassName]) {
-                        return resolve(self.klasses[klassName]);
-                    }
-                    get(`/klass/${klassName}`).then(d => {
-                        self.klasses[klassName] = JSON.parse(d.response);
-                        resolve(self.klasses[klassName])
-                    })
-                });
-                return this.klassPromises[klassName]
+                return Promise.resolve(this.klasses[klassName])
             }
-            klassChanged(klassName) {
-                let self = this;
-                this.loadKlass(klassName).then(d => {
-                    this.renderInput(d.name, undefined, false)
-                });
+            klassChanged(d) {
+                this.renderInput(d.name, undefined, false)
             }
             loadScript(path, elem) {
                 return new Promise((resolve, reject) => {
@@ -207,10 +193,29 @@
                         return;
                     this.unlock()
                 }
+
+                function array_move(arr, old_index, new_index) {
+                    if (new_index >= arr.length) {
+                        var k = new_index - arr.length + 1;
+                        while (k--) {
+                            arr.push(undefined);
+                        }
+                    }
+                    arr.splice(new_index, 0, arr.splice(old_index, 1)[0]);
+                    return arr;
+                }
+
                 callWithWaitUI(c('posts-container'), (done) => {
+                    str = str == "" ? "#homepage/*" : str
                     this.search(str, offset, pageSize)
                         .then(d => {
                             this.results = JSON.parse(d.response)
+                            for (let i = 0; i < this.results.length; i++) {
+                                const doc = this.results[i];
+                                if (!doc.tags.includes('homepage'))
+                                    return;
+                                array_move(this.results, i, 0)
+                            }
                             if (this.results.results.length < 1) {
                                 g('posts').innerHTML = '<div class="no-post-found">No posts found</div>'
                                 done();
@@ -223,8 +228,9 @@
                         }).catch(s => done())
                 });
             }
+
             search(str, offset = 0, pageSize = 10) {
-                str = str ? str : ""
+                str = str ? str : "#homepage/*"
                 str = str.replace(/\![-\w]+/, "")
                 return getLast(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}&fq=tags&fq=type&fq=owner`)
             }
@@ -333,7 +339,33 @@
                     .then(a => showSuccess(a.response))
                     .catch(m => showError(m));
             }
-            showCard(d, obj) {
+
+            pinItem(ele, obj) {
+                if (!this.pinned)
+                    this.pinned = {};
+                if (obj.id in this.pinned)
+                    return;
+                this.pinned[obj.id] = 1
+                let doc = ele.parentNode.parentNode
+                doc.remove()
+                g('pinned').appendChild(doc)
+                ele.style.display = 'none'
+                ele.nextSibling.style.display = 'inline-block'
+            }
+
+            unpinItem(ele, obj) {
+                if (!(obj.id in this.pinned))
+                    return
+                delete this.pinned[obj.id]
+                let doc = ele.parentNode.parentNode
+                doc.remove()
+                let d = g('posts')
+                d.insertBefore(doc, d.firstChild)
+                ele.style.display = 'none'
+                ele.previousElementSibling.style.display = 'inline-block'
+            }
+
+            showCard(d, obj, pinned) {
                 let self = this;
                 let template = function (klass, obj) {
                     let card;
@@ -693,11 +725,13 @@
 
             getContextButtons(klass, obj) {
                 let self = this;
-                let getLockIcon = () => obj.visibility != 'g-public' ? [{ ele: 'span', html: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []
+                let getLockIcon = _ => obj.visibility != 'g-public' ? [{ ele: 'span', html: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []
                 return {
                     ele: 'div',
                     classList: 'context-btns',
                     children: [
+                        { ele: 'span', attribs: { title: 'pin', innerHTML: '&#128204;' }, evnts: { click: function (e) { self.pinItem(this, obj); } } },
+                        { ele: 'span', attribs: { title: 'unpin', innerHTML: '&#128204;' }, styles: { display: "none", 'text-decoration': 'line-through', 'text-decoration-thickness': '3px' }, evnts: { click: function (e) { self.unpinItem(this, obj); } } },
                         ...getLockIcon(),
                         {
                             ele: 'span',
@@ -1164,6 +1198,7 @@
             <div class="posts-trending">
                 <div class="left-w85">
                     <div class="posts-container">
+                        <div id="pinned"></div>
                         <div id="posts"></div>
                     </div>
                 </div>
