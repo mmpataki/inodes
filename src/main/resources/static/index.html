@@ -547,6 +547,7 @@
                         }
 
                         this.showResults(results).finally(_ => done())
+                        this.getPaginationItem(totalResults)
                         this.populateFacets(facetResults)
                     })
                 })
@@ -608,33 +609,30 @@
                 ele.remove(), this.rc.insertBefore(ele, this.rc.firstChild)
             }
 
-
-            getPaginationItem(results) {
-                let self = this;
-                let resp = function () {
-                    let container = {
-                        ele: 'div',
-                        classList: 'pages',
-                        children: []
-                    }
-                    for (let i = 0; i < results.totalResults; i += self.pageSize) {
-                        container.children.push(
-                            {
-                                ele: 'span',
-                                classList: `page-btn ${(i / self.pageSize) == self.pageNum ? "selected" : ""}`,
-                                text: i / self.pageSize + 1,
-                                evnts: {
-                                    click: function (e) {
-                                        self.pageNum = i / self.pageSize
-                                        self.doSearch(self.getSearchQuery(), i, self.pageSize)
-                                    }
+            getPaginationItem(totalResults) {
+                let { pages, pageSize, offset } = { ...this, ...this.options };
+                let container = {
+                    ele: 'div',
+                    classList: 'pages',
+                    children: []
+                }
+                for (let i = 0; i < totalResults; i += pageSize) {
+                    container.children.push(
+                        {
+                            ele: 'span',
+                            classList: `page-btn ${i == this.offset ? "selected" : ""}`,
+                            text: i / pageSize + 1,
+                            evnts: {
+                                click: _ => {
+                                    this.offset = i
+                                    this.search(this.getSearchQuery())
                                 }
                             }
-                        )
-                    }
-                    return container;
+                        }
+                    )
                 }
-                return render('paginator', resp());
+                this.pages.innerHTML = ''
+                this.pages.appendChild(render('paginator', container))
             }
         }
 
@@ -743,7 +741,8 @@
                     size: 'max',
                     defQuery: new URL(window.location.href).searchParams.get("q") || "#homepage/*",
                     facetsEle: c('search-facets'),
-                    sorter: homePageSorter
+                    sorter: homePageSorter,
+                    pageSize: 10
                 })
                 this.editor = new Editor({}, g('editor-pane'), this)
 
