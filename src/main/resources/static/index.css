@@ -278,9 +278,6 @@ body {
     text-align: center;
 }
 
-.search-pane {
-}
-
 #editor-pane {
     margin-top: 20px;
     margin-bottom: 30px;
@@ -289,6 +286,15 @@ body {
     border-radius: 10px;
     display: none;
     position: relative;
+}
+
+#editor-pane > input, #editor-pane > select {
+    display: block;
+    padding: 10px 5px;
+    width: 100%;
+    width: -moz-available;          /* For Mozzila */
+    width: -webkit-fill-available;  /* For Chrome */
+    width: stretch;                 /* Unprefixed */
 }
 
 .trending-tag {
@@ -345,7 +351,7 @@ body {
     margin: auto;
 }
 
-.closebtn {
+.editor-closebtn {
     position: absolute;
     top: 0px;
     right: 0px;
@@ -505,10 +511,11 @@ animation: fadeOut ease 8s;
     border-radius: 5px;
 }
 
-.comment-action-btn {
+.inode-comment-action-btn {
     font-size: .8em;
     color: lightgray;
     cursor: pointer;
+    margin-left: 15px;
 }
 
 .comment-action-btn:hover {
@@ -735,14 +742,9 @@ img {
 }
 
 .add-btn {
-    /* margin-left: 10px; */
-    color: #fff;
-    background-color: #1f1c24;
     padding: 0;
     border: 0;
     border-radius: 50%;
-    width: 28px;
-    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -751,7 +753,6 @@ img {
 .profile-btn {
     padding: 0;
     border: 0;
-    background-color: transparent;
     display: flex;
     align-items: center;
     margin-left: 15px;
@@ -762,8 +763,8 @@ img {
     margin-top: -7px;
 }
 
-.notification-btn:hover, .profile-btn:hover, .add-btn:hover, .notification-btn:focus, .profile-btn:focus, .add-btn:focus {
-    background-color: lightgrey;
+.notification-btn, .profile-btn, .add-btn {
+    cursor: pointer;
 }
 
 
@@ -799,4 +800,19 @@ img {
 .storyboard-errmsg {
     padding: 10px;
     color: red;
+}
+
+
+inode-error {
+    width: 95%;
+    background-color: red;
+    color: white;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+.inode-action-unpin {
+    display: none;
+    text-decoration: line-through;
+    text-decoration-thickness: 3px;
 }

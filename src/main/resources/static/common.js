@@ -22,7 +22,7 @@ function _ajax(method, url, data, hdrs, cancelToken) {
         xhttp.onreadystatechange = function () {
             if (this.readyState == 4 && this.status == 200) {
                 let json;
-                try { json = JSON.parse(this.responseText); } catch (e) {}
+                try { json = JSON.parse(this.responseText); } catch (e) { }
                 resolve({
                     response: this.responseText,
                     json,
@@ -75,6 +75,9 @@ function last(fn) {
 let getLast = last(get);
 
 function post(url, data, hdrs) {
+    if(typeof data !== 'string') {
+        hdrs = { "Content-Type": "application/json", ...hdrs }
+    }
     return ajax('POST', url, JSON.stringify(data), hdrs);
 }
 
@@ -122,7 +125,7 @@ function ncors_put(url, data, hdrs) {
 
 function nocors(method, url, data, headers) {
     return post(
-        `/nocors`, 
+        `/nocors`,
         { method: method, data: JSON.stringify(data), headers, url: url },
         { "Content-Type": "application/json" }
     )
@@ -185,6 +188,10 @@ function showWarning(x) {
     showMessage(x, __colors.WARN)
 }
 
+function showInfo(x) {
+    showMessage(x, __colors.INFO)
+}
+
 function showMessage(x, col) {
     let d = document.createElement('div')
     d.classList = 'fade-out'
@@ -207,13 +214,17 @@ function render(name, spec, elemCreated, container) {
 }
 
 function _fireRenderedCallBacks(spec) {
-    if(spec && spec.evnts && spec.evnts.rendered)
+    if (spec && spec.evnts && spec.evnts.rendered)
         spec.evnts.rendered(spec._______elem)
     delete spec['_______elem']
     spec.children && spec.children.forEach(child => _fireRenderedCallBacks(child))
 }
 
 function _render(name, spec, elemCreated, container) {
+    if(Array.isArray(spec)) {
+        spec.forEach(s => render(name, s, elemCreated, container))
+        return container
+    }
     let e;
     if (!spec.preBuilt) {
         e = document.createElement(spec.ele);
@@ -260,6 +271,15 @@ function _render(name, spec, elemCreated, container) {
     return e;
 }
 
+function randColor() {
+    var letters = '0123456789ABCDEF';
+    var color = '#';
+    for (var i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+
 function callWithWaitUI(element, func) {
     return new _callWithWaitUI(element, func);
 }
@@ -286,7 +306,8 @@ function _callWithWaitUI(element, func) {
     let updateText = (txt) => this.loadTxt.innerText = txt;
     try {
         func(done, updateText);
-    } catch {
+    } catch(e) {
+        console.error(e)
         done();
     }
 }
@@ -353,7 +374,7 @@ function _tabulate(arr, ele, spec) {
     }
 
     let renderTab = () => {
-        if(currSortKey)
+        if (currSortKey)
             arr.sort(sortFunc)
         this.tab = render(spec.classPrefix, {
             ele: 'table',
@@ -920,4 +941,71 @@ function _makeSearchAndSelectButton(text, itemType, resultTemplate, valuePickedC
             }
         ]
     }, (id, el) => this[id] = el)
+}
+
+/**
+ * makes an HTML element fullscreen
+ * requirement:
+ *      `ele` shouldn't have any siblings
+ */
+function makeFullScreen(ele) {
+    let x = document.createElement('div')
+    x.classList = 'fullscreen-inode'
+    document.body.appendChild(x)
+
+    let cardParent = ele.parentNode, closeBtn = document.createElement('span')
+    closeBtn.classList = 'closefullscreen-btn'
+    closeBtn.innerHTML = '&#x2715;'
+    closeBtn.addEventListener('click', function () {
+        ele.remove();
+        cardParent.appendChild(ele)
+        x.remove();
+        document.querySelector('.content').style.display = 'block'
+    })
+
+    document.querySelector('.content').style.display = 'none'
+    x.appendChild(ele)
+    x.appendChild(closeBtn)
+}
+
+let clipboardDiv;
+function copyFormatted(html) {
+    if (!clipboardDiv) {
+        clipboardDiv = document.createElement('div');
+        clipboardDiv.style.fontSize = '12pt'; // Prevent zooming on iOS
+        // Reset box model
+        clipboardDiv.style.border = '0';
+        clipboardDiv.style.padding = '0';
+        clipboardDiv.style.margin = '0';
+        // Move element out of screen 
+        clipboardDiv.style.position = 'fixed';
+        clipboardDiv.style['right'] = '-9999px';
+        clipboardDiv.style.top = (window.pageYOffset || document.documentElement.scrollTop) + 'px';
+        // more hiding
+        clipboardDiv.setAttribute('readonly', '');
+        clipboardDiv.style.opacity = 0;
+        clipboardDiv.style.pointerEvents = 'none';
+        clipboardDiv.style.zIndex = -1;
+        clipboardDiv.setAttribute('tabindex', '0'); // so it can be focused
+        clipboardDiv.innerHTML = '';
+        document.body.appendChild(clipboardDiv);
+    }
+    clipboardDiv.innerHTML = html;
+    var focused = document.activeElement;
+    clipboardDiv.focus();
+
+    window.getSelection().removeAllRanges();
+    var range = document.createRange();
+    range.setStartBefore(clipboardDiv.firstChild);
+    range.setEndAfter(clipboardDiv.lastChild);
+    window.getSelection().addRange(range);
+
+    var ok = false;
+    try {
+        if (document.execCommand('copy')) ok = true; else console.log('execCommand returned false !');
+    } catch (err) {
+        console.log('execCommand failed ! exception ' + err);
+    }
+
+    focused.focus();
 }
