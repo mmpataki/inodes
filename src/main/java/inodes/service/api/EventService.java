@@ -91,10 +91,10 @@ public class EventService {
                 (EnumSet.of(NotificationType.EMAIL), es.getUserResolver(), es.getUserAddedToGroupEmailBuilder(), null, null),
 
         NEW_DOC
-                (EnumSet.of(NotificationType.EMAIL, NotificationType.APP_NOTIFICATION, NotificationType.TEAMS_NOTIFICATION), es.getDocWatcherResolver(), es.getNewDocEmailBuilder(), es.getNewDocTeamsNBuilder(), null),
+                (EnumSet.of(NotificationType.EMAIL, NotificationType.TEAMS_NOTIFICATION), es.getDocWatcherResolver(), es.getNewDocEmailBuilder(), es.getNewDocTeamsNBuilder(), null),
 
         NEW_COMMENT
-                (EnumSet.of(NotificationType.EMAIL, NotificationType.APP_NOTIFICATION), es.getNewCommentWatcherResolver(), es.getNewCommentEmailBuilder(), null, null),
+                (EnumSet.of(NotificationType.EMAIL, NotificationType.APP_NOTIFICATION), es.getNewCommentWatcherResolver(), es.getNewCommentEmailBuilder(), null, es.getCommentAppNotificationBuilder()),
 
         ADMIN
                 (EnumSet.of(NotificationType.EMAIL), o -> Collections.singleton(new Reciepient().withId(UserGroupService.ADMIN).withTyp(RecipientType.GROUP)), null, null, null),
@@ -420,6 +420,20 @@ public class EventService {
                                     "Click <a href=\"#\" onclick=\"post(`%s`).then(x => showSuccess('Done')).catch(e => showError(e.msg))\"><b>this</b></a> link, if you want to approve this request",
                             UrlUtil.getUserUrl(aGuy), aGuy, UrlUtil.getDocUrl(docId), UrlUtil.getRelativeDocPermApprovalLink(docId, aGuy)
                     ))
+                    .ptime(System.currentTimeMillis())
+                    .build();
+        };
+    }
+
+    private EventToAppNotificationTransfomer getCommentAppNotificationBuilder() {
+        return ed -> {
+            String doc = (String) ed.get("docid");
+            String txt = (String) ed.get("comment");
+            return AppNotification.NotificationData.builder()
+                    .nFrom("comments service")
+                    .ntext(String.format(
+                            "<a href=\"%s\"><b>%s</b></a> commented on <a href=\"%s\" target=\"_blank\">%s</a><br/>%s",
+                            UrlUtil.getUserUrl(ed.getPublisher()), ed.getPublisher(), UrlUtil.getDocUrl(doc), doc, txt))
                     .ptime(System.currentTimeMillis())
                     .build();
         };

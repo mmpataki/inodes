@@ -10,895 +10,15 @@
     <script src="/squirrelly.min.js"></script>
     <script src="./tagify.min.js"></script>
     <link rel="stylesheet" href="./tagify.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+        integrity="sha512-iBBXm8fW90+nuLcSKlbmrPcLa0OT92xO1BIsZ+ywDWZCvqsWgccV3gFoRBv0z+8dLJgyAHIhR35VZc2oM/gI1w=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script>
-        class INodes {
-            constructor() {
-                let self = this;
-                this.klassPromises = {}
-                this.scriptPromises = {}
-                this.pageSize = 10;
-                this.pageNum = 0;
-                post('/test-login').catch(() => this.logout())
-                get('/klasses').then((data) => {
-                    this.klassNames = JSON.parse(data.response)
-                    self.populateClassTypes(this.klassNames);
-                })
-                this.setupSearch();
-                this.showUserInfo();
-            }
-            getKlassNames() {
-                return this.klassNames;
-            }
-            setupSearch() {
-                let q = new URL(window.location.href).searchParams.get("q")
-                c('searchbox').value = q
-                console.log(q)
-                this.doSearch(q)
-            }
-            populateFacets(facets, elemId, searchChar) {
-                let self = this;
-                let dd = g(elemId)
-                dd.innerHTML = ''
-                let tags = [];
-                Object.keys(facets).forEach(k => facets[k] > 0 ? tags.push({ item: k, hits: facets[k] }) : 1)
-                tags.sort((a, b) => b.hits - a.hits);
-                tags.forEach(tag => {
-                    dd.appendChild(self.createTagElement(tag.item, searchChar, tag.hits))
-                    dd.appendChild(document.createElement('br'))
-                })
-            }
-            populateClassTypes(data) {
-                let select = g('kclasses');
-                select.addEventListener('change', e => this.klassChanged(e.target.value));
-                this.klasses = {}
-                data.forEach(klass => {
-                    select.innerHTML += `<option name='${klass.name}'>${klass.name}</option>`
-                    this.klasses[klass.name] = klass
-                });
-                this.klassChanged(data[0])
-            }
-            loadKlass(klassName) {
-                return Promise.resolve(this.klasses[klassName])
-            }
-            klassChanged(d) {
-                this.renderInput(d.name, undefined, false)
-            }
-            loadScript(path, elem) {
-                return new Promise((resolve, reject) => {
-                    var jsElm = document.createElement("script");
-                    jsElm.type = "application/javascript";
-                    jsElm.src = path;
-                    jsElm.addEventListener('load', e => resolve())
-                    elem = elem || document.body
-                    elem.appendChild(jsElm);
-                });
-            }
-            loadCss(path) {
-                return new Promise((resolve, reject) => {
-                    var fileref = document.createElement("link");
-                    fileref.rel = "stylesheet";
-                    fileref.type = "text/css";
-                    fileref.href = path;
-                    fileref.addEventListener("load", e => resolve())
-                    document.getElementsByTagName("head")[0].appendChild(fileref)
-                })
-            }
-            loadKlassScripts(klass) {
-                let name = klass.name
-                if (this.scriptPromises[name]) {
-                    return this.scriptPromises[name]
-                }
-                this.scriptPromises[name] = new Promise((resolve, reject) => {
-                    if (klass.obj) {
-                        return resolve(klass.obj)
-                    }
-                    let proms = [];
-                    klass.jsPaths.forEach(s => proms.push(this.loadScript(s)))
-                    klass.cssPaths.forEach(s => proms.push(this.loadCss(s)))
-                    Promise.all(proms).then(x => {
-                        let k = eval(klass.name)
-                        klass.obj = new k();
-                        resolve(klass.obj)
-                    });
-                })
-                return this.scriptPromises[name]
-            }
-            renderInput(klassName, obj, force) {
-                let self = this;
-                this.currentPost = obj
-                this.loadKlass(klassName)
-                    .then(klass => this.loadKlassScripts(klass))
-                    .then(klassObj => {
-                        let e = g('editor');
-                        e.innerHTML = '';
-                        if (!klassObj.inodes_editor || force || obj) {
-                            try {
-                                klassObj.inodes_editor = klassObj.getEditor(obj)
-                            } catch (e) {
-                                console.error(e)
-                                showError("You don't have permissions to edit this object")
-                                throw e
-                            }
-                        }
-                        e.appendChild(klassObj.inodes_editor)
-                        g('changenoteeditor').style.display = obj ? 'block' : 'none'
-                    });
-            }
-            loggedIn() {
-                return getCookie(USER_KEY)
-            }
-            showUserInfo() {
-                if (this.loggedIn()) {
-                    c('title-right-panel').style.display = 'flex'
-                    g('actions').innerHTML = ''
-                    g('profilebtn').innerHTML = getCurrentUser()
-                    this.updateNotificationsCount();
-                } else {
-                    c('title-right-panel').style.display = 'none'
-                    g('actions').innerHTML = `
-                        <a class="action-item" href="javascript:inodes.openSignInPage()">Sign In</a>
-                        <a class="action-item" href="javascript:inodes.openRegisterPage()">Sign Up</a>
-                    `
-                }
-            }
-            updateNotificationsCount() {
-                get('/notifications/unseen').then(resp => {
-                    let nc = +resp.response;
-                    if (nc > 0) {
-                        g('notifcount').style.display = 'block';
-                        g('notifcount').innerHTML = nc;
-                    } else {
-                        g('notifcount').style.display = 'none';
-                    }
-                })
-            }
-            createGroup() {
-                this.triggerSearch('#inodesapp #creategroup')
-            }
-            openSignInPage() {
-                this.triggerSearch('#inodesapp #login')
-            }
-            post() {
-                let self = this;
-                let currentClass = g('kclasses').value
-                let obj = this.klasses[currentClass].obj
-                let content = ''
-                try {
-                    content = JSON.stringify(obj.getContent());
-                } catch (err) {
-                    showError(err);
-                    return
-                }
-                let changeNote = this.currentPost ? g('changenote-editor').value : "initial version";
-                post(
-                    `/data?changeNote=${encodeURIComponent(changeNote)}`,
-                    {
-                        content,
-                        type: currentClass,
-                        tags: JSON.parse(g('tags-editor').value).map(t => t.value).concat(obj.getTags ? obj.getTags() : []),
-                        visibility: JSON.parse(g('visibility-editor').value).map(u => u.value),
-                        savedVisibility: this.currentPost ? (this.currentPost.savedVisibility || ['none']) : ['none'],
-                        id: this.currentPost ? this.currentPost.id : undefined
-                    },
-                    {
-                        "Content-Type": "application/json"
-                    }
-                )
-                    .then(e => { showSuccess('Posted successfully'); self.closeEditor(); })
-                    .catch(e => showError(e.message))
-            }
-            doSearch(str, offset = 0, pageSize = 10) {
-                if (this.locked()) {
-                    if (!confirm('You might have some unsaved work on the page. Do you really want to continue?'))
-                        return;
-                    this.unlock()
-                }
 
-                function array_move(arr, old_index, new_index) {
-                    if (new_index >= arr.length) {
-                        var k = new_index - arr.length + 1;
-                        while (k--) {
-                            arr.push(undefined);
-                        }
-                    }
-                    arr.splice(new_index, 0, arr.splice(old_index, 1)[0]);
-                    return arr;
-                }
-
-                callWithWaitUI(c('posts-container'), (done) => {
-                    str = str == "" ? "#homepage/*" : str
-                    this.search(str, offset, pageSize)
-                        .then(d => {
-                            this.results = JSON.parse(d.response)
-                            for (let i = 0; i < this.results.length; i++) {
-                                const doc = this.results[i];
-                                if (!doc.tags.includes('homepage'))
-                                    return;
-                                array_move(this.results, i, 0)
-                            }
-                            if (this.results.results.length < 1) {
-                                g('posts').innerHTML = '<div class="no-post-found">No posts found</div>'
-                                done();
-                                return
-                            }
-                            this.showResults().finally(() => done())
-                            this.populateFacets(this.results.facetResults['tags'], 'toptags', '#');
-                            this.populateFacets(this.results.facetResults['type'], 'posttypes', '%');
-                            this.populateFacets(this.results.facetResults['owner'], 'topcontributors', '~');
-                        }).catch(s => done())
-                });
-            }
-
-            search(str, offset = 0, pageSize = 10) {
-                str = str ? str : "#homepage/*"
-                str = str.replace(/\![-\w]+/, "")
-                return getLast(`/data?q=${encodeURIComponent(str)}&offset=${offset}&pageSize=${pageSize}&fq=tags&fq=type&fq=owner`)
-            }
-            showResults() {
-                let d = g('posts');
-                d.innerHTML = ''
+        class ITag {
+            constructor(container, app, tag, char, hits) {
                 let self = this
-                let proms = []
-                let itemsByClass = {};
-                this.results.results.forEach(r => {
-                    if (!itemsByClass[r.type]) {
-                        itemsByClass[r.type] = []
-                    }
-                    itemsByClass[r.type].push(r)
-                    proms.push(self.showCard(d, r));
-                })
-                return new Promise(resolve => {
-                    Promise.all(proms)
-                        .then(() => {
-                            if (this.results.results.length < this.results.totalResults) {
-                                d.appendChild(this.getPaginationItem(this.results));
-                            }
-                            // call the post display hook
-                            Object.keys(itemsByClass).forEach(key => {
-                                self.loadKlass(key).then(klassMeta => {
-                                    self.loadKlassScripts(klassMeta).then(klass => {
-                                        if (klass.postDisplay) {
-                                            klass.postDisplay(itemsByClass[key])
-                                        }
-                                    })
-                                })
-                            })
-                        })
-                        .then(() => {
-                            resolve();
-                        });
-                });
-            }
-            getSearchQuery() {
-                return c('searchbox').value;
-            }
-            getPaginationItem(results) {
-                let self = this;
-                let resp = function () {
-                    let container = {
-                        ele: 'div',
-                        classList: 'pages',
-                        children: []
-                    }
-                    for (let i = 0; i < results.totalResults; i += self.pageSize) {
-                        container.children.push(
-                            {
-                                ele: 'span',
-                                classList: `page-btn ${(i / self.pageSize) == self.pageNum ? "selected" : ""}`,
-                                text: i / self.pageSize + 1,
-                                evnts: {
-                                    click: function (e) {
-                                        self.pageNum = i / self.pageSize
-                                        self.doSearch(self.getSearchQuery(), i, self.pageSize)
-                                    }
-                                }
-                            }
-                        )
-                    }
-                    return container;
-                }
-                return render('paginator', resp());
-            }
-            refresh() {
-                this.triggerSearch(this.getSearchQuery())
-            }
-            deleteInode(id) {
-                if (!this.loggedIn()) {
-                    return showError('Login to delete content')
-                }
-                if (!confirm('Are you sure to delete this content?')) {
-                    return;
-                }
-                delet(`/data/${id}`)
-                    .then(e => showSuccess(e.response))
-                    .then(e => this.refresh())
-                    .catch(c => showError(c));
-            }
-            editInode(obj) {
-                if (!this.loggedIn()) {
-                    return showError('Login to post / update content')
-                }
-                g('tags-editor').value = obj.tags.join(' ')
-                let tags = obj.tags.map(t => {
-                    return { name: t, id: t, value: t, description: "" }
-                })
-                tagifyTags.settings.whitelist.splice(0, tags.length, ...tags);
-                tagifyTags.removeAllTags();
-                tagifyTags.addTags(tags);
-
-                g('kclasses').value = obj.type
-                this.openEditor(obj, true)
-            }
-            downvoteInode(id) {
-                post(`/posts/downvote/${id}`, {})
-                    .then(a => showSuccess(a.response))
-                    .catch(m => showError(m));
-            }
-            upvoteInode(id) {
-                post(`/posts/upvote/${id}`, {})
-                    .then(a => showSuccess(a.response))
-                    .catch(m => showError(m));
-            }
-
-            pinItem(ele, obj) {
-                if (!this.pinned)
-                    this.pinned = {};
-                if (obj.id in this.pinned)
-                    return;
-                this.pinned[obj.id] = 1
-                let doc = ele.parentNode.parentNode
-                doc.remove()
-                g('pinned').appendChild(doc)
-                ele.style.display = 'none'
-                ele.nextSibling.style.display = 'inline-block'
-            }
-
-            unpinItem(ele, obj) {
-                if (!(obj.id in this.pinned))
-                    return
-                delete this.pinned[obj.id]
-                let doc = ele.parentNode.parentNode
-                doc.remove()
-                let d = g('posts')
-                d.insertBefore(doc, d.firstChild)
-                ele.style.display = 'none'
-                ele.previousElementSibling.style.display = 'inline-block'
-            }
-
-            showCard(d, obj, pinned) {
-                let self = this;
-                let template = function (klass, obj) {
-                    let card;
-                    try {
-                        if (obj.needsApproval && getCurrentUser() && getCurrentUser() != obj.owner) {
-                            card = klass.getSafeCard(obj);
-                        } else {
-                            if (obj.content == '') {
-                                klass = new NoPermissionKlass()
-                            }
-                            card = klass.getCard(obj)
-                        }
-                    } catch (e) {
-                        if (obj.content) {
-                            obj.content = JSON.parse(obj.content)
-                        }
-                        card = render('inodes', {
-                            ele: 'pre',
-                            styles: {
-                                width: "95%",
-                                'background-color': 'red',
-                                color: 'white',
-                                padding: "10px",
-                                'overflow-y': 'auto'
-                            },
-                            text: `Error while processing \n${JSON.stringify(obj, null, '\t')}\n\nException: \n${e.stack}`
-                        })
-                    }
-                    let getApproveIcon = () => obj.needsApproval ? [{ ele: 'span', classList: 'action', text: 'approve', evnts: { click: () => self.approveInode(obj.id) } }] : [];
-                    return {
-                        ele: 'div',
-                        classList: 'container',
-                        styles: {
-                            borderLeft: `solid 4px ${self.randColor()}`,
-                            position: 'relative',
-                            display: 'flex',
-                            'flex-direction': 'column'
-                        },
-                        children: [
-                            self.getContextButtons(klass, obj),
-                            {
-                                ele: 'div',
-                                classList: 'container-parent',
-                                children: [
-                                    {
-                                        preBuilt: true,
-                                        ele: card
-                                    }
-                                ]
-                            },
-                            {
-                                ele: 'div',
-                                classList: 'tag-owner-actions',
-                                children: [
-                                    {
-                                        ele: 'div',
-                                        classList: 'tag-owner',
-                                        children: [
-                                            {
-                                                preBuilt: true,
-                                                ele: self.getTagsElement(obj.tags, obj.owner, obj.type)
-                                            },
-                                            {
-                                                ele: 'div',
-                                                classList: 'user-time',
-                                                styles: { float: 'right' },
-                                                children: [
-                                                    {
-                                                        ele: 'span',
-                                                        classList: 'postowner',
-                                                        text: `${obj.owner}`,
-                                                        evnts: {
-                                                            click: function (e) {
-                                                                self.searchUser(obj.owner);
-                                                            }
-                                                        }
-                                                    },
-                                                    {
-                                                        ele: 'span',
-                                                        classList: 'posttime',
-                                                        styles: {
-                                                            'font-size': '0.7em'
-                                                        },
-                                                        text: `${self.getLocalDateTime(obj.postTime)}`
-                                                    }
-                                                ]
-                                            },
-
-                                        ]
-                                    },
-                                    {
-                                        ele: 'div',
-                                        classList: 'actions-list',
-                                        children: [
-                                            {
-                                                ele: 'div',
-                                                classList: 'actions',
-                                                children: [
-                                                    {
-                                                        ele: 'span',
-                                                        html: `&#x25B2 ${obj.votes || 0}`,
-                                                        classList: 'action-upvote',
-                                                        evnts: {
-                                                            click: function (e) { self.upvoteInode(obj.id) }
-                                                        }
-                                                    },
-                                                    {
-                                                        ele: 'span',
-                                                        html: `&#x25BC`,
-                                                        classList: 'action-downvote',
-                                                        evnts: {
-                                                            click: function (e) { self.downvoteInode(obj.id) }
-                                                        }
-                                                    },
-                                                    ...(!getCurrentUser() ? [] : [{
-                                                        ele: 'span',
-                                                        text: 'edit',
-                                                        classList: 'action',
-                                                        evnts: {
-                                                            click: function (e) { self.editInode(obj) }
-                                                        }
-                                                    }]),
-                                                    ...(!getCurrentUser() ? [] : [{
-                                                        ele: 'span',
-                                                        text: 'delete',
-                                                        classList: 'action',
-                                                        evnts: {
-                                                            click: function (e) { self.deleteInode(obj.id) }
-                                                        }
-                                                    }]),
-                                                    {
-                                                        ele: 'span',
-                                                        text: 'comment(s)',
-                                                        classList: 'action',
-                                                        evnts: {
-                                                            click: function (e) { self.commentInode(obj) }
-                                                        }
-                                                    },
-                                                    {
-                                                        ele: 'span',
-                                                        text: 'share',
-                                                        classList: 'action share-has-tooltip',
-                                                        evnts: {
-                                                            mouseenter: function (e) { this.children[0].style.display = 'block' },
-                                                            mouseleave: function (e) { this.children[0].style.display = 'none' }
-                                                        },
-                                                        children: [
-                                                            {
-                                                                ele: 'div', classList: 'share-tooltip', children: [
-                                                                    {
-                                                                        ele: 'b', text: 'copy ', children: [
-                                                                            { ele: 'a', attribs: { href: self.getPermalink(obj.id), target: '_blank' }, text: 'url' }
-                                                                        ]
-                                                                    },
-                                                                    {
-                                                                        ele: 'div', children: [
-                                                                            { ele: 'input', attribs: { readOnly: true, value: self.getPermalink(obj.id), style: 'width: 180px' } },
-                                                                            {
-                                                                                ele: 'button', text: 'copy', evnts: {
-                                                                                    click: function () { self.copyFormatted(this.previousElementSibling.value) }
-                                                                                }
-                                                                            }
-                                                                        ]
-                                                                    },
-                                                                    ...(!klass.getCopyContent ? [] : [
-                                                                        { ele: 'b', styles: { display: 'block', 'margin-top': '10px' }, text: 'or copy the content' },
-                                                                        {
-                                                                            ele: 'button',
-                                                                            text: 'copy content',
-                                                                            evnts: {
-                                                                                click: () => self.copyFormatted(klass.getCopyContent(obj)),
-                                                                                rendered: e => e.removeAttribute('tabindex')
-                                                                            }
-                                                                        }
-                                                                    ])
-                                                                ]
-                                                            }
-                                                        ]
-                                                    },
-                                                    ...(!getCurrentUser() ? [] : [{
-                                                        ele: 'span',
-                                                        text: 'watch',
-                                                        classList: 'action',
-                                                        evnts: {
-                                                            click: function (e) { self.watchDoc(obj.id) }
-                                                        }
-                                                    }])
-                                                ]
-                                            },
-                                            {
-                                                ele: 'div',
-                                                classList: 'actions',
-                                                styles: { float: 'right' },
-                                                children: [
-                                                    {
-                                                        ele: 'span',
-                                                        classList: 'action',
-                                                        text: 'history',
-                                                        evnts: { click: () => self.triggerSearch(`#inodesapp #history !${obj.id}`) }
-                                                    },
-                                                    ...(!getCurrentUser() ? [] : [{
-                                                        ele: 'span',
-                                                        classList: 'action',
-                                                        text: 'flag',
-                                                        evnts: { click: () => self.flagInode(obj.id) }
-                                                    }]),
-                                                    ...getApproveIcon(),
-                                                    ...(getCurrentUser() != 'admin' ? [] : [{
-                                                        ele: 'span',
-                                                        text: 'trust',
-                                                        classList: 'action',
-                                                        evnts: {
-                                                            click: function (e) { self.trustInode(obj.id); }
-                                                        }
-                                                    }])
-                                                ]
-                                            }
-                                        ]
-                                    }
-                                ]
-                            },
-                            {
-                                ele: 'div',
-                                classList: 'comments-pane',
-                                attribs: {
-                                    id: `comment-pane-${obj.id}`
-                                },
-                                children: [
-                                    {
-                                        ele: 'div',
-                                        styles: {
-                                            display: 'flex',
-                                            marginBottom: '10px'
-                                        },
-                                        children: [
-                                            {
-                                                ele: 'textarea',
-                                                attribs: {
-                                                    id: `comment-${obj.id}`,
-                                                    rows: 2
-                                                },
-                                                styles: {
-                                                    width: '90%',
-                                                    border: 'solid 1px gray',
-                                                    resize: 'none'
-                                                }
-                                            },
-                                            {
-                                                ele: 'button',
-                                                text: 'Post',
-                                                styles: {
-                                                    width: '10%'
-                                                },
-                                                evnts: {
-                                                    click: function (e) {
-                                                        post(
-                                                            `/posts/comment/${obj.id}`,
-                                                            g(`comment-${obj.id}`).value
-                                                        ).then(x => self.addCommentToList(`oldcomments-${obj.id}`, JSON.parse(x.response)))
-                                                            .catch(e => showError(e.message))
-                                                    }
-                                                }
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        ele: 'div',
-                                        attribs: {
-                                            id: `oldcomments-${obj.id}`
-                                        }
-                                    }
-                                ]
-                            }
-                        ]
-                    };
-                }
-                if (!obj.type || obj.type == "") {
-                    d.appendChild(render('inode', template(undefined, obj)));
-                    return;
-                }
-                return new Promise(function (resolve, reject) {
-                    self.loadKlass(obj.type).then(klassMeta => {
-                        self.loadKlassScripts(klassMeta).then(klass => {
-                            d.appendChild(render('inode', template(klass, obj)));
-                            resolve()
-                        })
-                    })
-                });
-            }
-
-            getPermalink(id) {
-                let u = new URL(window.location.href)
-                return `${u.protocol}//${u.host}?q=@${id}`
-            }
-
-            copyFormatted(html) {
-                let clipboardDiv;
-                if (!this.copyClipBoardSet) {
-                    clipboardDiv = document.createElement('div');
-                    clipboardDiv.style.fontSize = '12pt'; // Prevent zooming on iOS
-                    // Reset box model
-                    clipboardDiv.style.border = '0';
-                    clipboardDiv.style.padding = '0';
-                    clipboardDiv.style.margin = '0';
-                    // Move element out of screen 
-                    clipboardDiv.style.position = 'fixed';
-                    clipboardDiv.style['right'] = '-9999px';
-                    clipboardDiv.style.top = (window.pageYOffset || document.documentElement.scrollTop) + 'px';
-                    // more hiding
-                    clipboardDiv.setAttribute('readonly', '');
-                    clipboardDiv.style.opacity = 0;
-                    clipboardDiv.style.pointerEvents = 'none';
-                    clipboardDiv.style.zIndex = -1;
-                    clipboardDiv.setAttribute('tabindex', '0'); // so it can be focused
-                    clipboardDiv.innerHTML = '';
-                    document.body.appendChild(clipboardDiv);
-                    this.copyClipBoardSet = true;
-                    this.clipboardDiv = clipboardDiv;
-                }
-                clipboardDiv = this.clipboardDiv;
-
-                clipboardDiv.innerHTML = html;
-
-                var focused = document.activeElement;
-                clipboardDiv.focus();
-
-                window.getSelection().removeAllRanges();
-                var range = document.createRange();
-                range.setStartBefore(clipboardDiv.firstChild);
-                range.setEndAfter(clipboardDiv.lastChild);
-                window.getSelection().addRange(range);
-
-                var ok = false;
-                try {
-                    if (document.execCommand('copy')) ok = true; else console.log('execCommand returned false !');
-                } catch (err) {
-                    console.log('execCommand failed ! exception ' + err);
-                }
-
-                focused.focus();
-            }
-
-            watchDoc(id) {
-                post(
-                    `/subscribe?subscriberType=USER&subscriberId=${getCurrentUser()}&objTyp=DOC&objId=${id}&event=ALL`,
-                    "",
-                    {}
-                ).then(r => showSuccess('Subscribed'))
-                    .catch(r => showError(r.message))
-            }
-
-            trustInode(id) {
-                post(`/trust/${id}`)
-                    .then(r => showSuccess('Trusted'))
-                    .catch(r => showError(r.message))
-            }
-
-            getContextButtons(klass, obj) {
-                let self = this;
-                let getLockIcon = _ => obj.visibility != 'g-public' ? [{ ele: 'span', html: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []
-                return {
-                    ele: 'div',
-                    classList: 'context-btns',
-                    children: [
-                        { ele: 'span', attribs: { title: 'pin', innerHTML: '&#128204;' }, evnts: { click: function (e) { self.pinItem(this, obj); } } },
-                        { ele: 'span', attribs: { title: 'unpin', innerHTML: '&#128204;' }, styles: { display: "none", 'text-decoration': 'line-through', 'text-decoration-thickness': '3px' }, evnts: { click: function (e) { self.unpinItem(this, obj); } } },
-                        ...getLockIcon(),
-                        {
-                            ele: 'span',
-                            classList: 'context-btn',
-                            html: '&#x26F6;',
-                            attribs: { title: 'Full screen' },
-                            evnts: {
-                                click: function () {
-                                    let x = document.createElement('div')
-                                    x.classList = 'fullscreen-inode'
-                                    document.body.appendChild(x)
-
-                                    let cardEle = this.parentNode.nextSibling.childNodes[0], cardParent = cardEle.parentNode;
-
-                                    let closeBtn = document.createElement('span')
-                                    closeBtn.classList = 'closefullscreen-btn'
-                                    closeBtn.innerHTML = '&#x2715;'
-                                    closeBtn.addEventListener('click', function () {
-                                        cardEle.remove();
-                                        cardParent.appendChild(cardEle)
-                                        x.remove();
-                                        document.querySelector('.content').style.display = 'block'
-                                    })
-
-                                    document.querySelector('.content').style.display = 'none'
-                                    x.appendChild(cardEle)
-                                    x.appendChild(closeBtn)
-                                }
-                            }
-                        }
-                    ]
-                }
-            }
-
-            approveInode(docId) {
-                post(`/data/${docId}/approve`, {}, {})
-                    .then(x => showSuccess('Approved'))
-                    .catch(x => showError(x.message))
-            }
-
-            flagInode(docId) {
-                post(`/data/${docId}/flag`, {}, {})
-                    .then(x => showSuccess('Flagged, a notification is sent to owner and security team'))
-                    .catch(x => showError(x.message))
-            }
-
-            searchUser(user) {
-                this.triggerSearch(`#user !${user}`)
-            }
-
-            commentInode(obj) {
-                let self = this;
-                g(`comment-pane-${obj.id}`).style.display = "block";
-                let container = g(`oldcomments-${obj.id}`);
-                container.innerHTML = ""
-                get(`/posts/comments/${obj.id}`).then(comments => {
-                    comments = JSON.parse(comments.response)
-                    comments.sort((a, b) => a.time - b.time).forEach(comment => {
-                        self.addCommentToList(`oldcomments-${obj.id}`, comment)
-                    })
-                })
-            }
-
-            addCommentToList(parentId, comment) {
-                let container = g(parentId);
-                let c = document.createElement('div')
-                c.classList = "inode-comment-card"
-                c.innerHTML = `${JSON.parse(comment.txt).replaceAll(/@([0-9A-Za-z]+)/g, '<a href="/?q=%23user !$1" target="_blank" >$1</a>')} - <a href="/?q=%23user !${comment.userid}">${comment.userid}</a> ${this.getCommentContextButtons(comment)}`
-                container.appendChild(c)
-            }
-
-            getCommentContextButtons(c) {
-                if (c.userid == getCurrentUser()) {
-                    return `<span onclick='inodes.deleteComment("${c.postid}/${c.userid}/${c.itime}", this.parentElement)' class='comment-action-btn'>delete</span>`
-                }
-                return ''
-            }
-
-            deleteComment(id, parEle) {
-                delet(`/posts/comment/${id}`).then(parEle.remove())
-            }
-
-            getLocalDateTime(ep) {
-                var d = new Date(ep);
-                return `${d.toLocaleDateString()}`
-            }
-
-            randColor() {
-                var letters = '0123456789ABCDEF';
-                var color = '#';
-                for (var i = 0; i < 6; i++) {
-                    color += letters[Math.floor(Math.random() * 16)];
-                }
-                return color;
-            }
-
-            getTagsElement(tags, user, type) {
-                let x = document.createElement('div')
-                x.classList = "tags-container"
-                if (!tags) return x;
-                let self = this;
-                tags.forEach(tag => {
-                    x.appendChild(this.createTagElement(tag, '#'));
-                });
-                user && x.appendChild(this.createTagElement(user, '~'))
-                type && x.appendChild(this.createTagElement(type, '%'))
-                return x;
-            }
-
-            getTagDetails(tag) {
-                get(`/tags/${tag}`)
-                    .then(x => console.log(x.response))
-            }
-
-            getTagToolTip(tag, char, hits) {
-                if (!this._tagCache) {
-                    this._tagCache = {};
-                }
-                let tagCache = this._tagCache;
-                return new Promise((resolve, reject) => {
-                    let dprom;
-                    if (char != '#') {
-                        dprom = new Promise((res, rej) => {
-                            res({
-                                ele: 'span',
-                                classList: 'desc',
-                                text: char != '%' ? `Content created by ${tag}` : `Content of type ${tag}`
-                            })
-                        })
-                    } else {
-                        dprom = new Promise((res, rej) => {
-                            if (tagCache[tag]) {
-                                res(tagCache[tag])
-                                return;
-                            }
-                            get(`/tags/${tag}`)
-                                .then(r => JSON.parse(r.response))
-                                .then(r => {
-                                    tagCache[tag] = {
-                                        ele: 'div',
-                                        children: [
-                                            {
-                                                ele: 'div',
-                                                classList: 'doccount',
-                                                text: `${Object.values(r.extra.docCount).reduce((x, z) => x + z, 0)} doc(s)`
-                                            },
-                                            {
-                                                ele: 'span',
-                                                classList: 'desc',
-                                                text: r.basic.description || "No description avaialable. Edit and add a description"
-                                            }
-                                        ]
-                                    }
-                                    res(tagCache[tag])
-                                })
-                        })
-                    }
-                    dprom.then(x => {
-                        resolve(render('tag-ttc', x))
-                    })
-                })
-            }
-
-            createTagElement(tag, char, hits) {
-                let self = this;
-                let icon = (tag, char) => char == '%' ? tag + ".png" : 'tag.png';
-                return render('tag', {
+                render('tag', {
                     ele: 'span',
                     classList: 'has-tooltip',
                     children: [
@@ -906,7 +26,6 @@
                             ele: 'span',
                             classList: 'container',
                             children: [
-
                                 { ele: 'span', text: (hits ? "" : char) + tag }
                             ]
                         },
@@ -938,137 +57,999 @@
                                 ...(char == '#' ? [{
                                     ele: 'div',
                                     children: [
-                                        ...(getCurrentUser() ? [{
+                                        ...(app.loggedIn() ? [{
                                             ele: 'span',
                                             text: 'watch',
                                             classList: 'tt-btn',
                                             evnts: {
                                                 click: function () {
-                                                    post(`/subscribe?subscriberType=USER&subscriberId=${getCurrentUser()}&objTyp=TAG&objId=${tag}&event=ALL`)
-                                                        .then(e => showSuccess(`You have subscribed to tag: ${tag}`))
-                                                        .catch(e => showError(e.message))
+                                                    app.subscribe('TAG', tag, 'ALL')
                                                 }
                                             }
                                         }] : []
                                         ),
                                         {
-                                            ele: 'span',
-                                            text: 'view',
-                                            classList: 'tt-btn',
-                                            evnts: {
-                                                click: function () {
-                                                    self.triggerSearch(`#inodesapp #viewtag !${tag}`)
-                                                }
-                                            }
+                                            ele: 'span', text: 'view', classList: 'tt-btn', evnts: { click: _ => app.viewTag(tag) }
                                         }
                                     ]
                                 }] : []
                                 )
                             ],
-                            evnts: {
-                                click: e => e.stopPropagation()
-                            }
+                            evnts: { click: e => e.stopPropagation() }
                         }
                     ],
                     evnts: {
-                        click: function (e) {
-                            let q = ""
+                        click: e => {
+                            let q = `${char}${tag}`
                             if (e.ctrlKey) {
-                                q = c('searchbox').value + " "
+                                q += " " + app.getSearchQuery()
                             }
-                            q += `${char}${tag}`
-                            self.triggerSearch(q)
+                            app.search(q)
                         },
                         mouseenter: function (e) {
-                            this.setAttribute('data-intime', + new Date());
-                            let ltim = setTimeout(() => {
+                            this.setAttribute('data-intime', +new Date());
+                            let ltim = setTimeout(_ => {
                                 let lt = this.getAttribute('data-intime');
                                 if (!lt) return;
                                 lt = +lt;
                                 let ttc = this.querySelector('.tag-tooltip');
                                 let tt = this.querySelector('.tag-desc');
                                 if (!tt.getAttribute('desc-resolved')) {
-                                    self.getTagToolTip(tag, char)
-                                        .then(x => {
-                                            tt.appendChild(x);
-                                            tt.setAttribute('desc-resolved', true)
-                                        })
+                                    self.getTagToolTip(tag, char, app).then(x => {
+                                        tt.appendChild(x);
+                                        tt.setAttribute('desc-resolved', true)
+                                    })
                                 }
                                 ttc.style.visibility = 'visible';
                             }, 600)
                             this.setAttribute('ltimer', ltim)
                         },
-                        mouseleave: function (e) {
+                        mouseleave: function () {
                             this.querySelector('.tag-tooltip').style.visibility = 'hidden'
                             this.setAttribute('data-intime', undefined);
                             clearTimeout(this.getAttribute('ltimer'))
                         }
                     }
+                }, _ => _, container)
+                if (hits)
+                    container.appendChild(document.createElement('br'))
+            }
+
+            getTagToolTip(tag, char, app, hits) {
+                if (!this._tagCache) {
+                    this._tagCache = {};
+                }
+                let tagCache = this._tagCache;
+                return new Promise((resolve, reject) => {
+                    let dprom;
+                    if (char != '#') {
+                        dprom = new Promise((res, rej) => {
+                            res({
+                                ele: 'span',
+                                classList: 'desc',
+                                text: char != '%' ? `Content created by ${tag}` : `Content of type ${tag}`
+                            })
+                        })
+                    } else {
+                        dprom = new Promise((res, rej) => {
+                            if (tagCache[tag]) {
+                                return res(tagCache[tag])
+                            }
+                            app.getTag(tag).then(r => {
+                                tagCache[tag] = {
+                                    ele: 'div', children: [
+                                        {
+                                            ele: 'div', classList: 'doccount',
+                                            text: `${Object.values(r.extra.docCount).reduce((x, z) => x + z, 0)} doc(s)`
+                                        },
+                                        {
+                                            ele: 'span', classList: 'desc',
+                                            text: r.basic.description || "No description avaialable. Edit and add a description"
+                                        }
+                                    ]
+                                }
+                                res(tagCache[tag])
+                            })
+                        })
+                    }
+                    dprom.then(x => {
+                        resolve(render('tag-ttc', x))
+                    })
+                })
+            }
+        }
+
+        class LargeInode {
+
+            constructor(rc, app, obj) {
+
+                function getTagsElement(tags, user, type, app) {
+                    let x = document.createElement('div')
+                    x.classList = "tags-container"
+                    if (tags) {
+                        tags.forEach(tag => new ITag(x, app, tag, '#'))
+                        user && (new ITag(x, app, user, '~'))
+                        type && (new ITag(x, app, type, '%'))
+                    }
+                    return x;
+                }
+
+                function getContextButtons(klass, obj) {
+                    let self = this;
+                    let getLockIcon = _ => obj.visibility != 'g-public' ? [{ ele: 'span', html: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []
+                    return {
+                        ele: 'div',
+                        classList: 'context-btns',
+                        children: [
+                            { ele: 'span', attribs: { title: 'pin', innerHTML: '&#128204;' }, evnts: { click: e => pinItem(e.target, obj) } },
+                            { ele: 'span', attribs: { title: 'unpin', innerHTML: '&#128204;' }, styles: { display: "none", 'text-decoration': 'line-through', 'text-decoration-thickness': '3px' }, evnts: { click: function (e) { unpinItem(this, obj); } } },
+                            ...getLockIcon(),
+                            {
+                                ele: 'span',
+                                classList: 'context-btn',
+                                html: '&#x26F6;',
+                                attribs: { title: 'Full screen' },
+                                evnts: {
+                                    click: e => makeFullScreen(e.target.parentNode.nextSibling.childNodes[0])
+                                }
+                            }
+                        ]
+                    }
+                }
+
+                let pinItem = (ele, obj) => {
+                    app.pin(obj.id, ele.parentNode.parentNode)
+                    ele.style.display = 'none'
+                    ele.nextSibling.style.display = 'inline-block'
+                }
+
+                let unpinItem = (ele, obj) => {
+                    app.unpin(obj.id, ele.parentNode.parentNode)
+                    ele.style.display = 'none'
+                    ele.previousElementSibling.style.display = 'inline-block'
+                }
+
+                let template = (klass, obj) => {
+                    let card;
+                    try {
+                        if (obj.needsApproval && app.currentUid() != obj.owner) {
+                            card = klass.getSafeCard(obj);
+                        } else {
+                            if (obj.content == '') {
+                                klass = new NoPermissionKlass()
+                            }
+                            card = klass.getCard(obj)
+                        }
+                    } catch (e) {
+                        card = render('inodes', {
+                            ele: 'pre', classList: 'error',
+                            text: `Error while processing \n${JSON.stringify(obj, null, '\t')}\n\nException: \n${e}\n${e.stack}`
+                        })
+                    }
+
+                    return {
+                        ele: 'div',
+                        classList: 'container',
+                        styles: {
+                            borderLeft: `solid 4px ${randColor()}`,
+                            position: 'relative',
+                            display: 'flex',
+                            'flex-direction': 'column'
+                        },
+                        children: [
+                            getContextButtons(klass, obj),
+                            {
+                                ele: 'div',
+                                classList: 'container-parent',
+                                children: [
+                                    {
+                                        preBuilt: true,
+                                        ele: card
+                                    }
+                                ]
+                            },
+                            {
+                                ele: 'div',
+                                classList: 'tag-owner-actions',
+                                children: [
+                                    {
+                                        ele: 'div',
+                                        classList: 'tag-owner',
+                                        children: [
+                                            {
+                                                preBuilt: true,
+                                                ele: getTagsElement(obj.tags, obj.owner, obj.type, app)
+                                            },
+                                            {
+                                                ele: 'div',
+                                                classList: 'user-time',
+                                                styles: { float: 'right' },
+                                                children: [
+                                                    {
+                                                        ele: 'span',
+                                                        classList: 'postowner',
+                                                        text: `${obj.owner}`,
+                                                        evnts: {
+                                                            click: _ => app.searchUser(obj.owner)
+                                                        }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        classList: 'posttime',
+                                                        styles: {
+                                                            'font-size': '0.7em'
+                                                        },
+                                                        text: `${new Date(obj.postTime).toDateString()}`
+                                                    }
+                                                ]
+                                            },
+
+                                        ]
+                                    },
+                                    {
+                                        ele: 'div',
+                                        classList: 'actions-list',
+                                        children: [
+                                            {
+                                                ele: 'div',
+                                                classList: 'actions',
+                                                children: [
+                                                    {
+                                                        ele: 'span',
+                                                        html: `&#x25B2 ${obj.votes || 0}`,
+                                                        classList: 'action-upvote',
+                                                        evnts: { click: _ => app.upvoteInode(obj.id) }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        html: `&#x25BC`,
+                                                        classList: 'action-downvote',
+                                                        evnts: { click: _ => app.downvoteInode(obj.id) }
+                                                    },
+                                                    ...(!app.loggedIn() ? [] : [{
+                                                        ele: 'span',
+                                                        text: 'edit',
+                                                        classList: 'action',
+                                                        evnts: { click: _ => app.editInode(obj) }
+                                                    }]),
+                                                    ...(!app.loggedIn() ? [] : [{
+                                                        ele: 'span',
+                                                        text: 'delete',
+                                                        classList: 'action',
+                                                        evnts: { click: _ => app.deleteInode(obj.id) }
+                                                    }]),
+                                                    {
+                                                        ele: 'span',
+                                                        text: 'comment(s)',
+                                                        classList: 'action',
+                                                        evnts: { click: _ => this.openComments(obj) }
+                                                    },
+                                                    {
+                                                        ele: 'span',
+                                                        text: 'share',
+                                                        classList: 'action share-has-tooltip',
+                                                        evnts: {
+                                                            mouseenter: function (e) { this.children[0].style.display = 'block' },
+                                                            mouseleave: function (e) { this.children[0].style.display = 'none' }
+                                                        },
+                                                        children: [
+                                                            {
+                                                                ele: 'div', classList: 'share-tooltip', children: [
+                                                                    {
+                                                                        ele: 'b', text: 'copy ', children: [
+                                                                            { ele: 'a', attribs: { href: app.getPermalink(obj.id), target: '_blank' }, text: 'url' }
+                                                                        ]
+                                                                    },
+                                                                    {
+                                                                        ele: 'div', children: [
+                                                                            { ele: 'input', attribs: { readOnly: true, value: app.getPermalink(obj.id), style: 'width: 180px' } },
+                                                                            {
+                                                                                ele: 'button', text: 'copy', evnts: {
+                                                                                    click: function () { copyFormatted(this.previousElementSibling.value) }
+                                                                                }
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    ...(!klass.getCopyContent ? [] : [
+                                                                        { ele: 'b', styles: { display: 'block', 'margin-top': '10px' }, text: 'or copy the content' },
+                                                                        {
+                                                                            ele: 'button',
+                                                                            text: 'copy content',
+                                                                            evnts: {
+                                                                                click: _ => copyFormatted(klass.getCopyContent(obj)),
+                                                                                rendered: e => e.removeAttribute('tabindex')
+                                                                            }
+                                                                        }
+                                                                    ])
+                                                                ]
+                                                            }
+                                                        ]
+                                                    },
+                                                    ...(!app.loggedIn() ? [] : [{ ele: 'span', text: 'watch', classList: 'action', evnts: { click: _ => app.watchDoc(obj.id) } }])
+                                                ]
+                                            },
+                                            {
+                                                ele: 'div',
+                                                classList: 'actions',
+                                                styles: { float: 'right' },
+                                                children: [
+                                                    { ele: 'span', classList: 'action', text: 'history', evnts: { click: _ => app.openHistory(obj.id) } },
+
+                                                    ...(!app.loggedIn() ? [] : [{ ele: 'span', classList: 'action', text: 'flag', evnts: { click: _ => app.flagInode(obj.id) } }]),
+
+                                                    ...(!obj.needsApproval ? [] : [{ ele: 'span', classList: 'action', text: 'approve', evnts: { click: () => app.approveInode(obj.id) } }]),
+
+                                                    ...(app.loggedIn() != 'admin' ? [] : [{ ele: 'span', text: 'trust', classList: 'action', evnts: { click: _ => app.trustInode(obj.id) } }])
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                ele: 'div',
+                                classList: 'comments-pane',
+                                iden: 'commentsSection',
+                                children: [
+                                    {
+                                        ele: 'div',
+                                        styles: {
+                                            display: 'flex',
+                                            marginBottom: '10px'
+                                        },
+                                        children: [
+                                            {
+                                                ele: 'textarea',
+                                                attribs: {
+                                                    iden: 'commentarea',
+                                                    rows: 2
+                                                },
+                                                styles: {
+                                                    width: '90%',
+                                                    border: 'solid 1px gray',
+                                                    resize: 'none'
+                                                }
+                                            },
+                                            {
+                                                ele: 'button',
+                                                text: 'Post',
+                                                styles: {
+                                                    width: '10%'
+                                                },
+                                                evnts: {
+                                                    click: _ => {
+                                                        app.comment(obj.id, _.target.previousElementSibling.value)
+                                                            .then(x => this.addCommentToList(x.json))
+                                                            .catch(e => showError(e.message))
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    },
+                                    { ele: 'div', classList: 'oldcomments', iden: 'comments' }
+                                ]
+                            }
+                        ]
+                    }
+                }
+
+                if (!obj.type || obj.type == "") {
+                    rc.appendChild(render('inode', template(undefined, obj)));
+                    return;
+                }
+                return app.getKlass(obj.type).then(klass => {
+                    render('inode', template(klass, obj), (k, e) => this[k] = e, rc)
                 })
             }
 
-            openEditor(obj, force) {
-                this.renderInput(obj ? obj.type : g('kclasses').value, obj, true)
-                g('editor-pane').style.display = 'block';
-                g('kclasses').disabled = obj ? true : false
+            openComments(obj) {
+                this.commentsSection.style.display = "block";
+                let container = this.comments;
+                container.innerHTML = ""
+                get(`/posts/comments/${obj.id}`).then(comments => {
+                    comments = JSON.parse(comments.response)
+                    comments.sort((a, b) => a.time - b.time).forEach(comment => {
+                        this.addCommentToList(comment)
+                    })
+                })
+            }
 
-                let visibility = obj ? (obj.needsApproval ? obj.savedVisibility : obj.visibility) : ['g-public'];
-                visibility = visibility.map(v => {
-                    return { name: v.substring(2), id: v, value: v, type: v[0] == 'g' ? 'group' : 'user' }
-                });
-                tagifyUsers.settings.whitelist.splice(0, visibility.length, ...visibility)
-                tagifyUsers.removeAllTags();
-                tagifyUsers.addTags(visibility)
+            addCommentToList(c) {
+                render('inode-comment', {
+                    ele: 'div', classList: 'card',
+                    children: [
+                        { ele: 'span', html: JSON.parse(c.txt).replaceAll(/@([0-9A-Za-z]+)/g, '<a href="/?q=%23inodesapp%20%23viewuser !$1" target="_blank" >$1</a>') },
+                        { ele: 'span', html: ` - <a href="/?q=%23inodesapp%20%23viewuser !${c.userid}">${c.userid}</a>` },
+                        ...(
+                            c.userid != app.currentUid() ? [] : [
+                                { ele: 'span', text: 'delete', classList: 'action-btn', evnts: { click: _ => app.deleteComment(`${c.postid}/${c.userid}/${c.itime}`).then(_.target.parentNode.remove()) } }
+                            ]
+                        )
+                    ]
+                }, 0, this.comments)
             }
-            closeEditor() {
-                g('editor-pane').style.display = 'none';
+        }
+
+        class Facets {
+            constructor(facets, container, title, char, app) {
+                render('facets', {
+                    ele: 'div', iden: 'tagsEle',
+                    children: [
+                        { ele: 'h4', text: title },
+                    ]
+                }, (k, e) => this[k] = e, container)
+                Object.keys(facets)
+                    .filter(k => facets[k] > 0)
+                    .map(k => ({ item: k, hits: facets[k] }))
+                    .sort((a, b) => b.hits - a.hits)
+                    .forEach(tag => new ITag(this.tagsEle, app, tag.item, char, tag.hits))
             }
-            logout(e) {
-                post(
-                    '/auth/logout',
-                    {},
-                    { 'Content-Type': 'application/json' }
-                )
-                eraseCookie(USER_KEY)
-                eraseCookie(TOK_KEY)
+        }
+
+        class Searcher {
+
+            /**
+             * sb : search bar container
+             * rc : result container
+             * inodes : service provider
+             * 
+             * options:
+             *  size: mini, large
+             *  defQuery : default query
+             *  pageSize : a page size which is used in the query
+             *  sorter : a function to sort the results in UI (homepage, etc.)
+             *  searchBarEle : if you have 
+             */
+            constructor(resultContainer, app, options) {
+
+                let { searchInput, size, defQuery, pageSize, sorter, facetsEle } = options
+                this.app = app
+                this.offset = 0
+                this.pinned = {}
+                this.options = options
+
+                /* setup search bar and events */
+                this.sb = searchInput
+                if (!this.sb) {
+                    this.sb = document.createElement('input')
+                    resultContainer.appendChild(this.sb)
+                }
+                this.sb.addEventListener('input', _ => this.search(_.target.value))
+
+                /* setup results box */
+                render('searcher', {
+                    ele: 'div', classList: "posts-container", children: [
+                        { ele: 'div', iden: 'pinned', classList: 'posts' },
+                        { ele: 'div', iden: 'rc', classList: 'posts' },
+                        { ele: 'div', iden: 'pages' }
+                    ]
+                }, (id, ele) => this[id] = ele, resultContainer)
+
+                /* trigger a default search */
+                this.search("")
+            }
+
+            search(str) {
+                let { sb, rc, searchInput, size, defQuery, pageSize, sorter, app, offset } = { ...this, ...this.options };
+                sb.value = str
+                callWithWaitUI(rc, (done) => {
+                    str = str == "" ? defQuery : str
+                    app.getSearchResults(str, offset, pageSize || 10).then(d => {
+                        let { results, facetResults, totalResults } = d.json
+
+                        /* apply custom sorting */
+                        if (sorter)
+                            sorter(results)
+
+                        if (results.length < 1) {
+                            rc.innerHTML = '<div class="no-post-found">No posts found</div>'
+                            return done()
+                        }
+
+                        this.showResults(results).finally(_ => done())
+                        this.populateFacets(facetResults)
+                    })
+                })
+            }
+
+            populateFacets(facetResults) {
+                const { app, facetsEle } = { ...this, ...this.options },
+                    info = { 'tags': ['Tags', '#'], 'type': ['Post types', '%'], 'owner': ['Contributors', '~'] }
+                facetsEle.innerHTML = ''
+                let arr = ['type', 'tags', 'owner']
+                arr.forEach(key => {
+                    new Facets(facetResults[key], facetsEle, info[key][0], info[key][1], app)
+                })
+            }
+
+            showResults(results) {
+                let { sb, rc, searchInput, size, defQuery, pageSize, sorter, app, offset } = { ...this, ...this.options };
+                let proms = [], itemsByClass = {}
+                rc.innerHTML = ''
+
+                results.forEach(r => {
+                    if (this.pinned[r.id])
+                        return
+                    if (!itemsByClass[r.type]) {
+                        itemsByClass[r.type] = []
+                    }
+                    itemsByClass[r.type].push(r)
+                    proms.push(this.showCard(r))
+                })
+
+                return Promise.all(proms).then(_ => {
+                    Object.keys(itemsByClass).forEach(key => {
+                        app.getKlass(key).then(klass => {
+                            if (klass.postDisplay)
+                                klass.postDisplay(itemsByClass[key])
+                        })
+                    })
+                })
+            }
+
+            showCard(r) {
+                let { rc, size, app } = { ...this, ...this.options }
+                if (size == 'min') {
+
+                } else if (size == 'max') {
+                    new LargeInode(rc, app, r)
+                }
+            }
+
+            getSearchQuery() {
+                return this.sb.value
+            }
+
+            pin(id, ele) {
+                ele.remove(), this.pinned.appendChild(ele)
+            }
+
+            unpin(id, ele) {
+                ele.remove(), this.rc.insertBefore(ele, this.rc.firstChild)
+            }
+
+
+            getPaginationItem(results) {
+                let self = this;
+                let resp = function () {
+                    let container = {
+                        ele: 'div',
+                        classList: 'pages',
+                        children: []
+                    }
+                    for (let i = 0; i < results.totalResults; i += self.pageSize) {
+                        container.children.push(
+                            {
+                                ele: 'span',
+                                classList: `page-btn ${(i / self.pageSize) == self.pageNum ? "selected" : ""}`,
+                                text: i / self.pageSize + 1,
+                                evnts: {
+                                    click: function (e) {
+                                        self.pageNum = i / self.pageSize
+                                        self.doSearch(self.getSearchQuery(), i, self.pageSize)
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    return container;
+                }
+                return render('paginator', resp());
+            }
+        }
+
+        class Editor {
+            constructor(obj, pane, app) {
+                this.pane = pane, this.app = app
+            }
+
+            open(obj) {
+                this.obj = obj
+                this.pane.style.display = 'block'
+                this.pane.innerHTML = ''
+                render('editor', [
+                    { ele: 'span', classList: 'closebtn', html: '&#x2715;', evnts: { click: _ => this.close() } },
+                    {
+                        ele: 'select', iden: 'typeSelector', label: 'Post type', attribs: { disabled: obj.id != undefined }, styles: { display: 'block', minWidth: '60%' }, evnts: {
+                            rendered: e => this.app.getKlasses().then(x => {
+                                e.innerHTML = Object.keys(x).map(k => `<option>${k}</option>`).join('')
+                                e.value = obj.type || Object.keys(x)[0]
+                                this.renderEditor(obj)
+                            }),
+                            change: _ => this.renderEditor(obj)
+                        }
+                    },
+                    { ele: 'br' },
+                    { ele: 'div', iden: 'editor' },
+                    { ele: 'br' },
+                    { ele: 'input', iden: 'tags', label: 'Tags: ', attribs: { placeholder: 'start typing a tag name. eg edc, hack', value: (obj.tags || []).join(' ') }, evnts: { rendered: e => tagify(e, 'tag') } },
+                    { ele: 'br' },
+                    {
+                        ele: 'input', iden: 'visibility', label: 'Visibility: ', attribs: { placeholder: 'start typing a user or group name' }, evnts: {
+                            rendered: e => {
+                                let t = tagify(e, 'user')
+                                let visibility = obj.id ? (obj.needsApproval ? obj.savedVisibility : obj.visibility) : ['g-public']
+                                visibility = visibility.map(v => {
+                                    return { name: v.substring(2), id: v, value: v, type: v[0] == 'g' ? 'group' : 'user' }
+                                })
+                                t.settings.whitelist.splice(0, visibility.length, ...visibility)
+                                t.removeAllTags()
+                                t.addTags(visibility)
+                            }
+                        }
+                    },
+                    { ele: 'br' },
+                    ...(obj ? [{ ele: 'input', iden: 'changeNote', label: 'What id you change ', attribs: { placeholder: 'describe what changed in this version' } }] : []),
+                    { ele: 'button', text: 'Post', evnts: { click: e => this.post(e) } }
+                ], (k, e) => this[k] = e, this.pane)
+            }
+
+            close() {
+                this.pane.style.display = 'none'
+            }
+
+            renderEditor(obj) {
+                this.editor.innerHTML = ''
+                this.app.getKlass(obj.type || this.typeSelector.value).then(klass => this.editor.appendChild(klass.getEditor(obj.id ? obj : undefined)))
+            }
+
+            post(e) {
+                if (this.tags.value == '') { return showError('Tags are required for a post') }
+                if (this.visibility.value == '') { return showError('Tags are required for a post') }
+                if (this.obj && this.changeNote.value == '') { return showError('Please mention what changed in this post') }
+                let obj = this.app.getKlass(this.typeSelector.value).then(editor => {
+                    try {
+                        post(`/data?changeNote=${encodeURIComponent(this.obj ? this.changeNote.value : "initial version")}`, {
+                            content: JSON.stringify(editor.getContent()),
+                            type: this.typeSelector.value,
+                            tags: JSON.parse(this.tags.value).map(t => t.value).concat(editor.getTags ? editor.getTags() : []),
+                            visibility: JSON.parse(this.visibility.value).map(u => u.value),
+                            savedVisibility: this.obj.savedVisibility || ['none'],
+                            id: this.obj.id
+                        }).then(_ => showSuccess('Posted successfully'))
+                            .then(_ => this.close())
+                            .catch(e => showError(e.message))
+                    } catch (err) {
+                        showError(err)
+                    }
+                })
+            }
+        }
+
+        class App {
+
+            constructor(inodes) {
+
+                function homePageSorter(results) {
+                    function array_move(arr, old_index, new_index) {
+                        if (new_index >= arr.length) {
+                            var k = new_index - arr.length + 1;
+                            while (k--) {
+                                arr.push(undefined);
+                            }
+                        }
+                        arr.splice(new_index, 0, arr.splice(old_index, 1)[0]);
+                        return arr;
+                    }
+                    for (let i = 0; i < results.length; i++) {
+                        if (results[i].tags.includes('homepage'))
+                            array_move(results, i, 0)
+                    }
+                }
+
+                this.inodes = inodes
+                this.searcher = new Searcher(c('left-w85'), this, {
+                    searchInput: g('searchbox'),
+                    size: 'max',
+                    defQuery: new URL(window.location.href).searchParams.get("q") || "#homepage/*",
+                    facetsEle: c('search-facets'),
+                    sorter: homePageSorter
+                })
+                this.editor = new Editor({}, g('editor-pane'), this)
+
                 this.showUserInfo()
             }
-            register() {
-                post(
-                    '/auth/register',
-                    {
-                        user: c('usernamebox').value,
-                        password: c('passwordbox').value
-                    },
-                    {
-                        'Content-Type': 'application/json'
+
+            logout() {
+                inodes.logout().finally(_ => {
+                    eraseCookie(USER_KEY)
+                    eraseCookie(TOK_KEY)
+                    showInfo("Logged out successfully")
+                    this.showUserInfo()
+                })
+            }
+
+            pin(id, ele) {
+                this.searcher.pin(id, ele)
+            }
+
+            unpin(id, ele) {
+                this.searcher.unpin(id, ele)
+            }
+
+            editInode(obj) {
+                this.editor.open(obj)
+            }
+
+            watchDoc(id) {
+                return this.subscribe('DOC', id, 'ALL')
+            }
+
+            getSearchQuery() {
+                return this.searcher.getSearchQuery()
+            }
+
+            getSearchResults(x) {
+                return this.inodes.search(x)
+            }
+
+            search(x) {
+                return this.searcher.search(x)
+            }
+
+            refresh() {
+                this.search(this.getSearchQuery())
+            }
+
+            currentUid() {
+                return getCurrentUser();
+            }
+
+            loggedIn() {
+                return this.currentUid() && true
+            }
+
+            comment(id, txt) {
+                return this.inodes.comment(id, txt).catch(e => showError(e.message))
+            }
+
+            deleteComment(id) {
+                return this.inodes.deleteComment(id).catch(e => showError(e.message))
+            }
+
+            subscribe(objtyp, objid, evnt) {
+                return this.inodes.subscribe(objtyp, this.currentUid(), objid, evnt)
+                    .then(e => showSuccess(`You have subscribed to ${objtyp} ${objid} for ${evnt} events`))
+                    .catch(e => showError(e.message))
+            }
+
+            viewTag(tag) {
+                return this.searcher.search(`#inodesapp #viewtag ${tag}`)
+            }
+
+            getTag(t) {
+                return this.inodes.getTag(t)
+            }
+
+            approveInode(id) {
+                return this.inodes.approveInode(id)
+            }
+
+            getPermalink(x) {
+                return this.inodes.getPermalink(x)
+            }
+
+            trustInode(id) {
+                post(`/trust/${id}`)
+                    .then(r => showSuccess('Trusted'))
+                    .catch(r => showError(r.message))
+            }
+
+            getKlass(kName) {
+                return this.inodes.getKlass(kName)
+            }
+
+            getKlasses() {
+                return this.inodes.getKlasses()
+            }
+
+            deleteInode(id) {
+                if (!this.loggedIn()) return showError('Login to delete content')
+                if (confirm('Are you sure to delete this content?'))
+                    this.inodes.deleteInode(id)
+                        .then(e => showSuccess(e.response))
+                        .then(e => this.refresh())
+                        .catch(c => showError(c))
+            }
+
+            openHistory(id) {
+                this.search(`#inodesapp #history !${id}`)
+            }
+
+            flagInode(id) {
+                this.inodes.flagInode(id)
+                    .then(x => showSuccess('Flagged, a notification is sent to owner and security team'))
+                    .catch(x => showError(x.message))
+            }
+
+            downvoteInode(id) {
+                this.inodes.downvoteInode(id)
+                    .then(a => showSuccess(a.response))
+                    .catch(m => showError(m));
+            }
+
+            upvoteInode(id) {
+                this.inodes.upvoteInode(id)
+                    .then(a => showSuccess(a.response))
+                    .catch(m => showError(m));
+            }
+
+            showUserInfo() {
+                if (this.loggedIn()) {
+                    c('title-right-panel').style.display = 'flex'
+                    g('actions').innerHTML = ''
+                    g('profilebtn').innerHTML = this.currentUid()
+                    this.updateNotificationsCount();
+                } else {
+                    c('title-right-panel').style.display = 'none'
+                    g('actions').innerHTML = `
+                        <a class="action-item" href="javascript:app.openSigninPage()">Sign In</a>
+                        <a class="action-item" href="javascript:app.openRegisterPage()">Sign Up</a>
+                    `
+                }
+            }
+
+            updateNotificationsCount() {
+                get('/notifications/unseen').then(resp => {
+                    let nc = +resp.response;
+                    if (nc > 0) {
+                        g('notifcount').style.display = 'block';
+                        g('notifcount').innerHTML = nc;
+                    } else {
+                        g('notifcount').style.display = 'none';
                     }
-                )
+                })
+            }
+
+            approveInode(docId) {
+                this.inodes.approveInode(docId)
+                    .then(x => showSuccess('Approved'))
+                    .catch(x => showError(x.message))
+            }
+
+            searchUser(user) {
+                this.search(`#inodesapp #viewuser !${user || this.currentUid()}`)
+            }
+
+            openMyPosts() {
+                this.search(`~${this.currentUid()}`)
+            }
+            openNotifications() {
+                this.search(`#inodesapp #notifications`)
+            }
+            openPRs() {
+                this.search(`#inodesapp #mypermissionrequests`)
+            }
+            announceApp() {
+                this.search(`#inodesapp #notifier`)
+            }
+            createGroup() {
+                this.search("#inodesapp #creategroup")
+            }
+            openRegisterPage() {
+                this.search('#inodesapp #register')
+            }
+            openSigninPage() {
+                this.search('#inodesapp #login')
+            }
+
+            login(u, p) {
+                post('/auth/login', {}, { 'Authorization': `Basic ${btoa(u + ":" + p)}` }).then((d) => {
+                    let h = d.headers;
+                    setCookie(USER_KEY, h['authinfo'].split(":")[0]);
+                    setCookie(TOK_KEY, h['authinfo'].split(":")[1]);
+                    showInfo("logged in successfully")
+                    this.showUserInfo()
+                    this.search("")
+                }).catch(e => {
+                    alert(`authentication failed. error: ${e}`)
+                })
+            }
+        }
+
+        class INodes {
+
+            getKlass(kName) {
+                return this.loadKlass(kName).then(kMeta => this.loadKlassScripts(kMeta))
+            }
+
+            getKlasses() {
+                return this.klasses
+            }
+
+            constructor() {
+                this.klassPromises = {}
+                this.scriptPromises = {}
+                this.pageSize = 10;
+                this.pageNum = 0;
+                post('/test-login').catch(() => this.logout())
+                this.klasses = get('/klasses').then(x => x.json).then(a => a.reduce((m, o) => { m[o.name] = o; return m }, {}))
+            }
+
+            loadKlass(klassName) {
+                return this.klasses.then(klasses => klasses[klassName])
+            }
+
+            loadScript(path, elem) {
+                return new Promise((resolve, reject) => {
+                    var jsElm = document.createElement("script");
+                    jsElm.type = "application/javascript";
+                    jsElm.src = path;
+                    jsElm.addEventListener('load', e => resolve())
+                    elem = elem || document.body
+                    elem.appendChild(jsElm);
+                });
+            }
+
+            comment(id, txt) {
+                return post(`/posts/comment/${id}`, txt)
+            }
+
+            loadCss(path) {
+                return new Promise((resolve, reject) => {
+                    var fileref = document.createElement("link");
+                    fileref.rel = "stylesheet";
+                    fileref.type = "text/css";
+                    fileref.href = path;
+                    fileref.addEventListener("load", e => resolve())
+                    document.getElementsByTagName("head")[0].appendChild(fileref)
+                })
+            }
+
+            loadKlassScripts(klass) {
+                let name = klass.name
+                if (this.scriptPromises[name]) {
+                    return this.scriptPromises[name]
+                }
+                this.scriptPromises[name] = new Promise((resolve, reject) => {
+                    if (klass.obj) {
+                        return resolve(klass.obj)
+                    }
+                    let proms = [];
+                    klass.jsPaths.forEach(s => proms.push(this.loadScript(s)))
+                    klass.cssPaths.forEach(s => proms.push(this.loadCss(s)))
+                    Promise.all(proms).then(x => {
+                        let k = eval(klass.name)
+                        klass.obj = new k();
+                        resolve(klass.obj)
+                    });
+                })
+                return this.scriptPromises[name]
+            }
+
+            loggedIn() {
+                return getCookie(USER_KEY)
+            }
+
+            search(str, offset = 0, pageSize = 10) {
+                return getLast(`/data?q=${encodeURIComponent(str.replace(/\![-\w]+/, ""))}&offset=${offset}&pageSize=${pageSize}&fq=tags&fq=type&fq=owner`)
+            }
+
+            getPermalink(id) {
+                let u = new URL(window.location.href)
+                return `${u.protocol}//${u.host}?q=@${id}`
+            }
+
+            deleteInode = id => delet(`/data/${id}`)
+            downvoteInode = id => post(`/posts/downvote/${id}`)
+            upvoteInode = id => post(`/posts/upvote/${id}`)
+            approveInode = id => post(`/data/${id}/approve`)
+            flagInode = id => post(`/data/${id}/flag`)
+            deleteComment = id => delet(`/posts/comment/${id}`)
+            getTag = t => get(`/tags/${t}`).then(r => r.json)
+            subscribe = (objtyp, uid, tag, evnt) => post(`/subscribe?subscriberType=USER&subscriberId=${uid}&objTyp=${objtyp}&objId=${tag}&event=${evnt}`)
+
+            logout(e) {
+                return post('/auth/logout')
+            }
+
+            register() {
+                post('/auth/register', { user: c('usernamebox').value, password: c('passwordbox').value })
                     .then(() => showSuccess('registration successful. verify your email address by clicking on the link in the email sent to you'))
                     .catch(m => showError(`registration failed. reason: ${m}`))
             }
-            triggerSearch(q) {
-                c('searchbox').value = q;
-                this.doSearch(q)
-            }
-            openAccount() {
-                this.triggerSearch(`#user !${getCurrentUser()}`)
-            }
-            openMyPosts() {
-                this.triggerSearch(`~${getCurrentUser()}`)
-            }
-            openNotifications() {
-                this.triggerSearch(`#inodesapp #notifications`)
-            }
-            openPRs() {
-                this.triggerSearch(`#inodesapp #mypermissionrequests`)
-            }
-            announceApp() {
-                this.triggerSearch(`#inodesapp #notifier`)
-            }
-            openRegisterPage() {
-                this.triggerSearch('#register #inodesapp')
-            }
+
+
             lock() { this._lock = true }
             locked() { return this._lock }
             unlock() { this._lock = false }
@@ -1105,16 +1086,14 @@
             }
         }
 
-        let inodes;
+        let inodes, app;
         let tagifyTags, tagifyUsers;
 
         window.addEventListener('load', () => {
             inodes = new INodes();
-            tagifyUsers = tagify(g('visibility-editor'), 'user')
-            tagifyTags = tagify(g('tags-editor'), 'tag')
+            app = new App(inodes)
         });
     </script>
-
 </head>
 
 <body>
@@ -1126,8 +1105,7 @@
             </div>
             <div class="title-mid-panel">
                 <div class="search-wrapper">
-                    <input class="search-input searchbox" type="text" placeholder="search"
-                        oninput="inodes.doSearch(this.value)">
+                    <input id="searchbox" class="search-input searchbox" type="text" placeholder="search">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor"
                         stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="feather feather-search"
                         viewBox="0 0 24 24">
@@ -1139,38 +1117,28 @@
             </div>
             <div class="title-right-panel">
                 <button class="add-btn new-has-tooltip" title="New">
-                    <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                        fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
-                        stroke-linejoin="round" class="feather feather-plus">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
+                    <i class="fas fa-plus-circle fa-2x"></i>
                     <div class="new-tooltip">
                         <ul style="list-style-type: none; padding: 0px; text-align: right; margin: 0px">
-                            <li class="new-actions" onclick="inodes.openEditor(undefined, true)">&#128462; New Post</li>
-                            <li class="new-actions" onclick="inodes.createGroup()">&#x1F465; New Group</li>
-                            <li class="new-actions" onclick="inodes.announceApp()">&#x1F4E2; New Announcement</li>
+                            <li class="new-actions" onclick="app.editInode({})">&#128462; New Post</li>
+                            <li class="new-actions" onclick="app.createGroup()">&#x1F465; New Group</li>
+                            <li class="new-actions" onclick="app.announceApp()">&#x1F4E2; New Announcement</li>
                         </ul>
                     </div>
                 </button>
-                <button class="notification-btn" style="position:relative" onclick="inodes.openNotifications()">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        class="feather feather-bell">
-                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                    </svg>
+                <button class="notification-btn" style="position:relative" onclick="app.openNotifications()">
+                    <i class="fas fa-bell fa-2x"></i>
                     <b id="notifcount"
                         style="position: absolute; display: none; top: 0px; right: 0px; background: orange; color: white; padding: 3px 5px; border-radius: 50%; font-size: 0.8em"></b>
                 </button>
                 <button class="profile-btn new-has-tooltip">
-                    <span>&#x1F464;</span>
+                    <i class="fas fa-user fa-2x"></i>
                     <div class="new-tooltip">
                         <ul style="list-style-type: none; padding: 0px; text-align: right; margin: 0px">
-                            <li class="new-actions" onclick="inodes.openAccount()" id='profilebtn'>Account</li>
-                            <li class="new-actions" onclick="inodes.openMyPosts()">My Posts</li>
-                            <li class="new-actions" onclick="inodes.openPRs()">My Pending PRs</li>
-                            <li class="new-actions" onclick="inodes.logout()">Logout</li>
+                            <li class="new-actions" onclick="app.searchUser()" id='profilebtn'>Account</li>
+                            <li class="new-actions" onclick="app.openMyPosts()">My Posts</li>
+                            <li class="new-actions" onclick="app.openPRs()">My Pending PRs</li>
+                            <li class="new-actions" onclick="app.logout()">Logout</li>
                         </ul>
                     </div>
                 </button>
@@ -1178,48 +1146,15 @@
         </div>
     </div>
     <div class="content maxwidth">
-        <div id="editor-pane">
-            <span onclick="inodes.closeEditor()" class="closebtn">&#10006;</span>
-            <label for="kclasses" class="">Post type: </label><br />
-            <select id="kclasses"></select><br /><br />
-            <div id="editor"></div><br />
-            <label for="tags-editor">Tags</label><br />
-            <input type="text" id="tags-editor" placeholder="start typing a tag name. eg edc hack"></input><br />
-            <label for="visibility-editor">Visibility</label><br />
-            <input type="text" id="visibility-editor" placeholder="start typing a user or group name"></input>
-            <div id="changenoteeditor">
-                <label for="changenote-editor">What changed?</label><br />
-                <input id="changenote-editor" placeholder="describe what changed in this version"></input><br />
-            </div>
-            <br />
-            <button onclick="inodes.post()">Post</button>
-        </div>
+        <div id="editor-pane"></div>
         <div class="ppane">
             <div class="posts-trending">
                 <div class="left-w85">
-                    <div class="posts-container">
-                        <div id="pinned"></div>
-                        <div id="posts"></div>
-                    </div>
+                    <!-- posts go here -->
                 </div>
                 <div class="right-w15">
-                    <div id="actions" class="actions sidebar-item">
-                    </div>
-                    <div>
-                        <h4>Post types</h4>
-                        <div id="posttypes" class="sidebar-item">
-                        </div>
-                    </div>
-                    <div>
-                        <h4>Tags</h4>
-                        <div id="toptags" class="sidebar-item">
-                        </div>
-                    </div>
-                    <div>
-                        <h4>Contributors</h4>
-                        <div id="topcontributors" class="sidebar-item">
-                        </div>
-                    </div>
+                    <div id="actions" class="actions sidebar-item"></div>
+                    <div class="search-facets"></div>
                 </div>
             </div>
 
@@ -1231,7 +1166,6 @@
             &copy; Madhusoodan P
         </center>
     </footer>
-
 </body>
 
 </html>
