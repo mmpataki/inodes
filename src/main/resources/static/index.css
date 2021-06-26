@@ -254,7 +254,7 @@ body {
     font-size: 0.8em;
 }
 
-#posts {
+.searcher-posts {
     display: flex;
     flex-direction: column;
 }
