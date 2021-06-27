@@ -176,14 +176,13 @@
 
                 function getContextButtons(klass, obj) {
                     let self = this;
-                    let getLockIcon = _ => obj.visibility != 'g-public' ? [{ ele: 'span', html: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []
                     return {
                         ele: 'div',
                         classList: 'context-btns',
                         children: [
-                            { ele: 'span', attribs: { title: 'pin', innerHTML: '&#128204;' }, evnts: { click: e => pinItem(e.target, obj) } },
-                            { ele: 'span', attribs: { title: 'unpin', innerHTML: '&#128204;' }, styles: { display: "none", 'text-decoration': 'line-through', 'text-decoration-thickness': '3px' }, evnts: { click: function (e) { unpinItem(this, obj); } } },
-                            ...getLockIcon(),
+                            { ele: 'span', classList: 'context-btn', attribs: { title: 'pin', innerHTML: '&#128204;' }, evnts: { click: e => pinItem(e.target, obj) } },
+                            { ele: 'span', classList: 'context-btn', attribs: { title: 'unpin', innerHTML: '&#128204;' }, styles: { display: "none", 'text-decoration': 'line-through', 'text-decoration-thickness': '3px' }, evnts: { click: function (e) { unpinItem(this, obj); } } },
+                            ...(obj.visibility != 'g-public' ? [{ ele: 'span', classList: 'context-btn', html: '&#128274;', attribs: { title: 'Private (only visible to you)' } }] : []),
                             {
                                 ele: 'span',
                                 classList: 'context-btn',
@@ -218,7 +217,7 @@
                             if (obj.content == '') {
                                 klass = new NoPermissionKlass()
                             }
-                            card = klass.getCard(obj)
+                            card = klass.getCard(obj, JSON.parse(obj.content))
                         }
                     } catch (e) {
                         card = render('inodes', {
@@ -616,20 +615,22 @@
                     classList: 'pages',
                     children: []
                 }
-                for (let i = 0; i < totalResults; i += pageSize) {
-                    container.children.push(
-                        {
-                            ele: 'span',
-                            classList: `page-btn ${i == this.offset ? "selected" : ""}`,
-                            text: i / pageSize + 1,
-                            evnts: {
-                                click: _ => {
-                                    this.offset = i
-                                    this.search(this.getSearchQuery())
+                if (totalResults > pageSize) {
+                    for (let i = 0; i < totalResults; i += pageSize) {
+                        container.children.push(
+                            {
+                                ele: 'span',
+                                classList: `page-btn ${i == this.offset ? "selected" : ""}`,
+                                text: i / pageSize + 1,
+                                evnts: {
+                                    click: _ => {
+                                        this.offset = i
+                                        this.search(this.getSearchQuery())
+                                    }
                                 }
                             }
-                        }
-                    )
+                        )
+                    }
                 }
                 this.pages.innerHTML = ''
                 this.pages.appendChild(render('paginator', container))
@@ -658,7 +659,7 @@
                         }
                     },
                     { ele: 'br' },
-                    { ele: 'div', iden: 'editor' },
+                    { ele: 'div', iden: 'editor', styles: { 'min-height': '100px' } },
                     { ele: 'br' },
                     { ele: 'input', iden: 'tags', label: 'Tags: ', attribs: { placeholder: 'start typing a tag name. eg edc, hack', value: (obj.tags || []).join(' ') }, evnts: { rendered: e => tagify(e, 'tag') } },
                     { ele: 'br' },
@@ -677,7 +678,7 @@
                         }
                     },
                     { ele: 'br' },
-                    ...(obj ? [{ ele: 'input', iden: 'changeNote', label: 'What id you change ', attribs: { placeholder: 'describe what changed in this version' } }] : []),
+                    ...(obj.id ? [{ ele: 'input', iden: 'changeNote', label: 'What did you change ', attribs: { placeholder: 'describe what changed in this version' } }] : []),
                     { ele: 'button', text: 'Post', evnts: { click: e => this.post(e) } }
                 ], (k, e) => this[k] = e, this.pane)
             }
@@ -688,16 +689,22 @@
 
             renderEditor(obj) {
                 this.editor.innerHTML = ''
-                this.app.getKlass(obj.type || this.typeSelector.value).then(klass => this.editor.appendChild(klass.getEditor(obj.id ? obj : undefined)))
+                callWithWaitUI(this.editor, (d, s) => {
+                    s(`Loading the ${obj.type || this.typeSelector.value} editor`)
+                    this.app.getKlass(obj.type || this.typeSelector.value)
+                        .then(klass => klass.getEditor(obj.id ? obj : undefined, obj.id ? JSON.parse(obj.content) : undefined))
+                        .then(editor => this.editor.appendChild(editor))
+                        .finally(_ => d())
+                })
             }
 
             post(e) {
                 if (this.tags.value == '') { return showError('Tags are required for a post') }
                 if (this.visibility.value == '') { return showError('Tags are required for a post') }
-                if (this.obj && this.changeNote.value == '') { return showError('Please mention what changed in this post') }
+                if (this.obj.id && this.changeNote.value == '') { return showError('Please mention what changed in this post') }
                 let obj = this.app.getKlass(this.typeSelector.value).then(editor => {
                     try {
-                        post(`/data?changeNote=${encodeURIComponent(this.obj ? this.changeNote.value : "initial version")}`, {
+                        post(`/data?changeNote=${encodeURIComponent(this.obj.id ? this.changeNote.value : "initial version")}`, {
                             content: JSON.stringify(editor.getContent()),
                             type: this.typeSelector.value,
                             tags: JSON.parse(this.tags.value).map(t => t.value).concat(editor.getTags ? editor.getTags() : []),
@@ -778,8 +785,8 @@
                 return this.searcher.getSearchQuery()
             }
 
-            getSearchResults(x) {
-                return this.inodes.search(x)
+            getSearchResults(x, o, ps) {
+                return this.inodes.search(x, o, ps)
             }
 
             search(x) {
@@ -799,11 +806,11 @@
             }
 
             comment(id, txt) {
-                return this.inodes.comment(id, txt).catch(e => showError(e.message))
+                return this.inodes.comment(id, txt)
             }
 
             deleteComment(id) {
-                return this.inodes.deleteComment(id).catch(e => showError(e.message))
+                return this.inodes.deleteComment(id)
             }
 
             subscribe(objtyp, objid, evnt) {
@@ -1116,7 +1123,7 @@
             </div>
             <div class="title-right-panel">
                 <button class="add-btn new-has-tooltip" title="New">
-                    <i class="fas fa-plus-circle fa-2x"></i>
+                    <i class="fas fa-plus-circle searchbar-icon"></i>
                     <div class="new-tooltip">
                         <ul style="list-style-type: none; padding: 0px; text-align: right; margin: 0px">
                             <li class="new-actions" onclick="app.editInode({})">&#128462; New Post</li>
@@ -1126,12 +1133,12 @@
                     </div>
                 </button>
                 <button class="notification-btn" style="position:relative" onclick="app.openNotifications()">
-                    <i class="fas fa-bell fa-2x"></i>
+                    <i class="fas fa-bell searchbar-icon"></i>
                     <b id="notifcount"
                         style="position: absolute; display: none; top: 0px; right: 0px; background: orange; color: white; padding: 3px 5px; border-radius: 50%; font-size: 0.8em"></b>
                 </button>
                 <button class="profile-btn new-has-tooltip">
-                    <i class="fas fa-user fa-2x"></i>
+                    <i class="fas fa-user searchbar-icon"></i>
                     <div class="new-tooltip">
                         <ul style="list-style-type: none; padding: 0px; text-align: right; margin: 0px">
                             <li class="new-actions" onclick="app.searchUser()" id='profilebtn'>Account</li>

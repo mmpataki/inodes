@@ -402,7 +402,8 @@ body {
 }
 
 .inode-context-btn {
-    margin-left: 6px;
+    margin: 0px 4px;
+    font-size: 0.9em;
 }
 
 .inode-context-btn:hover {
@@ -432,6 +433,11 @@ body {
     right: 0px;
     background-color: white;
     padding: 20px;
+    overflow: auto;
+}
+
+.fullscreen-inode > div {
+    position: relative;
 }
 
 .closefullscreen-btn {
@@ -790,7 +796,9 @@ img {
 }
 
 .storyboard-content {
-    padding: 0px 20px;
+    border: dashed 2px darkblue;
+    padding: 20px 10px;
+    margin: 20px;
 }
 
 .storyboard-bottombar > button {
@@ -801,7 +809,6 @@ img {
     padding: 10px;
     color: red;
 }
-
 
 inode-error {
     width: 95%;
@@ -815,4 +822,8 @@ inode-error {
     display: none;
     text-decoration: line-through;
     text-decoration-thickness: 3px;
+}
+
+.searchbar-icon {
+    font-size: 1.6em;
 }

@@ -75,7 +75,7 @@ function last(fn) {
 let getLast = last(get);
 
 function post(url, data, hdrs) {
-    if(typeof data !== 'string') {
+    if (typeof data !== 'string') {
         hdrs = { "Content-Type": "application/json", ...hdrs }
     }
     return ajax('POST', url, JSON.stringify(data), hdrs);
@@ -221,7 +221,7 @@ function _fireRenderedCallBacks(spec) {
 }
 
 function _render(name, spec, elemCreated, container) {
-    if(Array.isArray(spec)) {
+    if (Array.isArray(spec)) {
         spec.forEach(s => render(name, s, elemCreated, container))
         return container
     }
@@ -250,6 +250,7 @@ function _render(name, spec, elemCreated, container) {
         }
         else spec.children.forEach(child => _render(name, child, elemCreated, e))
     }
+    if (spec.value) e.value = spec.value
     spec.attribs && Object.keys(spec.attribs).forEach(key => {
         e[key] = spec.attribs[key]
     })
@@ -288,15 +289,13 @@ function _callWithWaitUI(element, func) {
     let overlay = render('loader', {
         ele: 'div',
         attribs: {
-            style: 'position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: white; opacity: 0.5; z-index: 100000'
+            style: 'position: absolute; display: flex; position: absolute; inset: 0px; align-items: center; opacity: 0.9; justify-content: center; background-color: white; z-index: 100000'
         },
         children: [
             {
-                ele: 'span',
-                attribs: { style: `position: absolute; top: ${element.clientHeight / 2 - 10}px; left: ${element.clientWidth / 2 - 50}px` },
-                children: [
+                ele: 'span', children: [
                     { ele: 'img', attribs: { src: '/wait.gif', style: `height: 20px; width: 20px` } },
-                    { ele: 'span', iden: 'loadTxt', attribs: { style: 'margin-left: 10px' }, text: 'Loading' }
+                    { ele: 'span', iden: 'loadTxt', attribs: { style: 'opacity: 20px; padding : 10px' }, text: 'Loading' }
                 ]
             }
         ]
@@ -306,7 +305,7 @@ function _callWithWaitUI(element, func) {
     let updateText = (txt) => this.loadTxt.innerText = txt;
     try {
         func(done, updateText);
-    } catch(e) {
+    } catch (e) {
         console.error(e)
         done();
     }
@@ -803,13 +802,12 @@ function StoryTeller(storyBoardElement) {
         }
         this.nextbtn.disabled = true
         try {
-            let preDestroy = storyPack.story.preDestroy || (() => new Promise((resolve) => resolve()))
-            preDestroy()
-                .then(() => {
-                    let next = { storyClass: storyPack.story.nextStoryClass(), args: storyPack.story.moral() }
-                    if (!next) return;
-                    this.openStory(next.storyClass, next.args)
-                })
+            let preDestroy = storyPack.story.preDestroy ? storyPack.story.preDestroy() : Promise.resolve(0)
+            preDestroy.then(_ => {
+                let next = { storyClass: storyPack.story.nextStoryClass(), args: storyPack.story.moral() }
+                if (!next) return;
+                this.openStory(next.storyClass, next.args)
+            })
         } finally {
             this.nextbtn.disabled = false
         }
