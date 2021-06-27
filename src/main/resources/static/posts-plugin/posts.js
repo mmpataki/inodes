@@ -19,7 +19,6 @@ class posts {
         })
         converter.setFlavor('github');
         try {
-            obj = JSON.parse(obj.content)
             obj.attachments = obj.attachments || []
             obj.content += "\n\n" + obj.attachments.map(file => `<a href='${file}'><img src='/posts-plugin/attach.png'> ${file.replace(/^.*[\\\/]/, '')}</a>`).join('\n')
             pre.innerHTML = this.getTitle(obj.title) + converter.makeHtml(obj.content);
@@ -39,7 +38,6 @@ class posts {
     getEditor(obj) {
         let self = this;
         let renderable = function (obj) {
-            obj = obj ? JSON.parse(obj.content) : obj
             self.attachments = obj ? (obj.attachments || []) : []
             return {
                 ele: "div",

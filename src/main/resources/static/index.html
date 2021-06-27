@@ -214,10 +214,10 @@
                         if (obj.needsApproval && app.currentUid() != obj.owner) {
                             card = klass.getSafeCard(obj);
                         } else {
-                            if (obj.content == '') {
+                            if (obj.readState != 'CAN_READ') {
                                 klass = new NoPermissionKlass()
                             }
-                            card = klass.getCard(obj, JSON.parse(obj.content))
+                            card = klass.getCard(obj.content, obj)
                         }
                     } catch (e) {
                         card = render('inodes', {
@@ -226,210 +226,200 @@
                         })
                     }
 
-                    return {
-                        ele: 'div',
-                        classList: 'container',
-                        styles: {
-                            borderLeft: `solid 4px ${randColor()}`,
-                            position: 'relative',
-                            display: 'flex',
-                            'flex-direction': 'column'
+                    return [
+                        getContextButtons(klass, obj),
+                        {
+                            ele: 'div',
+                            classList: 'container-parent',
+                            children: [
+                                {
+                                    preBuilt: true,
+                                    ele: card
+                                }
+                            ]
                         },
-                        children: [
-                            getContextButtons(klass, obj),
-                            {
-                                ele: 'div',
-                                classList: 'container-parent',
-                                children: [
-                                    {
-                                        preBuilt: true,
-                                        ele: card
-                                    }
-                                ]
-                            },
-                            {
-                                ele: 'div',
-                                classList: 'tag-owner-actions',
-                                children: [
-                                    {
-                                        ele: 'div',
-                                        classList: 'tag-owner',
-                                        children: [
-                                            {
-                                                preBuilt: true,
-                                                ele: getTagsElement(obj.tags, obj.owner, obj.type, app)
-                                            },
-                                            {
-                                                ele: 'div',
-                                                classList: 'user-time',
-                                                styles: { float: 'right' },
-                                                children: [
-                                                    {
-                                                        ele: 'span',
-                                                        classList: 'postowner',
-                                                        text: `${obj.owner}`,
-                                                        evnts: {
-                                                            click: _ => app.searchUser(obj.owner)
-                                                        }
-                                                    },
-                                                    {
-                                                        ele: 'span',
-                                                        classList: 'posttime',
-                                                        styles: {
-                                                            'font-size': '0.7em'
-                                                        },
-                                                        text: `${new Date(obj.postTime).toDateString()}`
+                        {
+                            ele: 'div',
+                            classList: 'tag-owner-actions',
+                            children: [
+                                {
+                                    ele: 'div',
+                                    classList: 'tag-owner',
+                                    children: [
+                                        {
+                                            preBuilt: true,
+                                            ele: getTagsElement(obj.tags, obj.owner, obj.type, app)
+                                        },
+                                        {
+                                            ele: 'div',
+                                            classList: 'user-time',
+                                            styles: { float: 'right' },
+                                            children: [
+                                                {
+                                                    ele: 'span',
+                                                    classList: 'postowner',
+                                                    text: `${obj.owner}`,
+                                                    evnts: {
+                                                        click: _ => app.searchUser(obj.owner)
                                                     }
-                                                ]
-                                            },
+                                                },
+                                                {
+                                                    ele: 'span',
+                                                    classList: 'posttime',
+                                                    styles: {
+                                                        'font-size': '0.7em'
+                                                    },
+                                                    text: `${new Date(obj.postTime).toDateString()}`
+                                                }
+                                            ]
+                                        },
 
-                                        ]
-                                    },
-                                    {
-                                        ele: 'div',
-                                        classList: 'actions-list',
-                                        children: [
-                                            {
-                                                ele: 'div',
-                                                classList: 'actions',
-                                                children: [
-                                                    {
-                                                        ele: 'span',
-                                                        html: `&#x25B2 ${obj.votes || 0}`,
-                                                        classList: 'action-upvote',
-                                                        evnts: { click: _ => app.upvoteInode(obj.id) }
+                                    ]
+                                },
+                                {
+                                    ele: 'div',
+                                    classList: 'actions-list',
+                                    children: [
+                                        {
+                                            ele: 'div',
+                                            classList: 'actions',
+                                            children: [
+                                                {
+                                                    ele: 'span',
+                                                    html: `&#x25B2 ${obj.votes || 0}`,
+                                                    classList: 'action-upvote',
+                                                    evnts: { click: _ => app.upvoteInode(obj.id) }
+                                                },
+                                                {
+                                                    ele: 'span',
+                                                    html: `&#x25BC`,
+                                                    classList: 'action-downvote',
+                                                    evnts: { click: _ => app.downvoteInode(obj.id) }
+                                                },
+                                                ...(!app.loggedIn() ? [] : [{
+                                                    ele: 'span',
+                                                    text: 'edit',
+                                                    classList: 'action',
+                                                    evnts: { click: _ => app.editInode(obj) }
+                                                }]),
+                                                ...(!app.loggedIn() ? [] : [{
+                                                    ele: 'span',
+                                                    text: 'delete',
+                                                    classList: 'action',
+                                                    evnts: { click: _ => app.deleteInode(obj.id) }
+                                                }]),
+                                                {
+                                                    ele: 'span',
+                                                    text: 'comment(s)',
+                                                    classList: 'action',
+                                                    evnts: { click: _ => this.openComments(obj) }
+                                                },
+                                                {
+                                                    ele: 'span',
+                                                    text: 'share',
+                                                    classList: 'action share-has-tooltip',
+                                                    evnts: {
+                                                        mouseenter: function (e) { this.children[0].style.display = 'block' },
+                                                        mouseleave: function (e) { this.children[0].style.display = 'none' }
                                                     },
-                                                    {
-                                                        ele: 'span',
-                                                        html: `&#x25BC`,
-                                                        classList: 'action-downvote',
-                                                        evnts: { click: _ => app.downvoteInode(obj.id) }
-                                                    },
-                                                    ...(!app.loggedIn() ? [] : [{
-                                                        ele: 'span',
-                                                        text: 'edit',
-                                                        classList: 'action',
-                                                        evnts: { click: _ => app.editInode(obj) }
-                                                    }]),
-                                                    ...(!app.loggedIn() ? [] : [{
-                                                        ele: 'span',
-                                                        text: 'delete',
-                                                        classList: 'action',
-                                                        evnts: { click: _ => app.deleteInode(obj.id) }
-                                                    }]),
-                                                    {
-                                                        ele: 'span',
-                                                        text: 'comment(s)',
-                                                        classList: 'action',
-                                                        evnts: { click: _ => this.openComments(obj) }
-                                                    },
-                                                    {
-                                                        ele: 'span',
-                                                        text: 'share',
-                                                        classList: 'action share-has-tooltip',
-                                                        evnts: {
-                                                            mouseenter: function (e) { this.children[0].style.display = 'block' },
-                                                            mouseleave: function (e) { this.children[0].style.display = 'none' }
-                                                        },
-                                                        children: [
-                                                            {
-                                                                ele: 'div', classList: 'share-tooltip', children: [
-                                                                    {
-                                                                        ele: 'b', text: 'copy ', children: [
-                                                                            { ele: 'a', attribs: { href: app.getPermalink(obj.id), target: '_blank' }, text: 'url' }
-                                                                        ]
-                                                                    },
-                                                                    {
-                                                                        ele: 'div', children: [
-                                                                            { ele: 'input', attribs: { readOnly: true, value: app.getPermalink(obj.id), style: 'width: 180px' } },
-                                                                            {
-                                                                                ele: 'button', text: 'copy', evnts: {
-                                                                                    click: function () { copyFormatted(this.previousElementSibling.value) }
-                                                                                }
-                                                                            }
-                                                                        ]
-                                                                    },
-                                                                    ...(!klass.getCopyContent ? [] : [
-                                                                        { ele: 'b', styles: { display: 'block', 'margin-top': '10px' }, text: 'or copy the content' },
+                                                    children: [
+                                                        {
+                                                            ele: 'div', classList: 'share-tooltip', children: [
+                                                                {
+                                                                    ele: 'b', text: 'copy ', children: [
+                                                                        { ele: 'a', attribs: { href: app.getPermalink(obj.id), target: '_blank' }, text: 'url' }
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    ele: 'div', children: [
+                                                                        { ele: 'input', attribs: { readOnly: true, value: app.getPermalink(obj.id), style: 'width: 180px' } },
                                                                         {
-                                                                            ele: 'button',
-                                                                            text: 'copy content',
-                                                                            evnts: {
-                                                                                click: _ => copyFormatted(klass.getCopyContent(obj)),
-                                                                                rendered: e => e.removeAttribute('tabindex')
+                                                                            ele: 'button', text: 'copy', evnts: {
+                                                                                click: function () { copyFormatted(this.previousElementSibling.value) }
                                                                             }
                                                                         }
-                                                                    ])
-                                                                ]
-                                                            }
-                                                        ]
-                                                    },
-                                                    ...(!app.loggedIn() ? [] : [{ ele: 'span', text: 'watch', classList: 'action', evnts: { click: _ => app.watchDoc(obj.id) } }])
-                                                ]
-                                            },
-                                            {
-                                                ele: 'div',
-                                                classList: 'actions',
-                                                styles: { float: 'right' },
-                                                children: [
-                                                    { ele: 'span', classList: 'action', text: 'history', evnts: { click: _ => app.openHistory(obj.id) } },
-
-                                                    ...(!app.loggedIn() ? [] : [{ ele: 'span', classList: 'action', text: 'flag', evnts: { click: _ => app.flagInode(obj.id) } }]),
-
-                                                    ...(!obj.needsApproval ? [] : [{ ele: 'span', classList: 'action', text: 'approve', evnts: { click: () => app.approveInode(obj.id) } }]),
-
-                                                    ...(app.loggedIn() != 'admin' ? [] : [{ ele: 'span', text: 'trust', classList: 'action', evnts: { click: _ => app.trustInode(obj.id) } }])
-                                                ]
-                                            }
-                                        ]
-                                    }
-                                ]
-                            },
-                            {
-                                ele: 'div',
-                                classList: 'comments-pane',
-                                iden: 'commentsSection',
-                                children: [
-                                    {
-                                        ele: 'div',
-                                        styles: {
-                                            display: 'flex',
-                                            marginBottom: '10px'
+                                                                    ]
+                                                                },
+                                                                ...(!klass.getCopyContent ? [] : [
+                                                                    { ele: 'b', styles: { display: 'block', 'margin-top': '10px' }, text: 'or copy the content' },
+                                                                    {
+                                                                        ele: 'button',
+                                                                        text: 'copy content',
+                                                                        evnts: {
+                                                                            click: _ => copyFormatted(klass.getCopyContent(obj)),
+                                                                            rendered: e => e.removeAttribute('tabindex')
+                                                                        }
+                                                                    }
+                                                                ])
+                                                            ]
+                                                        }
+                                                    ]
+                                                },
+                                                ...(!app.loggedIn() ? [] : [{ ele: 'span', text: 'watch', classList: 'action', evnts: { click: _ => app.watchDoc(obj.id) } }])
+                                            ]
                                         },
-                                        children: [
-                                            {
-                                                ele: 'textarea',
-                                                attribs: {
-                                                    iden: 'commentarea',
-                                                    rows: 2
-                                                },
-                                                styles: {
-                                                    width: '90%',
-                                                    border: 'solid 1px gray',
-                                                    resize: 'none'
-                                                }
+                                        {
+                                            ele: 'div',
+                                            classList: 'actions',
+                                            styles: { float: 'right' },
+                                            children: [
+                                                { ele: 'span', classList: 'action', text: 'history', evnts: { click: _ => app.openHistory(obj.id) } },
+
+                                                ...(!app.loggedIn() ? [] : [{ ele: 'span', classList: 'action', text: 'flag', evnts: { click: _ => app.flagInode(obj.id) } }]),
+
+                                                ...(!obj.needsApproval ? [] : [{ ele: 'span', classList: 'action', text: 'approve', evnts: { click: () => app.approveInode(obj.id) } }]),
+
+                                                ...(app.loggedIn() != 'admin' ? [] : [{ ele: 'span', text: 'trust', classList: 'action', evnts: { click: _ => app.trustInode(obj.id) } }])
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            ele: 'div',
+                            classList: 'comments-pane',
+                            iden: 'commentsSection',
+                            children: [
+                                {
+                                    ele: 'div',
+                                    styles: {
+                                        display: 'flex',
+                                        marginBottom: '10px'
+                                    },
+                                    children: [
+                                        {
+                                            ele: 'textarea',
+                                            attribs: {
+                                                iden: 'commentarea',
+                                                rows: 2
                                             },
-                                            {
-                                                ele: 'button',
-                                                text: 'Post',
-                                                styles: {
-                                                    width: '10%'
-                                                },
-                                                evnts: {
-                                                    click: _ => {
-                                                        app.comment(obj.id, _.target.previousElementSibling.value)
-                                                            .then(x => this.addCommentToList(x.json))
-                                                            .catch(e => showError(e.message))
-                                                    }
+                                            styles: {
+                                                width: '90%',
+                                                border: 'solid 1px gray',
+                                                resize: 'none'
+                                            }
+                                        },
+                                        {
+                                            ele: 'button',
+                                            text: 'Post',
+                                            styles: {
+                                                width: '10%'
+                                            },
+                                            evnts: {
+                                                click: _ => {
+                                                    app.comment(obj.id, _.target.previousElementSibling.value)
+                                                        .then(x => this.addCommentToList(x.json))
+                                                        .catch(e => showError(e.message))
                                                 }
                                             }
-                                        ]
-                                    },
-                                    { ele: 'div', classList: 'oldcomments', iden: 'comments' }
-                                ]
-                            }
-                        ]
-                    }
+                                        }
+                                    ]
+                                },
+                                { ele: 'div', classList: 'oldcomments', iden: 'comments' }
+                            ]
+                        }
+                    ]
                 }
 
                 if (!obj.type || obj.type == "") {
@@ -438,6 +428,7 @@
                 }
                 return app.getKlass(obj.type).then(klass => {
                     render('inode', template(klass, obj), (k, e) => this[k] = e, rc)
+                    rc.style.visibility = 'visible'
                 })
             }
 
@@ -445,8 +436,7 @@
                 this.commentsSection.style.display = "block";
                 let container = this.comments;
                 container.innerHTML = ""
-                get(`/posts/comments/${obj.id}`).then(comments => {
-                    comments = JSON.parse(comments.response)
+                get(`/posts/comments/${obj.id}`).then(resp => resp.json).then(comments => {
                     comments.sort((a, b) => a.time - b.time).forEach(comment => {
                         this.addCommentToList(comment)
                     })
@@ -536,11 +526,13 @@
                     app.getSearchResults(str, offset, pageSize || 10).then(d => {
                         let { results, facetResults, totalResults } = d.json
 
-                        /* apply custom sorting */
-                        if (sorter)
-                            sorter(results)
+                        /* this is done in app level for a compatibility reason, dont move to inodes level */
+                        results.forEach(r => r.content = (r.content == '' ? undefined : JSON.parse(r.content)))
 
-                        if (results.length < 1) {
+                        /* apply custom sorting */
+                        sorter && sorter(results)
+
+                        if (totalResults < 1) {
                             rc.innerHTML = '<div class="no-post-found">No posts found</div>'
                             return done()
                         }
@@ -589,10 +581,15 @@
 
             showCard(r) {
                 let { rc, size, app } = { ...this, ...this.options }
+
+                /* make a container for each post, to keep the sort order */
+                let c = render('inode', { ele: 'div', classList: 'container', styles: { borderLeft: `solid 4px ${randColor()}`, visibility: 'hidden' } })
+                rc.appendChild(c)
+
                 if (size == 'min') {
 
                 } else if (size == 'max') {
-                    new LargeInode(rc, app, r)
+                    new LargeInode(c, app, r)
                 }
             }
 
@@ -692,7 +689,7 @@
                 callWithWaitUI(this.editor, (d, s) => {
                     s(`Loading the ${obj.type || this.typeSelector.value} editor`)
                     this.app.getKlass(obj.type || this.typeSelector.value)
-                        .then(klass => klass.getEditor(obj.id ? obj : undefined, obj.id ? JSON.parse(obj.content) : undefined))
+                        .then(klass => klass.getEditor(obj.content, obj.id ? obj : undefined))
                         .then(editor => this.editor.appendChild(editor))
                         .finally(_ => d())
                 })
@@ -758,8 +755,6 @@
 
             logout() {
                 inodes.logout().finally(_ => {
-                    eraseCookie(USER_KEY)
-                    eraseCookie(TOK_KEY)
                     showInfo("Logged out successfully")
                     this.showUserInfo()
                 })
@@ -790,6 +785,9 @@
             }
 
             search(x) {
+                if(this.locked() && !confirm('You have some unsaved content, do you still want to continue?'))
+                    return
+                this.unlock()
                 return this.searcher.search(x)
             }
 
@@ -951,6 +949,10 @@
                     alert(`authentication failed. error: ${e}`)
                 })
             }
+
+            lock() { this._lock = true }
+            locked() { return this._lock }
+            unlock() { this._lock = false }
         }
 
         class INodes {
@@ -1046,6 +1048,8 @@
             subscribe = (objtyp, uid, tag, evnt) => post(`/subscribe?subscriberType=USER&subscriberId=${uid}&objTyp=${objtyp}&objId=${tag}&event=${evnt}`)
 
             logout(e) {
+                eraseCookie(USER_KEY)
+                eraseCookie(TOK_KEY)
                 return post('/auth/logout')
             }
 
@@ -1055,14 +1059,10 @@
                     .catch(m => showError(`registration failed. reason: ${m}`))
             }
 
-
-            lock() { this._lock = true }
-            locked() { return this._lock }
-            unlock() { this._lock = false }
         }
 
         class NoPermissionKlass {
-            getCard(obj) {
+            getCard(_, obj) {
                 let noPermSpec = {
                     ele: 'div',
                     attribs: { style: 'padding: 50px' },

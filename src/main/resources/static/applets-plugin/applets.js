@@ -5,7 +5,6 @@ class applets {
     getCard(obj) {
         let self = this;
         let template = function (obj) {
-            obj = JSON.parse(obj.content);
             return {
                 ele: 'div',
                 classList: 'container',
@@ -32,7 +31,6 @@ class applets {
     getSafeCard(obj) {
         let self = this;
         let template = function (obj) {
-            obj = JSON.parse(obj.content);
             return {
                 ele: 'div',
                 classList: 'container',
@@ -97,9 +95,6 @@ class applets {
 
     getEditor(obj) {
         let self = this;
-        if (obj) {
-            obj = JSON.parse(obj.content);
-        }
         let renderable = function (obj) {
             return {
                 ele: "div",
