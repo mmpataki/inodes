@@ -6,10 +6,13 @@ import inodes.util.SecurityUtil;
 import lombok.extern.log4j.Log4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -26,6 +29,8 @@ public class AppNotificationService {
     @Autowired
     AuthorizationService AS;
 
+    final Map<String, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
+
     public List<AppNotification> getAllNotifs() {
         return StreamSupport.stream(ANR.findAll().spliterator(), false).collect(Collectors.toList());
     }
@@ -40,6 +45,32 @@ public class AppNotificationService {
     public void postNotification(List<String> ugids, AppNotification.NotificationData ndata) throws Exception {
         AS.checkNotificationSendPermission(ugids);
         ANR.save(ugids.stream().map(u -> AppNotification.builder().nFor(u).data(ndata).seen(false).build()).collect(Collectors.toList()));
+        ugids.stream().flatMap(ugid -> {
+            String id = DataService.getGFromGtag(ugid);
+            if (id != null) {
+                try {
+                    return UGS.getGroup(DataService.getGFromGtag(ugid)).getUsers().stream();
+                } catch (Exception e) {
+                    return Collections.EMPTY_LIST.stream();
+                }
+            } else {
+                return Collections.singleton(DataService.getUFromUtag(ugid)).stream();
+            }
+        }).forEach(u -> {
+            List<SseEmitter> emitterList = emitters.get(u);
+            if (emitterList != null) {
+                emitterList.forEach(emitter -> {
+                    try {
+                        emitter.send(SseEmitter.event().data(ndata, MediaType.APPLICATION_JSON));
+                    } catch (IOException e) {
+                        log.debug("error while sending notification to " + emitter);
+                        emitterList.remove(u);
+                        }
+                });
+                if (emitterList.isEmpty())
+                    emitters.remove(u);
+            }
+        });
     }
 
     public void markAsSeen(Long id) {
@@ -54,6 +85,15 @@ public class AppNotificationService {
         if (userId != null)
             grps.add(DataService.getUserTag(userId));
         return ANR.countByNForInAndSeenFalse(grps);
+    }
+
+    public SseEmitter userLoggedIn(String user) {
+        SseEmitter emitter = new SseEmitter();
+        emitters.computeIfAbsent(user, s -> new LinkedList<>());
+        emitters.get(user).add(emitter);
+        emitter.onTimeout(() -> emitters.get(user).remove(emitter));
+        emitter.onCompletion(() -> emitters.get(user).remove(emitter));
+        return emitter;
     }
 
 }

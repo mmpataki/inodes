@@ -463,8 +463,9 @@
                 if (renderTags) {
                     render('inode-s', [
                         { ele: 'div', classList: 'parent', iden: 'parent' },
-                        { ele: 'div', styles: { padding: '3px 5px' }, children: [
-                                ...doc.tags.map(t => ({ ele: 'span', classList: 'tag', text: `#${t}`})),
+                        {
+                            ele: 'div', styles: { padding: '3px 5px' }, children: [
+                                ...doc.tags.map(t => ({ ele: 'span', classList: 'tag', text: `#${t}` })),
                                 { ele: 'span', classList: 'tag', styles: { 'font-size': '0.75em' }, title: 'owner', html: `&#x1F464; ${doc.owner}` },
                             ]
                         }
@@ -808,6 +809,21 @@
                 this.editor = new Editor({}, g('editor-pane'), this)
 
                 this.showUserInfo()
+
+                Notification.requestPermission().then(_ => {
+                    this.setupNotificationWatcher()
+                })
+            }
+
+            setupNotificationWatcher() {
+                if (!this.loggedIn())
+                    return
+                var source = new EventSource('/notifications/stream')
+                source.onmessage = event => {
+                    let n = JSON.parse(event.data)
+                    var notification = new Notification(n.nfrom, { body: n.ntext, icon: '/favicon.ico' })
+                    this.updateNotificationsCount()
+                }
             }
 
             logout() {

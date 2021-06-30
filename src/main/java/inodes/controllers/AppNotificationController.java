@@ -2,10 +2,14 @@ package inodes.controllers;
 
 import inodes.models.AppNotification;
 import inodes.service.api.AppNotificationService;
+import inodes.service.api.UnAuthorizedException;
 import inodes.util.SecurityUtil;
 import lombok.extern.log4j.Log4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,6 +49,13 @@ public class AppNotificationController {
     @PostMapping("/markasseen")
     public void markAsSeen(@RequestParam("id") Long id) {
         ANS.markAsSeen(id);
+    }
+
+    @GetMapping(value = "/stream", produces = "text/event-stream")
+    public ResponseEntity<SseEmitter> registerNotificationStream() throws UnAuthorizedException {
+        if(SecurityUtil.getCurrentUser() == null)
+            throw new UnAuthorizedException("you are not logged in");
+        return new ResponseEntity<>(ANS.userLoggedIn(SecurityUtil.getCurrentUser()), HttpStatus.OK);
     }
 
 }
