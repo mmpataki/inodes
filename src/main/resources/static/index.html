@@ -1100,7 +1100,7 @@
             }
 
             search(str, offset = 0, pageSize = 10) {
-                return getLast(`/data?q=${encodeURIComponent(str.replace(/\![-\w]+/, ""))}&offset=${offset}&pageSize=${pageSize}&fq=tags&fq=type&fq=owner`)
+                return getLast(`/data?q=${encodeURIComponent(str.replaceAll(/\![-\w]+/g, ""))}&offset=${offset}&pageSize=${pageSize}&fq=tags&fq=type&fq=owner`)
             }
 
             getPermalink(id) {

@@ -115,6 +115,7 @@ public class InodesFilter implements Filter {
     private boolean isLoggedIn(HttpServletRequest req, HttpServletResponse resp) {
         String sessHdr = req.getHeader("AuthInfo");
         String authHdr = req.getHeader("Authorization");
+
         if (authHdr != null) {
             return doLogin(req, resp, false);
         } else if (sessHdr != null) {
@@ -123,6 +124,15 @@ public class InodesFilter implements Filter {
             if (ret) {
                 SecurityUtil.setCurrentUser(sh.getUser());
                 return ret;
+            }
+        } else {
+            if(req.getCookies() == null)
+                return false;
+            Optional<String> user = Arrays.stream(req.getCookies()).filter(c -> c.getName().equals("user")).map(c -> c.getValue()).findFirst();
+            Optional<String> tok = Arrays.stream(req.getCookies()).filter(c -> c.getName().equals("tok")).map(c -> c.getValue()).findFirst();
+            if(user.isPresent() && tok.isPresent() && sessMap.containsKey(user.get()) && sessMap.get(user.get()).getTok().equals(tok.get())) {
+                SecurityUtil.setCurrentUser(user.get());
+                return true;
             }
         }
         return false;
