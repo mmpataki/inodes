@@ -233,10 +233,8 @@ body {
     position: relative;
     display: flex;
     flex-direction: column;
-    padding: 15px;
     padding: 10px 10px 0px 10px;
     border: solid 1px lightgray;
-    margin: 20px;
     border-radius: 8px;
     background-color: white;
 }
@@ -829,4 +827,62 @@ inode-error {
 
 .searchbar-icon {
     font-size: 1.6em;
+}
+
+.inode-s-container {
+    border: solid 1px lightgray;
+    width: max-content;
+    border-radius: 5px;
+}
+
+.inode-s-tag {
+    background: #eee;
+    padding: 1px 7px;
+    border-radius: 3px;
+    margin: 0px 2px;
+    font-size: 0.8em;
+}
+
+.inode-min {
+    width: max-content;
+    padding: 5px;
+    margin: 5px;
+    display: inline-block;
+}
+
+.inode-max {
+    padding: 15px;
+    margin: 20px;
+}
+
+.inode-picker {
+    display: none;
+}
+
+.inode-picker:checked + div {
+    border: solid 2px lightgray;
+}
+
+.inode-picker:checked + div {
+    border: dashed 2px darkgreen;
+}
+
+.s-and-s-btn-picked-item {
+    justify-content: center-end;
+}
+
+.s-and-s-btn-searchpane {
+    padding: 10px;
+}
+
+.s-and-s-btn-searchpane > .searcher-posts-container > div:nth-child(2) {
+    display: block;
+    overflow: auto;
+    max-height: 250px;  
+}
+
+.s-and-s-btn-action {
+    position: absolute;
+    top: 5px;
+    right: 5px;
 }

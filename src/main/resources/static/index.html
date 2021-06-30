@@ -7,7 +7,6 @@
     <title>i-nodes</title>
     <link rel="stylesheet" href="./index.css">
     <script src="/common.js"></script>
-    <script src="/squirrelly.min.js"></script>
     <script src="./tagify.min.js"></script>
     <link rel="stylesheet" href="./tagify.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
@@ -459,6 +458,27 @@
             }
         }
 
+        class SmallInode {
+            constructor(ele, app, doc, renderTags) {
+                if (renderTags) {
+                    render('inode-s', [
+                        { ele: 'div', classList: 'parent', iden: 'parent' },
+                        { ele: 'div', styles: { padding: '3px 5px' }, children: [
+                                ...doc.tags.map(t => ({ ele: 'span', classList: 'tag', text: `#${t}`})),
+                                { ele: 'span', classList: 'tag', styles: { 'font-size': '0.75em' }, title: 'owner', html: `&#x1F464; ${doc.owner}` },
+                            ]
+                        }
+                    ], (k, v) => this[k] = v, ele)
+                } else {
+                    this.parent = ele;
+                }
+                app.getKlass(doc.type).then(klass => {
+                    klass.getSmallCard && this.parent.appendChild(klass.getSmallCard(doc.content, doc))
+                    ele.style.visibility = 'visible'
+                })
+            }
+        }
+
         class Facets {
             constructor(facets, container, title, char, app) {
                 render('facets', {
@@ -491,17 +511,22 @@
              */
             constructor(resultContainer, app, options) {
 
-                let { searchInput, size, defQuery, pageSize, sorter, facetsEle } = options
+                let { searchInput, size, defQuery, pageSize, sorter, facetsEle, noSearchOnInit } = options
                 this.app = app
                 this.offset = 0
                 this.pinned = {}
                 this.options = options
+                this.inst = Math.random()
 
                 /* setup search bar and events */
                 this.sb = searchInput
                 if (!this.sb) {
-                    this.sb = document.createElement('input')
-                    resultContainer.appendChild(this.sb)
+                    render('searcher', {
+                        ele: 'div', attribs: { style: 'border: solid 1px lightgray; padding: 2px; background: white; display: inline-flex; align-items: center; width: 100%' }, children: [
+                            { ele: 'input', iden: 'sb', attribs: { style: 'border: none; outline: none; display: inline; background: transparent; width: max-content; flex-grow: 1' } },
+                            { ele: 'i', attribs: { classList: 'fa fa-search' } }
+                        ]
+                    }, (k, v) => this[k] = v, resultContainer)
                 }
                 this.sb.addEventListener('input', _ => this.search(_.target.value))
 
@@ -514,15 +539,23 @@
                     ]
                 }, (id, ele) => this[id] = ele, resultContainer)
 
-                /* trigger a default search */
-                this.search("")
+                /* trigger a initial search if required */
+                if (!noSearchOnInit)
+                    this.search("")
             }
 
             search(str) {
-                let { sb, rc, searchInput, size, defQuery, pageSize, sorter, app, offset } = { ...this, ...this.options };
-                sb.value = str
+
+                if (this.locked() && !confirm('You have some unsaved content, do you still want to continue?'))
+                    return
+                this.unlock()
+
+                let { sb, rc, searchInput, size, defQuery, prefix, pageSize, sorter, app, offset } = { ...this, ...this.options };
+                str = (str == "" ? defQuery : str) || ""
+                if (str != defQuery)
+                    sb.value = str
                 callWithWaitUI(rc, (done) => {
-                    str = str == "" ? defQuery : str
+                    str = (prefix ? prefix + " " : "") + str
                     app.getSearchResults(str, offset, pageSize || 10).then(d => {
                         let { results, facetResults, totalResults } = d.json
 
@@ -547,6 +580,7 @@
             populateFacets(facetResults) {
                 const { app, facetsEle } = { ...this, ...this.options },
                     info = { 'tags': ['Tags', '#'], 'type': ['Post types', '%'], 'owner': ['Contributors', '~'] }
+                if (!facetsEle) return
                 facetsEle.innerHTML = ''
                 let arr = ['type', 'tags', 'owner']
                 arr.forEach(key => {
@@ -580,14 +614,30 @@
             }
 
             showCard(r) {
-                let { rc, size, app } = { ...this, ...this.options }
+                let { rc, size, app, pickableResults, resultPickedCallback } = { ...this, ...this.options }
 
                 /* make a container for each post, to keep the sort order */
-                let c = render('inode', { ele: 'div', classList: 'container', styles: { borderLeft: `solid 4px ${randColor()}`, visibility: 'hidden' } })
-                rc.appendChild(c)
+                let c = render('inode', { ele: 'div', classList: `container ${size}`, styles: { borderLeft: pickableResults ? '' : `solid 4px ${randColor()}`, visibility: 'hidden' } })
+                if (pickableResults) {
+                    rc.appendChild(render('inode', {
+                        ele: 'label', children: [
+                            { ele: 'input', attribs: { type: 'radio', name: `s-inst-${this.inst}` }, classList: 'picker' },
+                            {
+                                ele: c, preBuilt: true,
+                                evnts: {
+                                    dblclick: _ => {
+                                        resultPickedCallback && resultPickedCallback(r)
+                                    }
+                                }
+                            }
+                        ]
+                    }))
+                } else {
+                    rc.appendChild(c)
+                }
 
                 if (size == 'min') {
-
+                    new SmallInode(c, app, r)
                 } else if (size == 'max') {
                     new LargeInode(c, app, r)
                 }
@@ -632,6 +682,10 @@
                 this.pages.innerHTML = ''
                 this.pages.appendChild(render('paginator', container))
             }
+
+            lock() { this._lock = true }
+            locked() { return this._lock }
+            unlock() { this._lock = false }
         }
 
         class Editor {
@@ -740,14 +794,17 @@
                 }
 
                 this.inodes = inodes
+                let u = new URL(window.location.href)
                 this.searcher = new Searcher(c('left-w85'), this, {
                     searchInput: g('searchbox'),
                     size: 'max',
-                    defQuery: new URL(window.location.href).searchParams.get("q") || "#homepage/*",
+                    defQuery: "#homepage/*",
                     facetsEle: c('search-facets'),
                     sorter: homePageSorter,
-                    pageSize: 10
+                    pageSize: 10,
+                    noSearchOnInit: true
                 })
+                this.searcher.search(u.searchParams.get("q") || "")
                 this.editor = new Editor({}, g('editor-pane'), this)
 
                 this.showUserInfo()
@@ -785,9 +842,6 @@
             }
 
             search(x) {
-                if(this.locked() && !confirm('You have some unsaved content, do you still want to continue?'))
-                    return
-                this.unlock()
                 return this.searcher.search(x)
             }
 
@@ -950,9 +1004,9 @@
                 })
             }
 
-            lock() { this._lock = true }
-            locked() { return this._lock }
-            unlock() { this._lock = false }
+            lock() { this.searcher.lock() }
+            locked() { return this.searcher.locked() }
+            unlock() { this.searcher.unlock() }
         }
 
         class INodes {
@@ -1112,13 +1166,7 @@
             <div class="title-mid-panel">
                 <div class="search-wrapper">
                     <input id="searchbox" class="search-input searchbox" type="text" placeholder="search">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor"
-                        stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="feather feather-search"
-                        viewBox="0 0 24 24">
-                        <defs></defs>
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <path d="M21 21l-4.35-4.35"></path>
-                    </svg>
+                    <i class="fas fa-search"></i>
                 </div>
             </div>
             <div class="title-right-panel">

@@ -251,6 +251,7 @@ function _render(name, spec, elemCreated, container) {
         else spec.children.forEach(child => _render(name, child, elemCreated, e))
     }
     if (spec.value) e.value = spec.value
+    if (spec.title) e.title = spec.title
     spec.attribs && Object.keys(spec.attribs).forEach(key => {
         e[key] = spec.attribs[key]
     })
@@ -832,11 +833,11 @@ function StoryTeller(storyBoardElement) {
 
 }
 
-function makeSearchAndSelectButton(text, itemType, resultTemplate, valuePickedCallback, obj) {
-    return new _makeSearchAndSelectButton(text, itemType, resultTemplate, valuePickedCallback, obj)
+function makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj) {
+    return new _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj)
 }
 
-function _makeSearchAndSelectButton(text, itemType, resultTemplate, valuePickedCallback, obj) {
+function _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj) {
     return render('s-and-s-btn', {
         ele: 'div',
         iden: 'container',
@@ -871,45 +872,41 @@ function _makeSearchAndSelectButton(text, itemType, resultTemplate, valuePickedC
                                 ele: 'div',
                                 iden: 'searchpane',
                                 classList: 'searchpane',
-                                children: [
-                                    {
-                                        ele: 'input', classList: 'search-box', label: `Search ${itemType}`,
-                                        evnts: {
-                                            input: (e) => {
-                                                inodes.search(`%${itemType} ${e.target.value}`)
-                                                    .then(resp => JSON.parse(resp.response))
-                                                    .then(res => {
-                                                        this.searchResults.innerHTML = ""
-                                                        res.results.forEach(item => {
-                                                            render('s-and-s-btn-search-result', {
-                                                                ele: 'div',
-                                                                classList: 'container',
-                                                                children: [{ ele: resultTemplate(item), preBuilt: true }],
-                                                                evnts: {
-                                                                    dblclick: () => {
-                                                                        valuePickedCallback && valuePickedCallback(item)
-                                                                        this.container.data = item;
-                                                                        this.searchpane.style.display = 'none';
-                                                                        this.pickedItem.style.display = 'block';
-                                                                        this.actions.style.display = 'flex'
-                                                                        this.pickedItem.innerHTML = ''
-                                                                        render('picked-item', { ele: resultTemplate(item), preBuilt: true }, () => 1, this.pickedItem)
-                                                                    }
-                                                                }
-                                                            }, () => 1, this.searchResults)
-                                                        })
-                                                    })
+                                evnts: {
+                                    rendered: ele => {
+                                        if(obj)
+                                            return
+                                        new Searcher(ele, app, {
+                                            size: 'min',
+                                            pageSize: 10,
+                                            pickableResults: true,
+                                            prefix: `%${itemType}`,
+
+                                            resultPickedCallback: (r) => {
+                                                console.log(r)
+                                                valuePickedCallback(r)
+                                                this.container.data = r;
+                                                this.searchpane.style.display = 'none';
+                                                this.pickedItem.style.display = 'block';
+                                                this.actions.style.display = 'flex'
+                                                this.pickedItem.innerHTML = ''
+                                                new SmallInode(this.pickedItem, app, r, false)
                                             }
-                                        }
-                                    },
-                                    { ele: 'div', iden: 'searchResults', classList: 'search-results' }
-                                ]
+                                        })
+                                    }
+                                }
                             },
                             {
                                 ele: 'div',
                                 classList: 'picked-item',
                                 iden: 'pickedItem',
-                                children: !obj ? [] : [{ ele: resultTemplate(obj), preBuilt: true }]
+                                evnts: {
+                                    rendered: ele => {
+                                        if(obj) {
+                                            new SmallInode(ele, app, obj, false)
+                                        }
+                                    }
+                                }
                             }
                         ]
                     },
@@ -922,7 +919,7 @@ function _makeSearchAndSelectButton(text, itemType, resultTemplate, valuePickedC
                             {
                                 ele: 'span',
                                 classList: 'action',
-                                attribs: { innerHTML: 'reset', title: 'reset this unit' },
+                                attribs: { innerHTML: '<i class="fa fa-times"></i>', title: 'reset this unit' },
                                 evnts: {
                                     click: () => {
                                         this.container.setAttribute('data', undefined);
