@@ -35,12 +35,6 @@ public class AppNotificationController {
         return ANS.getNotificationsFor(SecurityUtil.getCurrentUser(), offset, size);
     }
 
-    @PostMapping("")
-    public void postNotification(@RequestParam("ugids") ArrayList<String> ugids, @RequestParam("txt") String txt) throws Exception {
-        AppNotification.NotificationData ndata = AppNotification.NotificationData.builder().nFrom(SecurityUtil.getCurrentUser()).ntext(txt).ptime(System.currentTimeMillis()).build();
-        ANS.postNotification(ugids, ndata);
-    }
-
     @GetMapping("/unseen")
     public Integer getUnseenNotificationCount() throws Exception {
         return ANS.getUnseenNotificationCount();

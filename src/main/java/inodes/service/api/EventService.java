@@ -82,7 +82,7 @@ public class EventService {
         AppNotification.NotificationData transform(EventData payload);
     }
 
-    enum Type {
+    public enum Type {
 
         REGISTER_USER
                 (EnumSet.of(NotificationType.EMAIL), es.getUserResolver(), es.getRegisterEmailTemplateBuilder(), null, null),
@@ -109,7 +109,11 @@ public class EventService {
                 (EnumSet.of(NotificationType.EMAIL, NotificationType.APP_NOTIFICATION), es.getPermissionGivenWatcherResolver(), null, null, es.getPermissionGivenAppNotificationBuilder()),
 
         NEW_SUBSCRIPTION
-                (EnumSet.of(NotificationType.EMAIL), es.getNewSubscriptionRecptResolver(), es.getNewSubscriptionEmailBuilder(), null, null);
+                (EnumSet.of(NotificationType.EMAIL), es.getNewSubscriptionRecptResolver(), es.getNewSubscriptionEmailBuilder(), null, null),
+
+        EXTERNAL_NOTIF
+                (EnumSet.of(NotificationType.EMAIL, NotificationType.APP_NOTIFICATION, NotificationType.TEAMS_NOTIFICATION), es.getExternalEventRcptResolver(), es.getExternalEventEmailBuilder(), es.getExternalEventTeamsNotifBuilder(), es.getExternalEventAppNotifBuilder());
+        ;
 
         EnumSet<NotificationType> notifTypes;
 
@@ -293,6 +297,15 @@ public class EventService {
         Event event;
     }
 
+    private RecipientResolver getExternalEventRcptResolver() {
+        return o -> ((List<String>)o.get("for")).stream()
+                        .map(u -> Reciepient.builder()
+                                    .id(DataService.getGFromGtag(u) != null? DataService.getGFromGtag(u) : DataService.getUFromUtag(u))
+                                    .typ(DataService.getGFromGtag(u) != null? RecipientType.GROUP : RecipientType.USER)
+                                    .build())
+                        .collect(Collectors.toSet());
+    }
+
     private RecipientResolver getPermissionProviderResolver() {
         return o -> {
             Set<Reciepient> reciepients = new HashSet<>();
@@ -377,6 +390,30 @@ public class EventService {
 
     private RecipientResolver getUserResolver() {
         return o -> Collections.singleton(Reciepient.builder().id(((User) o.get("user")).getUserName()).typ(RecipientType.USER).build());
+    }
+
+    private EventToEmailNotificationTransformer getExternalEventEmailBuilder() {
+        return ed -> {
+            if(ed.get("subject") == null)
+                return null;
+            return new EmailService.EmailObject()
+                    .withSubject((String) ed.get("subject"))
+                    .withBody((String) ed.get("txt"));
+        };
+    }
+
+    private EventToAppNotificationTransfomer getExternalEventAppNotifBuilder() {
+        return ed -> AppNotification.NotificationData.builder()
+                .ptime(System.currentTimeMillis())
+                .ntext((String) ed.get("txt"))
+                .nFrom(ed.getPublisher())
+                .build();
+    }
+
+    private EventToTeamsNotificationTransformer getExternalEventTeamsNotifBuilder() {
+        return ed -> TeamsNotificationSenderService.TeamsNotification.builder()
+                .body((String) ed.get("txt"))
+                .build();
     }
 
     private EventToEmailNotificationTransformer getRegisterEmailTemplateBuilder() {
@@ -547,6 +584,9 @@ public class EventService {
                             try {
 
                                 NotificationPayLoad payload = notificationType.getPayload(e);
+
+                                if(payload == null)
+                                    return;
 
                                 Set<Reciepient> recipients = e.getReciepients();
 

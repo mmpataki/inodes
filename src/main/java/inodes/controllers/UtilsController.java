@@ -1,5 +1,11 @@
 package inodes.controllers;
 
+import inodes.models.AppNotification;
+import inodes.service.api.AppNotificationService;
+import inodes.service.api.EventData;
+import inodes.service.api.EventService;
+import inodes.util.SecurityUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.net.ssl.*;
@@ -13,11 +19,16 @@ import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @RestController
 @CrossOrigin
 public class UtilsController {
+
+    @Autowired
+    EventService ES;
 
     public UtilsController() {
         TrustManager[] trustAllCerts = new TrustManager[]{
@@ -61,12 +72,12 @@ public class UtilsController {
         HttpsURLConnection.setDefaultHostnameVerifier(validHosts);
     }
 
-    @RequestMapping(value = "/test-login", method = RequestMethod.POST)
+    @PostMapping("/test-login")
     public String testLogin() throws IOException {
         return "sucess";
     }
 
-    @RequestMapping(value = "/nocors", method = RequestMethod.POST)
+    @PostMapping("/nocors")
     public void noCors(@RequestBody NoCorsRequest req, HttpServletResponse resp) throws IOException {
 
         URL url = new URL(req.getUrl());
@@ -88,6 +99,11 @@ public class UtilsController {
         while ((length = in.read(buf)) > 0) {
             out.write(buf, 0, length);
         }
+    }
+
+    @PostMapping("/notifications")
+    public void postNotification(@RequestParam("ugids") ArrayList<String> ugids, @RequestParam(required = false) String subject, @RequestParam("txt") String txt) throws Exception {
+        ES.post(EventService.Type.EXTERNAL_NOTIF, EventData.of("for", ugids, "subject", subject, "txt", txt));
     }
 
     public static class NoCorsRequest {

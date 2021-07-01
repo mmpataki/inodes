@@ -795,6 +795,9 @@
                 }
 
                 this.inodes = inodes
+
+                inodes.testLogin().catch(() => this.logout())
+
                 let u = new URL(window.location.href)
                 this.searcher = new Searcher(c('left-w85'), this, {
                     searchInput: g('searchbox'),
@@ -827,10 +830,7 @@
             }
 
             logout() {
-                inodes.logout().finally(_ => {
-                    showInfo("Logged out successfully")
-                    this.showUserInfo()
-                })
+                inodes.logout().finally(_ => this.showUserInfo())
             }
 
             pin(id, ele) {
@@ -1012,7 +1012,7 @@
                     let h = d.headers;
                     setCookie(USER_KEY, h['authinfo'].split(":")[0]);
                     setCookie(TOK_KEY, h['authinfo'].split(":")[1]);
-                    showInfo("logged in successfully")
+                    showInfo(`Welcome ${u}!`)
                     this.showUserInfo()
                     this.search("")
                 }).catch(e => {
@@ -1040,8 +1040,11 @@
                 this.scriptPromises = {}
                 this.pageSize = 10;
                 this.pageNum = 0;
-                post('/test-login').catch(() => this.logout())
                 this.klasses = get('/klasses').then(x => x.json).then(a => a.reduce((m, o) => { m[o.name] = o; return m }, {}))
+            }
+
+            testLogin() {
+                return post('/test-login')
             }
 
             loadKlass(klassName) {
