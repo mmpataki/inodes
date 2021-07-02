@@ -4,12 +4,12 @@
     "applets-plugin/applets.js",
     "applets-plugin/beautify-html.js",
     "applets-plugin/beautify.js",
-    "posts-plugin/highlight.min.js",
+    "/highlight.min.js",
     "applets-plugin/api.js"
   ],
   "cssPaths": [
     "applets-plugin/applets.css",
-    "posts-plugin/default.min.css",
+    "/default.min.css",
     "applets-plugin/api.css"
   ],
   "version": 0,

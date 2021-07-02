@@ -874,7 +874,7 @@ function _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj) {
                                 classList: 'searchpane',
                                 evnts: {
                                     rendered: ele => {
-                                        if(obj)
+                                        if (obj)
                                             return
                                         new Searcher(ele, app, {
                                             size: 'min',
@@ -902,7 +902,7 @@ function _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj) {
                                 iden: 'pickedItem',
                                 evnts: {
                                     rendered: ele => {
-                                        if(obj) {
+                                        if (obj) {
                                             new SmallInode(ele, app, obj, false)
                                         }
                                     }
@@ -1003,4 +1003,61 @@ function copyFormatted(html) {
     }
 
     focused.focus();
+}
+
+
+function makeMarkDownEditor(id, value, attachCallBack) {
+    return {
+        ele: 'div',
+        iden: id,
+        evnts: {
+            rendered: e => {
+                const Editor = toastui.Editor;
+                const editor = new Editor({
+                    el: e,
+                    height: '100%',
+                    initialEditType: 'markdown',
+                    previewStyle: 'vertical',
+                    initialValue: value || "",
+                    usageStatistics: false
+                })
+
+                e.mdeditor = editor
+
+                editor.removeToolbarItem('image')
+                editor.removeToolbarItem('scroll')
+
+                editor.addCommand('markdown', 'insertimage', function () {
+                    console.log(arguments)
+                    filePicker([], 'Pick an image').then(fileNames => fileNames.forEach(fn => editor.insertText(`\n![Put your description here](${fn})\n`)))
+                })
+
+                editor.addCommand('markdown', 'attach', function () {
+                    console.log(arguments)
+                    filePicker([], 'Pick files to attach').then(attachCallBack)
+                })
+
+                editor.insertToolbarItem({ groupIndex: 3, itemIndex: 2 }, {
+                    name: 'inodeimage',
+                    tooltip: 'Insert image',
+                    command: 'insertimage',
+                    className: 'image toastui-editor-toolbar-icons'
+                })
+
+                editor.insertToolbarItem({ groupIndex: 3, itemIndex: 3 }, {
+                    name: 'inodeattachment',
+                    tooltip: 'Add attachment',
+                    command: 'attach',
+                    className: 'fa fa-paperclip'
+                })
+            }
+        }
+    }
+}
+
+function makeMarkdownViewer(id, mdcontent) {
+    return {
+        ele: 'div', iden: id,
+        evnts: { rendered: e => { e.mdviewer = toastui.Editor.factory({el: e, viewer: true, initialValue: mdcontent }) } }
+    }
 }

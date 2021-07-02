@@ -2,12 +2,13 @@
   "name": "posts",
   "jsPaths": [
     "./posts-plugin/posts.js",
-    "./posts-plugin/showdown.min.js",
-    "./posts-plugin/highlight.min.js"
+    "/toastui-editor-all.min.js",
+    "/highlight.min.js"
   ],
   "cssPaths": [
     "./posts-plugin/posts.css",
-    "./posts-plugin/default.min.css"
+    "/toastui-editor.min.css",
+    "/idea.min.css"
   ],
   "version": 1
 }
