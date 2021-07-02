@@ -1006,10 +1006,9 @@ function copyFormatted(html) {
 }
 
 
-function makeMarkDownEditor(id, value, attachCallBack) {
+function makeMarkDownEditor(id, value, classList, attachCallBack) {
     return {
-        ele: 'div',
-        iden: id,
+        ele: 'div', iden: id, classList, styles: {fontSize: 'inherit'},
         evnts: {
             rendered: e => {
                 const Editor = toastui.Editor;
@@ -1019,13 +1018,18 @@ function makeMarkDownEditor(id, value, attachCallBack) {
                     initialEditType: 'markdown',
                     previewStyle: 'vertical',
                     initialValue: value || "",
-                    usageStatistics: false
+                    usageStatistics: false,
+                    linkAttribute: {
+                        target: '_blank',
+                        contenteditable: 'false',
+                        rel: 'noopener noreferrer'
+                    }
                 })
 
                 e.mdeditor = editor
 
                 editor.removeToolbarItem('image')
-                editor.removeToolbarItem('scroll')
+                editor.removeToolbarItem('toggleScrollSync')
 
                 editor.addCommand('markdown', 'insertimage', function () {
                     console.log(arguments)
@@ -1055,9 +1059,19 @@ function makeMarkDownEditor(id, value, attachCallBack) {
     }
 }
 
-function makeMarkdownViewer(id, mdcontent) {
+function makeMarkdownViewer(id, mdcontent, classList) {
     return {
-        ele: 'div', iden: id,
-        evnts: { rendered: e => { e.mdviewer = toastui.Editor.factory({el: e, viewer: true, initialValue: mdcontent }) } }
+        ele: 'div', iden: id, classList, styles: {fontSize: 'inherit'},
+        evnts: {
+            rendered: e => {
+                e.mdviewer = toastui.Editor.factory({
+                    el: e, viewer: true, initialValue: mdcontent, linkAttribute: {
+                        target: '_blank',
+                        contenteditable: 'false',
+                        rel: 'noopener noreferrer'
+                    }
+                })
+            }
+        }
     }
 }

@@ -2,20 +2,15 @@ class posts {
 
     constructor() {
         this.elems = {}
-        this.extensions = [{
-            type: 'output',
-            regex: new RegExp(`<([A-Za-z]+)>`, 'g'),
-            replace: `<$1 class="shdn-$1">`
-        }]
         this.attachments = []
     }
 
     getCard(obj) {
-        let content = 
-            (obj.title ? "## " + obj.title + "\n" : "")
+        let content =
+            (obj.title ? `# ${obj.title}\n` : "")
             + obj.content
-            + "\n\n" 
-            + obj.attachments.map(file => `<a href='${file}'><img src='/posts-plugin/attach.png'> ${file.replace(/^.*[\\\/]/, '')}</a>`).join('\n')
+            + "\n\n"
+            + (obj.attachments || []).map(file => `<a href='${file}'><i class='fa fa-paperclip'></i> ${file.replace(/^.*[\\\/]/, '')}</a>`).join('\n')
         return render('', makeMarkdownViewer('mdviewer', content))
     }
 
@@ -41,7 +36,7 @@ class posts {
                                 ele: 'div',
                                 styles: { height: '450px' },
                                 children: [
-                                    makeMarkDownEditor('editor', obj ? obj.content : "", files => {
+                                    makeMarkDownEditor('editor', obj ? obj.content : "", "", files => {
                                         self.attachments = [...new Set(self.attachments.concat(files))]
                                         self.updateAttachmentView()
                                     })
@@ -96,7 +91,7 @@ class posts {
                             classList: 'link',
                             attribs: { href: file },
                             children: [
-                                { ele: 'img', attribs: { src: '/posts-plugin/attach.png' } },
+                                { ele: 'i', attribs: { classList: 'fa fa-paperclip' } },
                                 { ele: 'span', text: file.replace(/^.*[\\\/]/, '') }
                             ]
                         },
