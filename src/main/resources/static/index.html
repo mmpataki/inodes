@@ -33,7 +33,7 @@
                     lnk = x.split("|")[1].trim()
                 }
                 this.xshadow = this.attachShadow({ mode: 'open' })
-                this.xshadow.innerHTML = `<span style='background: wheat; padding: 1px 9px; font-size: 0.9em; border-radius: 5px'><a href='?q=${encodeURIComponent(lnk)}' target='_blank'>${txt}</a> <img src='/outlink.svg'/></span>`
+                this.xshadow.innerHTML = `<code style='background: rgba(27,31,35,.05); padding: 1px 9px; font-size: 0.9em; border-radius: 5px'><a href='?q=${encodeURIComponent(lnk)}' target='_blank'>${txt}</a> <img src='/outlink.svg'/></code>`
             }
         }
         customElements.define('i-srch', InodesSearchTag)
@@ -391,7 +391,7 @@
                                                 ...(!app.loggedIn() ? [] : [{ ele: 'span', classList: 'action', text: 'flag', evnts: { click: _ => app.flagInode(obj.id) } }]),
 
                                                 /* this is temporary, we need to first build a approve applet */
-                                                ...(!obj.needsApproval && app.loggedIn() && app.currentUid() == 'admin' ? [] : [{ ele: 'span', classList: 'action', text: 'approve', evnts: { click: () => app.approveInode(obj.id) } }]),
+                                                ...(!obj.needsApproval || app.loggedIn() || app.currentUid() == 'admin' ? [] : [{ ele: 'span', classList: 'action', text: 'approve', evnts: { click: () => app.approveInode(obj.id) } }]),
 
                                                 ...(app.loggedIn() != 'admin' ? [] : [{ ele: 'span', text: 'trust', classList: 'action', evnts: { click: _ => app.trustInode(obj.id) } }])
                                             ]
