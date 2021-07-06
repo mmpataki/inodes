@@ -1,15 +1,12 @@
 {
   "name": "applets",
+  "desc" : "small applications (even CLIs) which should not require installation",
   "jsPaths": [
     "applets-plugin/applets.js",
-    "applets-plugin/beautify-html.js",
-    "applets-plugin/beautify.js",
-    "/highlight.min.js",
     "applets-plugin/api.js"
   ],
   "cssPaths": [
     "applets-plugin/applets.css",
-    "/default.min.css",
     "applets-plugin/api.css"
   ],
   "version": 0,

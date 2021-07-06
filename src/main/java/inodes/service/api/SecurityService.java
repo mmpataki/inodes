@@ -5,14 +5,19 @@ import inodes.models.Klass;
 import inodes.models.PermissionRequest;
 import inodes.repository.PermissionRequestsRepo;
 import inodes.util.SecurityUtil;
+import lombok.extern.log4j.Log4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
+@Log4j
 public class SecurityService extends Observable {
 
     @Autowired
@@ -28,7 +33,7 @@ public class SecurityService extends Observable {
     PermissionRequestsRepo PRR;
 
     @Autowired
-    AuthorizationService AS;
+    VersionControlService VCS;
 
     enum EventTypes {
         APPROVAL_NEEDED,
@@ -48,6 +53,31 @@ public class SecurityService extends Observable {
                 doc.setVisibility(Arrays.asList(DataService.getUserTag(doc.getOwner()), DataService.getGroupTag(UserGroupService.SECURITY)));
                 notifyPostEvent(EventTypes.APPROVAL_NEEDED, EventData.of("doc", doc));
             }
+        };
+
+        Interceptor approvalIntereptor = ed -> {
+            List<Document> docs = (List<Document>) ed.get("results");
+            String user = ed.getPublisher();
+            List<Document> retSet = docs.stream().map(doc -> {
+                if (!doc.isNeedsApproval() || (user != null && user.equals(doc.getOwner())))
+                    return doc;
+                try {
+                    List<VersionControlService.DocEdit> edits = VCS.getHistoryOf(doc.getId()).getEdits();
+                    Collections.sort(edits);
+                    for (int i = edits.size() - 1; i >= 0; i--) {
+                        VersionControlService.DocEdit edit = edits.get(i);
+                        Document vdoc = VCS.getDocWithVersion(doc.getId(), edit.getMtime(), edit.getAuthor());
+                        if (!vdoc.isNeedsApproval() || user.equals(vdoc.getOwner()))
+                            return vdoc;
+                    }
+                    return null;
+                } catch (Exception e) {
+                    log.error("failed to get the document history");
+                }
+                return null;
+            }).filter(Objects::nonNull).collect(Collectors.toList());
+            docs.clear();
+            docs.addAll(retSet);
         };
 
         /* if user has no permissions on this object, he won't be able to access the content
@@ -70,7 +100,7 @@ public class SecurityService extends Observable {
                     }
                 }
                 if (!hasPerm) {
-                    if(getPermReqByFor(user, doc.getId()) != null)
+                    if (getPermReqByFor(user, doc.getId()) != null)
                         doc.setPermRequested();
                     else
                         doc.setPermNeeded();
@@ -83,6 +113,7 @@ public class SecurityService extends Observable {
 
         DS.registerPreEvent(DataService.ObservableEvents.NEW, interceptor);
         DS.registerPreEvent(DataService.ObservableEvents.UPDATE, interceptor);
+        DS.registerPostEvent(DataService.ObservableEvents.SEARCH, approvalIntereptor);
         DS.registerPostEvent(DataService.ObservableEvents.SEARCH, permissionIntereptor);
     }
 
@@ -96,7 +127,7 @@ public class SecurityService extends Observable {
 
     public void askPermission(String docId) throws Exception {
         Document doc = DS.get(docId);
-        if(doc == null) {
+        if (doc == null) {
             throw new UnAuthorizedException("no such document is visible for you");
         }
         PermissionRequest preq = PermissionRequest.builder()

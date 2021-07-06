@@ -1,16 +1,6 @@
 .posts-editor-preview {
     display: inline-block;
 }
-.posts-editor, .posts-title {
-    width: 100%;
-    margin-bottom: 10px;
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
-         box-sizing: border-box;
-    border: solid 1px gray;
-    resize: none;
-    padding: 7px;
-}
 .posts-preview {
     width: auto;
     min-height: 10px;
@@ -50,10 +40,10 @@
 .attachments-view-attachment {
     display: inline-block;
     margin-right: 10px;
-    padding: 5px 10px;
-    border: solid 1px green;
+    padding: 2px 10px;
+    border: solid 1px #dadde6;
     border-radius: 5px;
-    background-color: lightgoldenrodyellow;
+    font-size: 0.8em;
 }
 
 .posts-img-ctrl {
@@ -79,14 +69,12 @@
 }
 
 .posts-attachments-view {
-    padding: 10px;
-    border: dashed 1px black;
-    margin: 5px 0px;
+    padding: 10px 0px;
     display: none;
 }
 
-.attachments-view-link > img, .attachments-view-link > span {
-    padding-right: 5px;
+.attachments-view-link {
+    padding: 0px 5px;
 }
 
 .attachments-view-deletebtn {

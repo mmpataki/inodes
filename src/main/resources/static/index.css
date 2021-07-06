@@ -20,10 +20,6 @@ body {
     font-size: 0.8em
 }
 
-#toptags {
-    
-}
-
 .inode-comment-card {
     text-align: right;
     padding: 3px;
@@ -150,7 +146,7 @@ body {
 
 .inode-actions {
     float: left;
-    margin: 10px 0px 5px 0px;
+    margin: 10px 0px 0px 0px;
 }
 .inode-actions-list {
     width: 100%;
@@ -182,8 +178,6 @@ body {
 .inode-action:hover {
     color: black;
 }
-
-#editor {}
 
 #changenoteeditor {
     margin-top: 10px;
@@ -280,22 +274,12 @@ body {
 }
 
 #editor-pane {
-    margin-top: 20px;
-    margin-bottom: 30px;
-    padding: 20px;
+    margin: 20px 10px 10px 10px;
+    padding: 10px;
     background-color: white;
     border-radius: 10px;
     display: none;
     position: relative;
-}
-
-#editor-pane > input, #editor-pane > select {
-    display: block;
-    padding: 10px 5px;
-    width: 100%;
-    width: -moz-available;          /* For Mozzila */
-    width: -webkit-fill-available;  /* For Chrome */
-    width: stretch;                 /* Unprefixed */
 }
 
 .trending-tag {
@@ -380,7 +364,8 @@ body {
     font-weight: bolder;
 }
 .inode-postowner, .inode-posttime {
-    background-color: #f0f0f0;
+    background-color: #f8f8f8;
+    font-size: 0.9em;
     display: block;
     padding: 2px;
 }
@@ -502,8 +487,8 @@ animation: fadeOut ease 8s;
 }
 
 ::-webkit-scrollbar {
-    width: 3px;
-    height: 4px;
+    width: 5px;
+    height: 6px;
 }
     
     /* Track */
@@ -776,20 +761,12 @@ img {
 
 
 /* story board */
-.storyboard-button {
-    padding: 10px;
-    font-weight: bolder;
-    cursor: pointer;
-    background-color: #eaeaea;
-}
-
-.storyboard-button:hover {
-    background-color: lightgray;
+.storyboard-backbtn {
+    margin-right: 10px;
 }
 
 .storyboard-title {
-    padding: 10px;
-    font-weight: bolder;
+    font-size: 0.9em;
 }
 
 .storyboard-titlebar {
@@ -797,17 +774,17 @@ img {
 }
 
 .storyboard-content {
-    border: dashed 2px darkblue;
-    padding: 20px 10px;
-    margin: 20px;
+    border: dashed 1px #dadde6;
+    padding: 20px 20px;
+    margin: 10px 0px;
 }
 
-.storyboard-bottombar > button {
-    margin: 20px;
+.storyboard-nextbtn {
+    float: right;
 }
 
 .storyboard-errmsg {
-    padding: 10px;
+    padding: 5px 0px;
     color: red;
 }
 
@@ -851,7 +828,7 @@ inode-error {
 }
 
 .inode-max {
-    padding: 15px;
+    padding: 15px 15px 10px 15px;
     margin: 20px;
 }
 
@@ -871,8 +848,19 @@ inode-error {
     justify-content: center-end;
 }
 
+.s-and-s-btn-content-and-actions {
+    position: relative;
+}
+
+.s-and-s-btn-actions {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+}
+
 .s-and-s-btn-searchpane {
     padding: 10px;
+    display: none;
 }
 
 .s-and-s-btn-searchpane > .searcher-posts-container > div:nth-child(2) {
@@ -881,8 +869,57 @@ inode-error {
     max-height: 250px;  
 }
 
-.s-and-s-btn-action {
-    position: absolute;
-    top: 5px;
-    right: 5px;
+.form-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 0px;
+}
+.form-row label:not(:first-child) {
+    padding-left: 20px;
+}
+.form-row button {
+    margin-right: 10px;
+}
+.form-col {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0px;
+}
+.p10 {padding : 10px}
+.p10x0 {padding : 10px 0px}
+.p0x10 {padding : 0px 10px}
+.fdrflex { display: flex; align-items: center }
+.tagify { flex-grow: 1 }
+.form input, .form textarea, .form select {
+    outline: none;
+    border-radius: 5px;
+    padding: 8px 5px;
+    border: solid 1px #dadde6;
+}
+.form-row * { flex-grow: 1; }
+
+.form-row label, .form-col label, .fdrflex label, .form-col button, .form-row button, .fdrflex button {
+    flex-grow: 0;
+}
+.form-row label, .form-col label, .form-label, .form label {
+    font-size: 0.9em;
+    padding-right: 5px;
+}
+
+
+/* code editor : all code editors should not exceed 500px but, you can set a min-height */
+.inodes-code-editor {
+    min-height: 100px; max-height: 500px;
+    display: flex; flex-direction: column;
+    font-size: 16px;
+    overflow: auto; 
+    border: solid 1px #dadde6;
+    border-radius: 5px;
+}
+.inodes-code-editor > div { display: flex; }
+.inodes-code-editor > div, .inodes-code-editor > div > div:nth-child(2) { flex-grow: 1; }
+
+.aexternal::after {
+    content: url('/outlink.svg');
+    margin-left: 3px;
 }

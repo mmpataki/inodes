@@ -72,7 +72,7 @@ public class VersionControlService {
     }
 
     @Data
-    public class DocEdit {
+    public class DocEdit implements Comparable {
         long mtime;
         String author;
         String changeNote;
@@ -82,6 +82,11 @@ public class VersionControlService {
             try (FileReader fr = new FileReader(String.format("%s/%s/change_%s_%s", root, id, mtime, author))) {
                 changeNote = new BufferedReader(fr).readLine();
             }
+        }
+
+        @Override
+        public int compareTo(Object o) {
+            return (int) (this.mtime - ((DocEdit)o).mtime);
         }
     }
 

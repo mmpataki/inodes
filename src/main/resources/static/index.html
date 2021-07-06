@@ -6,13 +6,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>i-nodes</title>
     <link rel="stylesheet" href="./index.css">
-    <script src="/common.js"></script>
     <script src="./tagify.min.js"></script>
     <link rel="stylesheet" href="./tagify.css">
+    <link rel="stylesheet" href="/toastui-editor.min.css">
+    <script src="/toastui-editor-all.min.js"></script>
+    <script src="/common.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
         integrity="sha512-iBBXm8fW90+nuLcSKlbmrPcLa0OT92xO1BIsZ+ywDWZCvqsWgccV3gFoRBv0z+8dLJgyAHIhR35VZc2oM/gI1w=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="/highlight.min.js"></script>
+    <script src="/showdown.min.js"></script>
+    <link rel="stylesheet" href="/nnfx-light.css">
+    <link rel="stylesheet" href="/github-markdown.css">
     <script>
+
+        class InodesSearchTag extends HTMLElement {
+            constructor() {
+                super()
+                new MutationObserver(e => this.setup(e[0].target.innerHTML)).observe(this, { characterData: true })
+            }
+            connectedCallback() { this.setup(this.innerHTML) }
+            setup(x) {
+                let txt = x, lnk = x
+                if(x.includes("|")) {
+                    txt = x.split("|")[0]
+                    lnk = x.split("|")[1].trim()
+                }
+                this.xshadow = this.attachShadow({ mode: 'open' })
+                this.xshadow.innerHTML = `<span style='background: wheat; padding: 1px 9px; font-size: 0.9em; border-radius: 5px'><a href='?q=${encodeURIComponent(lnk)}' target='_blank'>${txt}</a> <img src='/outlink.svg'/></span>`
+            }
+        }
+        customElements.define('i-srch', InodesSearchTag)
 
         class ITag {
             constructor(container, app, tag, char, hits) {
@@ -366,7 +390,8 @@
 
                                                 ...(!app.loggedIn() ? [] : [{ ele: 'span', classList: 'action', text: 'flag', evnts: { click: _ => app.flagInode(obj.id) } }]),
 
-                                                ...(!obj.needsApproval ? [] : [{ ele: 'span', classList: 'action', text: 'approve', evnts: { click: () => app.approveInode(obj.id) } }]),
+                                                /* this is temporary, we need to first build a approve applet */
+                                                ...(!obj.needsApproval && app.loggedIn() && app.currentUid() == 'admin' ? [] : [{ ele: 'span', classList: 'action', text: 'approve', evnts: { click: () => app.approveInode(obj.id) } }]),
 
                                                 ...(app.loggedIn() != 'admin' ? [] : [{ ele: 'span', text: 'trust', classList: 'action', evnts: { click: _ => app.trustInode(obj.id) } }])
                                             ]
@@ -615,7 +640,7 @@
             }
 
             showCard(r) {
-                let { rc, size, app, pickableResults, resultPickedCallback } = { ...this, ...this.options }
+                let { rc, size, app, pickableResults, showTags, resultPickedCallback } = { ...this, ...this.options }
 
                 /* make a container for each post, to keep the sort order */
                 let c = render('inode', { ele: 'div', classList: `container ${size}`, styles: { borderLeft: pickableResults ? '' : `solid 4px ${randColor()}`, visibility: 'hidden' } })
@@ -638,7 +663,7 @@
                 }
 
                 if (size == 'min') {
-                    new SmallInode(c, app, r)
+                    new SmallInode(c, app, r, showTags)
                 } else if (size == 'max') {
                     new LargeInode(c, app, r)
                 }
@@ -698,41 +723,56 @@
                 this.obj = obj
                 this.pane.style.display = 'block'
                 this.pane.innerHTML = ''
-                render('editor', [
-                    { ele: 'span', classList: 'closebtn', html: '&#x2715;', evnts: { click: _ => this.close() } },
-                    {
-                        ele: 'select', iden: 'typeSelector', label: 'Post type', attribs: { disabled: obj.id != undefined }, styles: { display: 'block', minWidth: '60%' }, evnts: {
-                            rendered: e => this.app.getKlasses().then(x => {
-                                e.innerHTML = Object.keys(x).map(k => `<option>${k}</option>`).join('')
-                                e.value = obj.type || Object.keys(x)[0]
-                                this.renderEditor(obj)
-                            }),
-                            change: _ => this.renderEditor(obj)
-                        }
-                    },
-                    { ele: 'br' },
-                    { ele: 'div', iden: 'editor', styles: { 'min-height': '100px' } },
-                    { ele: 'br' },
-                    { ele: 'input', iden: 'tags', label: 'Tags: ', attribs: { placeholder: 'start typing a tag name. eg edc, hack', value: (obj.tags || []).join(' ') }, evnts: { rendered: e => tagify(e, 'tag') } },
-                    { ele: 'br' },
-                    {
-                        ele: 'input', iden: 'visibility', label: 'Visibility: ', attribs: { placeholder: 'start typing a user or group name' }, evnts: {
-                            rendered: e => {
-                                let t = tagify(e, 'user')
-                                let visibility = obj.id ? (obj.needsApproval ? obj.savedVisibility : obj.visibility) : ['g-public']
-                                visibility = visibility.map(v => {
-                                    return { name: v.substring(2), id: v, value: v, type: v[0] == 'g' ? 'group' : 'user' }
-                                })
-                                t.settings.whitelist.splice(0, visibility.length, ...visibility)
-                                t.removeAllTags()
-                                t.addTags(visibility)
-                            }
-                        }
-                    },
-                    { ele: 'br' },
-                    ...(obj.id ? [{ ele: 'input', iden: 'changeNote', label: 'What did you change ', attribs: { placeholder: 'describe what changed in this version' } }] : []),
-                    { ele: 'button', text: 'Post', evnts: { click: e => this.post(e) } }
-                ], (k, e) => this[k] = e, this.pane)
+                render('editor', {
+                    ele: 'div', classList: '$form', children: [
+                        {
+                            ele: 'div', classList: '$form-row $p0x10', styles: { marginTop: '15px' }, children: [
+                                {
+                                    ele: 'select', iden: 'typeSelector', label: 'Post type:', classList: '$form-input', attribs: { disabled: obj.id != undefined }, evnts: {
+                                        rendered: e => this.app.getKlasses().then(x => {
+                                            e.innerHTML = Object.keys(x).map(k => `<option value='${k}'>${k} &nbsp;  - &nbsp; ${x[k].desc}</option>`).join('')
+                                            e.value = obj.type || Object.keys(x)[0]
+                                            this.renderEditor(obj)
+                                        }),
+                                        change: _ => this.renderEditor(obj)
+                                    }
+                                }
+                            ]
+                        },
+                        { ele: 'div', iden: 'editor', styles: { minHeight: '100px' }, classList: '$p10' },
+                        {
+                            ele: 'div', classList: '$fdrflex $p10', children: [
+                                { ele: 'input', iden: 'tags', label: 'Tags: ', classList: '$p10', attribs: { placeholder: 'start typing a tag name. eg edc, hack', value: (obj.tags || []).join(' ') }, evnts: { rendered: e => tagify(e, 'tag') } }
+                            ]
+                        },
+                        {
+                            ele: 'div', classList: '$fdrflex $p10', children: [
+                                {
+                                    ele: 'input', label: 'Visibility: ', iden: 'visibility', placeholder: 'start typing a user or group name', evnts: {
+                                        rendered: e => {
+                                            let t = tagify(e, 'user')
+                                            let visibility = obj.id ? (obj.needsApproval ? obj.savedVisibility : obj.visibility) : ['g-public']
+                                            visibility = visibility.map(v => ({ name: v.substring(2), id: v, value: v, type: v[0] == 'g' ? 'group' : 'user' }))
+                                            t.settings.whitelist.splice(0, visibility.length, ...visibility)
+                                            t.removeAllTags()
+                                            t.addTags(visibility)
+                                        }
+                                    }
+                                }]
+                        },
+                        ...(!obj.id ? [] : [{
+                            ele: 'div', classList: '$form-row $p10', children: [
+                                { ele: 'input', iden: 'changeNote', label: 'What did you change ', attribs: { placeholder: 'describe what changed in this version' } }
+                            ]
+                        }]),
+                        {
+                            ele: 'div', classList: '$form-row $p10', children: [
+                                { ele: 'button', text: 'Post', evnts: { click: e => this.post(e) } },
+                                { ele: 'button', text: 'Cancel', evnts: { click: _ => this.close() } }
+                            ]
+                        },
+                    ]
+                }, (k, e) => this[k] = e, this.pane)
             }
 
             close() {
@@ -923,7 +963,7 @@
                     this.inodes.deleteInode(id)
                         .then(e => showSuccess(e.response))
                         .then(e => this.refresh())
-                        .catch(c => showError(c))
+                        .catch(c => showError(c.message))
             }
 
             openHistory(id) {
@@ -1235,9 +1275,7 @@
         <hr />
     </div>
     <footer>
-        <center>
-            &copy; Madhusoodan P
-        </center>
+
     </footer>
 </body>
 

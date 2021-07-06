@@ -1,5 +1,5 @@
 const USER_KEY = "user", TOK_KEY = "tok";
-let baseUrl = window.location.port == 5001 ? "http://localhost:8080" : ""
+let baseUrl = window.location.port == 8000 ? "http://localhost:8080" : ""
 let rejectCodeList = [400, 401, 500, 403];
 
 function getBaseUrl() {
@@ -236,18 +236,12 @@ function _render(name, spec, elemCreated, container) {
     if (spec.text) e.innerText = spec.text;
     if (spec.html) e.innerHTML = spec.html;
     if (spec.classList) {
-        spec.classList.split(/\s+/).map(x => e.classList.add(`${name}-${x}`))
+        spec.classList.split(/\s+/).map(x => e.classList.add(x[0] == '$' ? x.substring(1) : `${name}-${x}`))
     }
-    spec.styles && Object.keys(spec.styles).forEach(key => {
-        e.style[key] = spec.styles[key]
-    })
-    spec.evnts && Object.keys(spec.evnts).forEach(key => {
-        e.addEventListener(key, spec.evnts[key])
-    })
+    spec.styles && Object.keys(spec.styles).forEach(key => { e.style[key] = spec.styles[key] })
+    spec.evnts && Object.keys(spec.evnts).forEach(key => { e.addEventListener(key, spec.evnts[key]) })
     if (spec.children) {
-        if (spec.children instanceof Function) {
-            spec.children().map(x => e.appendChild(x))
-        }
+        if (spec.children instanceof Function) spec.children().forEach(x => e.appendChild(x))
         else spec.children.forEach(child => _render(name, child, elemCreated, e))
     }
     if (spec.value) e.value = spec.value
@@ -766,17 +760,13 @@ function StoryTeller(storyBoardElement) {
         children: [
             {
                 ele: 'div', classList: 'titlebar', children: [
-                    { ele: 'span', classList: 'button', iden: 'backbtn', attribs: { title: 'Back', innerHTML: '&larr;' }, evnts: { click: () => this.back() } },
-                    { ele: 'span', classList: 'title', text: '', iden: 'title' }
+                    { ele: 'button', classList: 'backbtn', iden: 'backbtn', html: '&larr; Back', evnts: { click: () => this.back() } },
+                    { ele: 'span', classList: 'title', text: '', iden: 'title' },
+                    { ele: 'button', html: 'Next &rarr;', classList: 'nextbtn', iden: 'nextbtn', evnts: { click: () => this.next() } }
                 ]
             },
             { ele: 'div', classList: 'errmsg', iden: 'errmsg' },
-            { ele: 'div', classList: 'content', iden: 'storyBoard' },
-            {
-                ele: 'div', classList: 'bottombar', children: [
-                    { ele: 'button', text: 'Next', iden: 'nextbtn', evnts: { click: () => this.next() } }
-                ]
-            }
+            { ele: 'div', classList: 'content', iden: 'storyBoard' }
         ]
     }, (id, ele) => this[id] = ele, storyBoardElement);
 
@@ -833,11 +823,11 @@ function StoryTeller(storyBoardElement) {
 
 }
 
-function makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj) {
-    return new _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj)
+function makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj, showTags = false) {
+    return new _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj, showTags)
 }
 
-function _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj) {
+function _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj, showTags = false) {
     return render('s-and-s-btn', {
         ele: 'div',
         iden: 'container',
@@ -858,7 +848,7 @@ function _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj) {
                                 children: [
                                     { ele: 'span', text: 'Pick a ' },
                                     {
-                                        ele: 'span', classList: 'lnk', text: text,
+                                        ele: 'a', classList: 'lnk', attribs: { href: '#' }, text: text,
                                         evnts: {
                                             click: () => {
                                                 this.searchpane.style.display = 'block'
@@ -874,13 +864,12 @@ function _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj) {
                                 classList: 'searchpane',
                                 evnts: {
                                     rendered: ele => {
-                                        if (obj)
-                                            return
                                         new Searcher(ele, app, {
                                             size: 'min',
                                             pageSize: 10,
                                             pickableResults: true,
                                             prefix: `%${itemType}`,
+                                            showTags,
 
                                             resultPickedCallback: (r) => {
                                                 console.log(r)
@@ -890,7 +879,7 @@ function _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj) {
                                                 this.pickedItem.style.display = 'block';
                                                 this.actions.style.display = 'flex'
                                                 this.pickedItem.innerHTML = ''
-                                                new SmallInode(this.pickedItem, app, r, false)
+                                                new SmallInode(this.pickedItem, app, r, showTags)
                                             }
                                         })
                                     }
@@ -903,7 +892,7 @@ function _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj) {
                                 evnts: {
                                     rendered: ele => {
                                         if (obj) {
-                                            new SmallInode(ele, app, obj, false)
+                                            new SmallInode(ele, app, obj, showTags)
                                         }
                                     }
                                 }
@@ -911,10 +900,7 @@ function _makeSearchAndSelectButton(text, itemType, valuePickedCallback, obj) {
                         ]
                     },
                     {
-                        ele: 'div',
-                        iden: 'actions',
-                        classList: 'actions',
-                        styles: { display: obj ? 'flex' : 'none' },
+                        ele: 'div', iden: 'actions', classList: 'actions', styles: { display: obj ? 'flex' : 'none' }, styles: { top: 5, right: 5 },
                         children: [
                             {
                                 ele: 'span',
@@ -1008,14 +994,14 @@ function copyFormatted(html) {
 
 function makeMarkDownEditor(id, value, classList, attachCallBack) {
     return {
-        ele: 'div', iden: id, classList, styles: {fontSize: 'inherit'},
+        ele: 'div', iden: id, classList: `${classList}`, styles: { fontSize: 'inherit' },
         evnts: {
             rendered: e => {
                 const Editor = toastui.Editor;
                 const editor = new Editor({
                     el: e,
                     height: '100%',
-                    initialEditType: 'markdown',
+                    initialEditType: 'wysiwyg',
                     previewStyle: 'vertical',
                     initialValue: value || "",
                     usageStatistics: false,
@@ -1031,15 +1017,12 @@ function makeMarkDownEditor(id, value, classList, attachCallBack) {
                 editor.removeToolbarItem('image')
                 editor.removeToolbarItem('toggleScrollSync')
 
-                editor.addCommand('markdown', 'insertimage', function () {
-                    console.log(arguments)
-                    filePicker([], 'Pick an image').then(fileNames => fileNames.forEach(fn => editor.insertText(`\n![Put your description here](${fn})\n`)))
-                })
+                let imgAdder = _ => filePicker([], 'Pick an image').then(fileNames => fileNames.forEach(fn => editor.insertText(`\n![Put your description here](${fn})\n`)))
 
-                editor.addCommand('markdown', 'attach', function () {
-                    console.log(arguments)
-                    filePicker([], 'Pick files to attach').then(attachCallBack)
-                })
+                editor.addCommand('markdown', 'insertimage', imgAdder)
+                editor.addCommand('wysiwyg', 'insertimage', imgAdder)
+                editor.addCommand('markdown', 'attach', function () { filePicker([], 'Pick files to attach').then(attachCallBack) })
+                editor.addCommand('wysiwyg', 'attach', function () { filePicker([], 'Pick files to attach').then(attachCallBack) })
 
                 editor.insertToolbarItem({ groupIndex: 3, itemIndex: 2 }, {
                     name: 'inodeimage',
@@ -1061,17 +1044,42 @@ function makeMarkDownEditor(id, value, classList, attachCallBack) {
 
 function makeMarkdownViewer(id, mdcontent, classList) {
     return {
-        ele: 'div', iden: id, classList, styles: {fontSize: 'inherit'},
-        evnts: {
+        ele: 'div', iden: id, classList: `${classList} $markdown-body`, styles: { fontSize: 'inherit' }, evnts: {
             rendered: e => {
-                e.mdviewer = toastui.Editor.factory({
-                    el: e, viewer: true, initialValue: mdcontent, linkAttribute: {
-                        target: '_blank',
-                        contenteditable: 'false',
-                        rel: 'noopener noreferrer'
-                    }
-                })
+                showdown.setFlavor('github')
+                var converter = new showdown.Converter()
+                e.innerHTML = converter.makeHtml(mdcontent)
+                e.querySelectorAll('pre code').forEach((block) => hljs.highlightBlock(block))
             }
         }
+    }
+}
+
+function makeExpandable(expandBtnHtml, expandedContent) {
+    return [
+        {
+            ele: 'span', html: expandBtnHtml, evnts: {
+                click: function () {
+                    this.nextElementSibling.style.display = this.nextElementSibling.style.display == 'none' ? 'block' : 'none';
+                }
+            }
+        },
+        { ...expandedContent, styles: { ...expandedContent.styles, display: 'none' } }
+    ]
+}
+
+function makeCodeEditor(id, lang, value, classList, label) {
+    return {
+        ele: 'div', label, classList: `${classList} $inodes-code-editor`, children: [
+            {
+                ele: 'div', iden: id, styles: { fontFamily: 'monospace' }, evnts: {
+                    rendered: e => {
+                        e.textContent = value || ""
+                        hljs.getLanguage('md')
+                        import('/codeeditor/codejar.js').then(_ => e.ceditor = new _.CodeJar(e, _.withLineNumbers(_ => _.innerHTML = hljs.highlight(lang, _.textContent).value)))
+                    }
+                }
+            }
+        ]
     }
 }

@@ -1,14 +1,11 @@
 {
   "name": "posts",
+  "desc": "tiny piece of information like scripts, code-snippets, quirks, hacks",
   "jsPaths": [
-    "./posts-plugin/posts.js",
-    "/toastui-editor-all.min.js",
-    "/highlight.min.js"
+    "./posts-plugin/posts.js"
   ],
   "cssPaths": [
-    "./posts-plugin/posts.css",
-    "/toastui-editor.min.css",
-    "/idea.min.css"
+    "./posts-plugin/posts.css"
   ],
   "version": 1
 }

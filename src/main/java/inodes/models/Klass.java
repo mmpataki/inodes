@@ -12,7 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class Klass {
-    String name;
+    String name, desc;
     List<String> jsPaths;
     List<String> cssPaths;
     Integer version;

@@ -1,30 +1,8 @@
-.applet-toggle-btn {
-    padding: 4px 10px;
-    background-color: lightgrey;
-    display: inline-block;
-    cursor: pointer;
-    margin-right: 1px;
-}
-
-.applet-pane, .applet-editor-toggler, .applet-editor-preview {
-    display: inline-block;
-    width: 100%;
-}
-.applet-editor {
-    width: 100%;
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
-         box-sizing: border-box;
-    border: solid 1px gray;
-    resize: none;
-}
-.applet-preview {
-    display: none;
-    width: auto;
-    border: solid 1px gray;
-    min-height: 10px;
-    padding: 10px;
-}
+.applet-chtml + label, .applet-cjs + label, .applet-preview + label { padding: 5px 15px; border: solid 1px lightgray; display: inline-block; border-bottom: none; border-top-left-radius: 5px; border-top-right-radius: 5px; margin: 0px 1px;}
+.applet-chtml:checked + label, .applet-cjs:checked + label, .applet-preview:checked + label { background: lightgray; }
+.applet-chtml, .applet-cjs, .applet-preview, .applet-ehtml, .applet-ejs, .applet-epreview { display: none }
+.applet-chtml:checked ~ .applet-ehtml, .applet-cjs:checked ~ .applet-ejs { display: flex; min-height: 450px; }
+.applet-preview:checked ~ .applet-epreview { padding: 10px; display: block; border: 1px solid #dadde6; min-height: 230px}
 
 .app-console {
     background-color: transparent;

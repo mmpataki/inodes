@@ -28,39 +28,8 @@ class applets {
         return render('applet', template(obj));
     }
 
-    getSafeCard(obj) {
-        let self = this;
-        let template = function (obj) {
-            return {
-                ele: 'div',
-                classList: 'container',
-                children: [
-                    { ele: 'h4', text: 'HTML'},
-                    {
-                        ele: 'pre',
-                        iden: 'jscode',
-                        classList: 'language-html',
-                        styles: { overflow: 'auto', padding: '10px', border: 'solid 1px gray'},
-                        attribs: {
-                            innerText: html_beautify(obj.html)
-                        }
-                    },
-                    { ele: 'h4', text: 'Javascript'},
-                    {
-                        ele: 'pre',
-                        iden: 'jscode',
-                        classList: 'language-js',
-                        styles: { overflow: 'auto', padding: '10px', border: 'solid 1px gray'},
-                        attribs: {
-                            innerText: js_beautify(obj.js)
-                        }
-                    }
-                ]
-            }
-        }
-        let x = render('applet', template(obj), (id, e) => self[id] = e);
-        hljs.highlightBlock(this.jscode);
-        return x;
+    getSafeCard() {
+        return render('applet', { ele: 'div', text: "This content needs review, please click 'edit' and review the content" }, (id, e) => self[id] = e)
     }
 
     getScript(js) {
@@ -94,100 +63,26 @@ class applets {
     }
 
     getEditor(obj) {
-        let self = this;
-        let renderable = function (obj) {
-            return {
-                ele: "div",
-                classList: "pane",
-                children: [
-                    {
-                        ele: "div",
-                        classList: "editor-toggler",
-                        children: [
-                            {
-                                ele: "span",
-                                classList: "toggle-btn",
-                                text: "HTML",
-                                evnts: { click: () => self.toggleView('htmleditor') }
-                            },
-                            {
-                                ele: "span",
-                                classList: "toggle-btn",
-                                text: "Javascript",
-                                evnts: { click: () => self.toggleView('jseditor') }
-                            },
-                            {
-                                ele: "span",
-                                classList: "toggle-btn",
-                                text: "Preview",
-                                evnts: {
-                                    click: function (e) {
-                                        self.showPreview(e);
-                                    }
-                                }
-                            }
-                        ]
-                    },
-                    {
-                        ele: "div",
-                        classList: "editor-preview",
-                        children: [
-                            {
-                                ele: "textarea",
-                                classList: "editor",
-                                iden: 'htmleditor',
-                                attribs: {
-                                    rows: 25,
-                                    value: obj ? obj.html : "",
-                                    placeholder: "HTML"
-                                },
-                                evnts: {}
-                            },
-                            {
-                                ele: "textarea",
-                                classList: "editor",
-                                iden: 'jseditor',
-                                attribs: {
-                                    rows: 25,
-                                    style: 'display: none',
-                                    value: obj ? obj.js : "",
-                                    placeholder: "Javascript"
-                                },
-                                evnts: {}
-                            },
-                            {
-                                ele: "div",
-                                iden: 'preview',
-                                classList: "preview",
-                                evnts: {}
-                            }
-                        ]
-                    }
-                ]
-            }
-        }
-        let ele = render('applet', renderable(obj), (id, ele) => this[id] = ele);
-        return ele;
+        return render('applet', {
+            ele: "div", classList: "$p10x0", children: [
+                { ele: "input", attribs: { type: "radio", name: "applet-view-type", checked: true }, classList: "chtml", postlabel: "html" },
+                { ele: "input", attribs: { type: "radio", name: "applet-view-type" }, classList: "cjs", postlabel: "javascript" },
+                { ele: "input", attribs: { type: "radio", name: "applet-view-type" }, classList: "preview", postlabel: "preview", evnts: { change: _ => this.showPreview() } },
+                makeCodeEditor('htmleditor', 'html', obj ? obj.html : "", 'ehtml'),
+                makeCodeEditor('jseditor', 'js', obj ? obj.js : "", 'ejs'),
+                { ele: "div", iden: 'preview', classList: "epreview" }
+            ]
+        }, (id, ele) => this[id] = ele)
     }
 
     getContent() {
-        return {
-            html: this.htmleditor.value,
-            js: this.jseditor.value
-        };
+        return { html: this.htmleditor.ceditor.toString(), js: this.jseditor.ceditor.toString() };
     }
 
-    // private
     showPreview() {
-        this.toggleView('preview')
-        this.preview.innerHTML = this.htmleditor.value;
+        this.preview.innerHTML = this.htmleditor.ceditor.toString();
         let scrpt = document.createElement('script');
-        scrpt.innerHTML = this.getScript(this.jseditor.value);
+        scrpt.innerHTML = this.getScript(this.jseditor.ceditor.toString());
         this.preview.appendChild(scrpt)
-    }
-
-    toggleView(id) {
-        ['htmleditor', 'jseditor', 'preview'].forEach(x => this[x].style.display = 'none')
-        this[id].style.display = "block"
     }
 }
