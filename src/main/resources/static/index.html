@@ -554,7 +554,10 @@
                         ]
                     }, (k, v) => this[k] = v, resultContainer)
                 }
-                this.sb.addEventListener('input', _ => this.search(_.target.value))
+                this.sb.addEventListener('input', _ => {
+                    this.offset = 0
+                    this.search(_.target.value)
+                })
 
                 /* setup results box */
                 render('searcher', {
@@ -1220,7 +1223,7 @@
         <div class="maxwidth title-box">
 
             <div class="title-left-panel">
-                <span class="title">i-nodes</span>
+                <span class="title"><a href='/'>i-nodes</a></span>
             </div>
             <div class="title-mid-panel">
                 <div class="search-wrapper">
