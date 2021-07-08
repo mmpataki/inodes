@@ -492,7 +492,6 @@
                     }, (k, v) => this[k] = v, resultContainer)
                 }
                 this.sb.addEventListener('input', _ => {
-                    this.offset = 0
                     this.search(_.target.value)
                 })
 
@@ -510,7 +509,7 @@
                     this.search("")
             }
 
-            search(str) {
+            search(str, _offset) {
 
                 if (this.locked() && !confirm('You have some unsaved content, do you still want to continue?'))
                     return
@@ -522,6 +521,7 @@
                     sb.value = str
                 else
                     sb.value = ""
+                this.offset = offset = _offset != undefined ? _offset : 0
                 callWithWaitUI(rc, (done) => {
                     str = (prefix ? prefix + " " : "") + str
                     app.getSearchResults(str, offset, pageSize || 10).then(d => {
@@ -557,7 +557,7 @@
             }
 
             showResults(results) {
-                let { sb, rc, searchInput, size, defQuery, pageSize, sorter, app, offset } = { ...this, ...this.options };
+                let { sb, rc, searchInput, size, defQuery, pageSize, sorter, app } = { ...this, ...this.options };
                 let proms = [], itemsByClass = {}
                 rc.innerHTML = ''
                 window.scrollTo(0, 0)
@@ -637,12 +637,11 @@
                         container.children.push(
                             {
                                 ele: 'span',
-                                classList: `page-btn ${i == this.offset ? "selected" : ""}`,
+                                classList: `page-btn ${i == offset ? "selected" : ""}`,
                                 text: i / pageSize + 1,
                                 evnts: {
                                     click: _ => {
-                                        this.offset = i
-                                        this.search(this.getSearchQuery())
+                                        this.search(this.getSearchQuery(), i)
                                     }
                                 }
                             }
