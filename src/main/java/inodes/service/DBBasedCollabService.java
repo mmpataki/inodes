@@ -10,9 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Example;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class DBBasedCollabService extends CollabService {
@@ -28,6 +30,11 @@ public class DBBasedCollabService extends CollabService {
         Map<String, Long> ret = new HashMap<>();
         VR.findAll(ids).forEach(v -> ret.put(v.getId(), v.getVotes()));
         return ret;
+    }
+
+    @Override
+    protected Map<String, Integer> _getNumCommentsFor(List<String> ids) {
+        return CR.countWithPostidIn(ids).stream().collect(Collectors.toMap(x -> (String)((Object[])x)[0], x -> ((Long)((Object[])x)[1]).intValue()));
     }
 
     @Override

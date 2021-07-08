@@ -26,13 +26,17 @@ public abstract class CollabService extends Observable {
     @PostConstruct
     public void _init() {
 
-        /* append votes to the search results */
+        /* append votes & comments count to the search results */
         DS.registerPostEvent(DataService.ObservableEvents.SEARCH, ed -> {
+
             List<Document> docs = (List<Document>) ed.get("results");
             Map<String, Long> votes = this.getVotes(docs.stream().map(d -> d.getId()).collect(Collectors.toList()));
+            Map<String, Integer> numComments = this.getNumCommentsFor(docs.stream().map(d -> d.getId()).collect(Collectors.toList()));
+
             for (Document doc : docs) {
                 Long l = votes.get(doc.getId());
                 doc.setVotes(l == null ? 0 : l);
+                doc.setCommentCount(numComments.get(doc.getId()));
             }
         });
     }
@@ -54,6 +58,12 @@ public abstract class CollabService extends Observable {
     public List<Comment> getComments(String id) throws Exception {
         return _getComments(id);
     }
+
+    public Map<String, Integer> getNumCommentsFor(List<String> ids) throws Exception {
+        return _getNumCommentsFor(ids);
+    }
+
+    protected abstract Map<String, Integer> _getNumCommentsFor(List<String> ids);
 
     public Comment comment(String id, String comment) throws Exception {
         AS.checkCommentPermission(id);

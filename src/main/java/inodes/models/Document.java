@@ -82,6 +82,7 @@ public class Document {
     private transient ReadState readState = ReadState.PERM_NEEDED;
     transient long votes;
     transient List<Comment> comments;
+    transient int commentCount;
 
     public boolean canRead() {
         return readState.equals(ReadState.CAN_READ);

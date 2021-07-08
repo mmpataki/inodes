@@ -11,7 +11,7 @@
 body {
     margin: 0px;
     font-size: 1.1em;
-    background-color: #f3f6fd;
+    /* background-color: #f3f6fd; */
     font-family: "DM Sans", sans-serif;
 }
 
@@ -48,14 +48,16 @@ body {
 }
 
 .tag-container {
-    font-weight: bolder;
-    color: black;
-    font-size: .9em;
+    
+    /* SO styling */
+    
+    background: #e1ecf4;
+    color: #39739d;
+
+    font-size: 0.8em;
     cursor: pointer;
-    margin: 2px 3px;
-    background-color: #ebebeb;
-    padding: 2px 4px;
-    border: solid 1px #e4e4e4;
+    margin: 3px 3px;
+    padding: 4px 6px;
     border-radius: 3px;
     display: inline-block;
 }
@@ -154,29 +156,26 @@ body {
     font-weight: 200;
 }
 
-.inode-action-upvote {
+.inode-action {
+    cursor: pointer;
     color: gray;
-    margin-right: 10px;
+    margin: 5px;
+    font-size: 88%;
+    padding: 3px 0px;
 }
 
-.inode-action-downvote {
+.inode-action:hover {
+    color: black;
+}
+
+.inode-action-upvote {
     color: gray;
+    margin-right: 5px;
 }
 
 .inode-action-downvote:hover,
 .inode-action-upvote:hover {
     cursor: pointer;
-    color: black;
-}
-
-.inode-action {
-    cursor: pointer;
-    color: gray;
-    margin: 5px;
-}
-
-.inode-action:hover {
-    color: black;
 }
 
 #changenoteeditor {
@@ -228,25 +227,19 @@ body {
     display: flex;
     flex-direction: column;
     padding: 10px 10px 0px 10px;
-    border: solid 1px lightgray;
-    border-radius: 8px;
+    border: solid 1px #dadde6;
+    border-radius: 5px;
     background-color: white;
 }
 
 .inode-user-time {
     float: right;
     text-align: center;
-}
-
-.inode-user {
-    background-color: #f1f1f1;
-    border-radius: 5px;
-    display: block;
-}
-
-.inode-time {
-    display: block;
-    font-size: 0.8em;
+    padding: 4px;
+    border-radius: 4px;
+    background-color: #e1ecf4;
+    border: solid 1px transparent;
+    color: #39739d;
 }
 
 .searcher-posts {
@@ -255,7 +248,7 @@ body {
 }
 
 .tags-container {
-    margin-top: 10px;
+    margin-top: 20px;
     float: left;
 }
 
@@ -282,18 +275,6 @@ body {
     position: relative;
 }
 
-.trending-tag {
-    display: inline-block;
-    font-weight: bolder;
-    color: gray;
-    font-style: italic;
-    font-size: .9em;
-    cursor: pointer;
-    margin: 1px;
-    background-color: #fafafa;
-    padding: 1px 5px;
-}
-
 .left-top-ui {
     right: 0px;
     bottom: 0px;
@@ -317,15 +298,29 @@ body {
 }
 
 .title {
-    font-size: 28px;
-    color: black;
+    font-size: 24px;
+    
+    padding: 3px 10px;
+    border: solid 1px transparent;
+    border-radius: 3px;
+    font-size: 22px;
     vertical-align: middle;
 }
 
+.title > a {
+    text-decoration: none;
+}
+
 .title-bar {
-    position: relative;
-    padding: 10px 10px 0px 10px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1001;
+    padding: 5px 10px 7px 10px;
     font-weight: bolder;
+    background-color: #fafafb;
+    box-shadow: rgba(0, 0, 0, 0.05) 0px 1px 2px 0px, rgba(0, 0, 0, 0.05) 0px 1px 4px 0px, rgba(0, 0, 0, 0.05) 0px 2px 8px 0px;
 }
 
 .maxwidth {
@@ -334,6 +329,7 @@ body {
 
 .content {
     margin: auto;
+    margin-top: 40px;
 }
 
 .editor-closebtn {
@@ -364,27 +360,23 @@ body {
     font-weight: bolder;
 }
 .inode-postowner, .inode-posttime {
-    background-color: #f8f8f8;
     font-size: 0.9em;
     display: block;
-    padding: 2px;
 }
 
 .inode-postowner {
     cursor: pointer;
+    display: flex;
+    align-items: center;
 }
-
-.actions {
-    margin-top: 40px;
-} 
 
 .sidebar-item {
     padding-left: 10px;
 }
 
 .action-item {
-    padding-bottom: 3px;
-    display: block;
+    font-weight: normal;
+    font-size: 0.9em;
 }
 
 .inode-context-btn {
@@ -420,6 +412,7 @@ body {
     background-color: white;
     padding: 20px;
     overflow: auto;
+    z-index: 10001;
 }
 
 .fullscreen-inode > div {
@@ -625,25 +618,24 @@ img {
 
 
 .search-wrapper {
-    border-radius: 20px;
+    border-radius: 5px;
     background-color: #fff;
     padding-right: 12px;
-    height: 40px;
+    height: 35px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     color: #1f1c2e;
-    box-shadow: 0 2px 6px 0 rgba(136,148,171,.2),0 24px 20px -24px rgba(71,82,107,.1);
+    border: solid 1px lightgray;
+    /* box-shadow: 0 2px 6px 0 rgba(136,148,171,.2),0 24px 20px -24px rgba(71,82,107,.1); */
     overflow: hidden;
 }
   
 .search-input {
     border: none;
-    flex: 1;
     outline: none;
     height: 100%;
-    padding: 0 20px;
-    font-size: 1.3em;
+    font-size: 1.1em;
     background-color: #fff;
     color: #1f1c2e;
 }
@@ -734,12 +726,17 @@ img {
 }
 
 .add-btn {
-    padding: 0;
+    background-color: #0095ff;
+    color: white;
+    font-size: 13px;
+    padding: 5px 10px;
     border: 0;
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.4);
+    border: solid 1px transparent;
+    border-radius: 3px;
 }
 
 .profile-btn {
@@ -748,6 +745,7 @@ img {
     display: flex;
     align-items: center;
     margin-left: 15px;
+    background: transparent;
 }
 
 .profile-btn > span {
