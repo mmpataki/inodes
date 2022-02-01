@@ -922,10 +922,6 @@ inode-error {
     margin-left: 3px;
 }
 
-.copyable:hover .copier-btn-container {
-    display: block;
-}
-
 .copier-btn-container {
     position: absolute;
     top: 5px;
@@ -936,7 +932,6 @@ inode-error {
     color: lightslategray;
     font-size: 13px;
     cursor: pointer;
-    display: none;
 }
 
 .copier-btn-container:hover {

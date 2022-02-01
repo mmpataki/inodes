@@ -59,7 +59,7 @@ class posts {
         })), () => 0, this.attachmentsView)
     }
 
-    getCopyContent(doc) {
-        return this.getCard(doc).outerHTML + "<br/>";
+    getCopyContent(obj) {
+        return this.getCard(obj).outerHTML + "<br/>";
     }
 }
