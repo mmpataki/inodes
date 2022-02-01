@@ -97,7 +97,11 @@ public class VersionControlService {
 
         DocHistory(String id) throws Exception {
             this.id = id;
-            for (String fName : new File(root + "/" + id).list((dir, name) -> !name.startsWith("change"))) {
+
+            File cdir = new File(root + "/" + id);
+            if(!cdir.exists())
+                return;
+            for (String fName : cdir.list((dir, name) -> !name.startsWith("change"))) {
                 edits.add(new DocEdit(fName, id));
             }
         }

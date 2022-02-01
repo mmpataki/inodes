@@ -174,7 +174,7 @@
                             ...(!klass.getCopyContent ? [] : [
                                 {
                                     ele: 'i', classList: '$far $fa-copy context-btn', title: 'copy content',
-                                    evnts: { click: _ => copyFormatted(klass.getCopyContent(obj)) }
+                                    evnts: { click: _ => copyFormatted(klass.getCopyContent(obj.content, obj)) }
                                 }
                             ]),
                             {
@@ -291,14 +291,11 @@
                                                                     ]
                                                                 },
                                                                 {
-                                                                    ele: 'div', children: [
-                                                                        { ele: 'input', attribs: { readOnly: true, value: app.getPermalink(obj.id), style: 'width: 180px' } },
-                                                                        {
-                                                                            ele: 'button', text: 'copy', evnts: {
-                                                                                click: function () { copyFormatted(this.previousElementSibling.value) }
-                                                                            }
-                                                                        }
-                                                                    ]
+                                                                    ele: 'div', styles: { display: 'flex' }, children: [
+                                                                        { ele: 'span', text: app.getPermalink(obj.id), attribs: { style: 'flex-grow: 1; margin-right: 30px; background: white; overflow: scroll; padding: 5px; display: block; overflow-y: hidden; border: solid 1px lightgray; white-space: nowrap' } }
+                                                                    ], evnts: {
+                                                                        rendered: _ => makeCopyable(_)
+                                                                    }
                                                                 },
                                                                 ...(!klass.getCopyContent ? [] : [
                                                                     { ele: 'b', styles: { display: 'block', 'margin-top': '10px' }, text: 'or copy the content' },
@@ -306,7 +303,7 @@
                                                                         ele: 'button',
                                                                         text: 'copy content',
                                                                         evnts: {
-                                                                            click: _ => copyFormatted(klass.getCopyContent(obj)),
+                                                                            click: _ => copyFormatted(klass.getCopyContent(obj.content, obj)),
                                                                             rendered: e => e.removeAttribute('tabindex')
                                                                         }
                                                                     }
@@ -328,7 +325,7 @@
                                                 ...(!app.loggedIn() ? [] : [{ ele: 'span', classList: 'action', text: 'flag', evnts: { click: _ => app.flagInode(obj.id) } }]),
 
                                                 /* this is temporary, we need to first build a approve applet */
-                                                ...(!obj.needsApproval || app.loggedIn() || app.currentUid() == 'admin' ? [] : [{ ele: 'span', classList: 'action', text: 'approve', evnts: { click: () => app.approveInode(obj.id) } }]),
+                                                ...(obj.needsApproval && app.loggedIn() && app.currentUid() == 'admin' ? [{ ele: 'span', classList: 'action', text: 'approve', evnts: { click: () => app.approveInode(obj.id) } }] : []),
 
                                                 ...(app.loggedIn() != 'admin' ? [] : [{ ele: 'span', text: 'trust', classList: 'action', evnts: { click: _ => app.trustInode(obj.id) } }])
                                             ]
@@ -1190,7 +1187,7 @@
                 </button>
                 <button class="profile-btn new-has-tooltip">
                     <img id='profileimg' src='/profile.png'
-                        style="height: 30px; width: 30px; border-radius: 5px; background-color: white" />
+                        style="height: 30px; width: 30px; border-radius: 5px; border: solid 1px lightgray; background-color: white" />
                     <div class="new-tooltip">
                         <ul style="list-style-type: none; padding: 0px; text-align: right; margin: 0px">
                             <li class="new-actions" onclick="app.searchUser()" id='profilebtn'>Account</li>

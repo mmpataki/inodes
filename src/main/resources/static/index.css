@@ -921,3 +921,25 @@ inode-error {
     content: url('/outlink.svg');
     margin-left: 3px;
 }
+
+.copyable:hover .copier-btn-container {
+    display: block;
+}
+
+.copier-btn-container {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    padding: 1px 5px;
+    border: solid 1px lightgray;
+    border-radius: 5px;
+    color: lightslategray;
+    font-size: 13px;
+    cursor: pointer;
+    display: none;
+}
+
+.copier-btn-container:hover {
+    color: white;
+    background: #5eba7d;
+}

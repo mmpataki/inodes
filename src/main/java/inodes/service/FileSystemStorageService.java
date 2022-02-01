@@ -27,17 +27,12 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
-public class FileSystemStorageService extends WebMvcConfigurerAdapter implements StorageService {
+public class FileSystemStorageService implements StorageService {
 
     private Path rootLocation;
 
     @Autowired
     Configuration conf;
-
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        //registry.addResourceHandler("/u/**").addResourceLocations("file:" + conf.getProperty("storageservice.root.dir"));
-    }
 
     @PostConstruct
     public void xinit() throws Exception {

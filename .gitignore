@@ -11,11 +11,8 @@ backup
 files
 application.properties
 src/main/resources/static/config.js
-src/main/resources/static/kb-plugin
-src/main/resources/static/automations-plugin
-src/main/resources/static/edc-resource-config-plugin
-src/main/resources/static/instances-plugin
 src/main/resources/static/migrate
 src/main/resources/static/infa.png
 src/main/resources/static/infautils.js
 src/main/resources/static/instance_importer.py.py
+vcs

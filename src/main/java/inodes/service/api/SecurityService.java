@@ -64,6 +64,8 @@ public class SecurityService extends Observable {
                 try {
                     List<VersionControlService.DocEdit> edits = VCS.getHistoryOf(doc.getId()).getEdits();
                     Collections.sort(edits);
+                    if(edits.isEmpty())
+                        return doc;
                     for (int i = edits.size() - 1; i >= 0; i--) {
                         VersionControlService.DocEdit edit = edits.get(i);
                         Document vdoc = VCS.getDocWithVersion(doc.getId(), edit.getMtime(), edit.getAuthor());
